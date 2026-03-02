@@ -1818,7 +1818,7 @@ Start from a fresh Jetson install. Apply all items in the Security Audit Checkli
 - **VPI Documentation**: docs.nvidia.com/vpi/
 
 ### Community and Tools
-- **Jetson Hacks** (jetsonhacks.com): Practical Jetson tutorials, GPIO, hardware setup
+- **JetsonHacks** (https://jetsonhacks.com/): Practical Jetson tutorials, GPIO pinouts (Orin Nano, AGX Orin, Xavier, Nano), JetPack updates, hardware setup — essential reference for Jetson mastering
 - **NVIDIA NGC**: ngc.nvidia.com — pre-built containers optimized for Jetson
 - **DeepStream Getting Started**: docs.nvidia.com/metropolis/deepstream/
 
