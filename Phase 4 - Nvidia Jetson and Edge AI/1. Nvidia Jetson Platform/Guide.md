@@ -21,7 +21,8 @@
 12. [OTA Update Best Practices](#12-ota-update-best-practices)
 13. [Security Hardening](#13-security-hardening)
 14. [Projects](#14-projects)
-15. [Resources](#15-resources)
+15. [Jetson Containers — Cloud-Native ML Deployment](#15-jetson-containers--cloud-native-ml-deployment)
+16. [Resources](#16-resources)
 
 ---
 
@@ -1878,19 +1879,153 @@ Start from a fresh Jetson install. Apply all items in the Security Audit Checkli
 
 ---
 
-## 15. Resources
+## 15. Jetson Containers — Cloud-Native ML Deployment
+
+[jetson-containers](https://github.com/dusty-nv/jetson-containers) is a modular container build system that provides the latest AI/ML packages for NVIDIA Jetson and JetPack-L4T. It enables **cloud-native deployment** on edge devices: reproducible environments, version-pinned dependencies, and OTA-friendly updates via `docker pull`.
+
+### Why Containers on Jetson?
+
+| Bare-metal install | Containerized (jetson-containers) |
+|--------------------|------------------------------------|
+| `pip install` conflicts, broken venvs | Isolated per-container dependencies |
+| JetPack upgrade breaks PyTorch | Pin L4T/CUDA in image tag |
+| Manual CUDA/cuDNN/TensorRT matching | Pre-built wheels for your JetPack |
+| Hard to reproduce across devices | Same image → same behavior |
+| OTA = full reflash or risky apt | OTA = `docker compose pull && up -d` |
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  jetson-containers (Python CLI + package definitions)                   │
+│  - autotag: finds compatible image for your JetPack (r36.x, cu12.x)     │
+│  - build: composes packages (pytorch + transformers + ros)             │
+│  - run: docker run with --runtime nvidia, /data mount, devices          │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Package Stack (modular)                                                │
+│  ML: pytorch, tensorflow, onnxruntime, deepstream, jax                   │
+│  LLM: ollama, vllm, sglang, llama.cpp, transformers, exllama            │
+│  VLM: llava, vila, nanoowl, nanosam                                     │
+│  Robotics: ros:humble-desktop, lerobot, openvla, zed                    │
+│  Speech: whisper, whisper_trt, faster-whisper, piper                    │
+│  RAG: llama-index, langchain, nanodb, faiss                             │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Base: L4T (Ubuntu 22.04/24.04) + CUDA + cuDNN + TensorRT               │
+│  Registry: dustynv/* on Docker Hub, pypi.jetson-ai-lab.io for wheels     │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Installation and Quick Start
+
+```bash
+# On Jetson (after JetPack 6.2 or 7.x installed)
+git clone https://github.com/dusty-nv/jetson-containers
+bash jetson-containers/install.sh
+
+# Pull and run a compatible PyTorch container (no build needed)
+jetson-containers run $(autotag l4t-pytorch)
+
+# Or run a specific pre-built image
+sudo docker run --runtime nvidia -it --rm --network=host dustynv/l4t-pytorch:r36.2.0
+```
+
+### Key Concepts
+
+**`autotag`** — Resolves the correct image tag for your JetPack/L4T version. If no pre-built image exists, it can trigger a build. Example: `autotag l4t-pytorch` → `dustynv/l4t-pytorch:r36.4.0` on JetPack 6.2.
+
+**`jetson-containers run`** — Wraps `docker run` with:
+- `--runtime nvidia` (GPU access)
+- `-v /data:/data` (persistent cache for models)
+- `--network=host` (for ROS2, streaming)
+- Device passthrough for cameras, serial ports
+
+**Package composition** — Combine packages into a single image:
+
+```bash
+# Build custom image: PyTorch + Transformers + ROS2 Humble
+jetson-containers build --name=my_ai_robot pytorch transformers ros:humble-desktop
+
+# Run it
+jetson-containers run my_ai_robot
+```
+
+### Version and CUDA Customization
+
+```bash
+# Rebuild for specific CUDA version
+CUDA_VERSION=12.6 jetson-containers build transformers
+
+# Ubuntu 24.04 base (JetPack 6/7)
+LSB_RELEASE=24.04 jetson-containers build pytorch:2.8
+
+# Request specific PyTorch / cuDNN / TensorRT via env vars (see docs/build.md)
+```
+
+### Supported JetPack Versions
+
+- **JetPack 6.2** (CUDA 12.6, L4T r36.5) — primary target
+- **JetPack 7** (CUDA 13.x) — supported
+- **Ubuntu 24.04** — available for newer stacks
+
+### Integration with OTA (Section 12)
+
+jetson-containers fits directly into the Docker-based OTA flow:
+
+```bash
+# Your docker-compose.yml can use dustynv images
+services:
+  inference:
+    image: dustynv/l4t-pytorch:r36.4.0
+    # or your custom-built image from a private registry
+    runtime: nvidia
+    volumes:
+      - /data:/data
+      - ./models:/models
+
+# OTA update: pull new image, restart
+docker compose pull && docker compose up -d
+```
+
+### Practical Use Cases
+
+| Use case | Package(s) | Command |
+|----------|------------|---------|
+| PyTorch inference | `l4t-pytorch` | `jetson-containers run $(autotag l4t-pytorch)` |
+| Local LLM (Ollama) | `ollama` | `jetson-containers run $(autotag ollama)` |
+| ROS2 + PyTorch | `pytorch`, `ros:humble-desktop` | Build combined image |
+| Whisper speech-to-text | `whisper` or `whisper_trt` | `jetson-containers run $(autotag whisper)` |
+| Object detection (ViT) | `nanoowl` | `jetson-containers run $(autotag nanoowl)` |
+| RAG with vector DB | `nanodb`, `llama-index` | Build or run `nanodb` |
+
+### Documentation and Community
+
+- **Package list**: [github.com/dusty-nv/jetson-containers/packages](https://github.com/dusty-nv/jetson-containers/tree/master/packages)
+- **System setup**: Docker daemon config, memory/storage tuning
+- **Jetson AI Lab**: [jetson-ai-lab.com](https://www.jetson-ai-lab.com) — tutorials, SLM/VLM demos
+
+---
+
+## 16. Resources
 
 ### Official Documentation
+- **Jetson Linux Developer Guide** (L4T r36.4): [docs.nvidia.com/jetson/archives/r36.4/DeveloperGuide](https://docs.nvidia.com/jetson/archives/r36.4/DeveloperGuide/index.html) — primary reference: boot, kernel, device tree, pinmux, camera, flashing, OTA, security
 - **JetPack SDK**: developer.nvidia.com/embedded/jetpack
 - **NVIDIA Device Tree / Camera**: docs.nvidia.com/jetson — camera sensor DTSI, tegra-camera-platform
 - **NVIDIA SDK Manager**: developer.nvidia.com/sdk-manager
-- **L4T Developer Guide**: docs.nvidia.com/jetson/archives/
+- **L4T Developer Guide** (archives): docs.nvidia.com/jetson/archives/
 - **TensorRT Developer Guide**: docs.nvidia.com/deeplearning/tensorrt/developer-guide/
 - **VPI Documentation**: docs.nvidia.com/vpi/
 
 ### Community and Tools
 - **JetsonHacks** (https://jetsonhacks.com/): Practical Jetson tutorials, GPIO pinouts (Orin Nano, AGX Orin, Xavier, Nano), JetPack updates, hardware setup — essential reference for Jetson mastering
 - **NVIDIA NGC**: ngc.nvidia.com — pre-built containers optimized for Jetson
+- **jetson-containers** (https://github.com/dusty-nv/jetson-containers): See [Section 15](#15-jetson-containers--cloud-native-ml-deployment) for deep dive. Quick start: `jetson-containers run $(autotag l4t-pytorch)`.
 - **DeepStream Getting Started**: docs.nvidia.com/metropolis/deepstream/
 
 ### Performance and Profiling
