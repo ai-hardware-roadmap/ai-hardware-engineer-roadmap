@@ -2,100 +2,34 @@
 
 # AI Hardware Engineer Roadmap
 
-**A structured, hands-on learning roadmap from digital design fundamentals to AI chip design**
+**From Parallel Optimization to Custom AI Chip Design**
 
 [![GitHub stars](https://img.shields.io/github/stars/ai-hpc/ai-hardware-engineer-roadmap?style=flat-square)](https://github.com/ai-hpc/ai-hardware-engineer-roadmap/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/ai-hpc/ai-hardware-engineer-roadmap?style=flat-square)](https://github.com/ai-hpc/ai-hardware-engineer-roadmap/network/members)
 
-*A 5-phase self-study curriculum for engineers: learn digital design, Verilog, FPGA SoCs, HLS/OpenCL acceleration, and edge AI (Jetson/CUDA/TensorRT), then specialize in autonomous driving, AI chip design, HPC, or robotics. Build the hardware that runs AI — from first logic gate to custom accelerator silicon.*
+*A purpose-oriented, 4-step career progression — backed by a 5-phase hands-on curriculum — that takes you from kernel-level parallel programming to designing custom AI inference accelerators. Reference projects: [tinygrad](https://github.com/tinygrad/tinygrad) (compiler, IR, kernels) and [openpilot](https://github.com/commaai/openpilot) (edge/AV stack using tinygrad).*
 
 </div>
 
 ---
 
-## Who Is This For?
-
-- **EE/ECE students** who want to move from digital design into AI hardware
-- **Software ML engineers** who want to understand the hardware their models run on
-- **Embedded engineers** who want to add AI capabilities to their systems
-- **Career changers** targeting roles in AI accelerator design, edge AI, or autonomous systems
-
-You do **not** need prior AI/ML experience. The roadmap teaches AI fundamentals (Phase 4) after you have the hardware foundation to understand why they matter.
-
----
-
-## What Is This?
-
-A **5-phase self-study curriculum** for engineers who want to understand AI systems **from the hardware up**. You will not just train models — you will build the digital logic, program the FPGAs, optimize the inference engines, and design the accelerator architectures that make AI run in the real world.
-
-Every phase answers one question: ***What does the hardware need to do to make AI work, and how do we build it?***
-
-- **Phase 1:** What are the digital building blocks? *(and why do AI workloads stress them)*
-- **Phase 2:** How do we build complete hardware systems? *(SoC platforms that AI runs on)*
-- **Phase 3:** How do we make hardware fast? *(acceleration techniques for neural network operations)*
-- **Phase 4:** What is AI, and how does it run on hardware? *(neural networks, edge deployment, optimization)*
-- **Phase 5:** Where do I specialize? *(autonomous driving, AI chip design, HPC, robotics, security)*
-
-**Estimated timeline:** ~2.5–5 years (flexible based on your pace and goals)
-
----
-
-## Prerequisites
-
-- **Math:** Comfortable with algebra and basic calculus (derivatives, matrix operations)
-- **Programming:** Working knowledge of at least one language (C preferred; Python acceptable)
-- **Hardware:** No prior hardware experience required — Phase 1 starts from scratch
-- **Equipment:** Access to a computer running Linux (or WSL). FPGA dev boards recommended starting in Phase 2 (Basys 3 or Arty A7 for Phases 1–2; Zynq board for Phases 2–3)
-
----
-
-## How to Use This Roadmap
-
-1. **Phases 1–3 are sequential.** Each builds on the last. Do not skip.
-2. **Phase 4 is the bridge.** This is where hardware meets AI. If you already have hardware experience, you can start here and backfill Phases 1–3 as needed.
-3. **Phase 5 tracks are independent.** Choose based on your career goals. You can pursue multiple tracks in parallel.
-4. **Full phase curriculum** with topics, guides, and projects: [**CURRICULUM.md**](CURRICULUM.md).
-5. **Estimated pace:** The timeline assumes part-time self-study (~10–15 hours/week). Full-time learners can move significantly faster.
-
----
-
-## Learning Path Overview
-
-| Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 |
-|:--------|:--------|:--------|:--------|:--------|
-| **Digital Foundations** | **Hardware Platforms** | **Acceleration** | **AI & Edge Deployment** | **Specialization Tracks** |
-| 6–12 mo | 6–12 mo | 6–12 mo | 6–12 mo | Ongoing |
-| Logic, Verilog, Embedded C, Linux | Vivado, Zynq SoC, Embedded Linux, Protocols | Timing, HLS, OpenCL, Computer Vision | Neural Networks, Jetson, TensorRT, Sensor Fusion, ROS2 | Autonomous Driving, AI Chips, HPC, Robotics, Security |
-
-→ Full phase-by-phase content, topic guides, and project lists: **[CURRICULUM.md](CURRICULUM.md)**
-
----
-
 ## The Four Steps
 
-**From parallel program optimization to custom-chip deep learning inference**
+Each step is a **concrete role target**. The [5-phase curriculum](CURRICULUM.md) provides the building blocks; these steps define **where you're going**.
 
-This section defines the **career progression** that this curriculum supports. The broad 5-phase structure is re-framed here as **four purpose-oriented steps**. Each step is a concrete role target; the phases are the building blocks.
-
-**Reference real-world projects:** [**tinygrad**](https://github.com/tinygrad/tinygrad) and [**openpilot**](https://github.com/commaai/openpilot) are used throughout. tinygrad exposes compiler, IR, and kernel-level optimization in a minimal ML stack; openpilot is a production edge/AV stack that uses tinygrad for inference. Together they connect parallel optimization → DL inference → edge/AV/robotics → custom hardware.
-
-| Step | Role | Focus | Reference Projects |
-|------|------|--------|--------------------|
-| **1** | **Parallel program optimization engineer** | Heterogeneous compute, memory hierarchy, kernel-level performance, CUDA/OpenCL | tinygrad backends, operator→kernel mapping |
-| **2** | **Deep learning inference optimization engineer** | Model-level and operator-level optimization, compilers (TensorRT, TVM, MLIR), quantization, latency/throughput | tinygrad IR, scheduling, BEAM, TensorRT pipeline |
-| **3** | **DL inference optimization for edge / AV / robotics** | Power-limited, latency-sensitive deployment; full pipeline from sensor to actuation; AV/robotics stacks | openpilot (camerad, modeld, tinygrad models), Jetson/DRIVE |
-| **4** | **Master FPGA for DL inference → custom chip design** | Mapping inference to hardware; FPGA prototyping; accelerator architecture; path to ASIC/custom silicon | tinygrad custom backend, HLS/OpenCL, AI Chip Design track |
-
----
-
-### Visual Overview
+| Step | Role Target | Focus |
+|:----:|-------------|-------|
+| **1** | **[Parallel Program Optimization Engineer](#step-1-parallel-program-optimization-engineer)** | Kernel-level performance, CUDA/OpenCL, memory hierarchy, heterogeneous compute |
+| **2** | **[Deep Learning Inference Optimization Engineer](#step-2-deep-learning-inference-optimization-engineer)** | Model/operator optimization, compilers (TensorRT, TVM, MLIR, tinygrad), quantization |
+| **3** | **[DL Inference for Edge / AV / Robotics](#step-3-dl-inference-optimization-for-edge--av--robotics)** | Power- and latency-constrained deployment, full sensor→actuation pipeline, openpilot/Jetson/DRIVE |
+| **4** | **[FPGA & Custom Chip for DL Inference](#step-4-master-fpga-for-dl-inference--custom-chip-design)** | Mapping inference to hardware, FPGA prototyping, accelerator architecture, path to ASIC |
 
 ```mermaid
 graph LR
-  A["You (today)"] --> R1["Step 1<br/>Parallel Program Optimization Engineer"]
-  R1 --> R2["Step 2<br/>Deep Learning Inference Optimization Engineer"]
-  R2 --> R3["Step 3<br/>DL Inference Optimization Engineer<br/>(Edge / AV / Robotics)"]
-  R3 --> R4["Step 4<br/>FPGA & Custom Chip Engineer<br/>(DL Inference Accelerators)"]
+  A["You (today)"] --> R1["Step 1<br/>Parallel Program<br/>Optimization Engineer"]
+  R1 --> R2["Step 2<br/>DL Inference<br/>Optimization Engineer"]
+  R2 --> R3["Step 3<br/>DL Inference for<br/>Edge / AV / Robotics"]
+  R3 --> R4["Step 4<br/>FPGA & Custom Chip<br/>for DL Inference"]
 
   subgraph External Roles
     N1["GPU / Parallel Computing Engineer"]
@@ -117,7 +51,6 @@ graph LR
     P5B["Phase 5B<br/>(AI Chip Design: tinygrad + FPGA)"]
   end
 
-  %% Mandatory vs optional phases for each step
   %% Step 1: strong parallel optimization (CPU/GPU), FPGA optional
   R1 -- "mandatory" --> P1
   R1 -- "mandatory" --> P2
@@ -144,6 +77,13 @@ graph LR
   R4 -- "mandatory" --> P4
   R4 -- "mandatory" --> P5B
 ```
+
+**Reference projects** connect all four steps:
+
+| Project | Step 1 | Step 2 | Step 3 | Step 4 |
+|---------|--------|--------|--------|--------|
+| **[tinygrad](https://github.com/tinygrad/tinygrad)** | Backends, op→kernel | IR, scheduling, BEAM, quantization | Inference on device | Custom backend, workload for accelerator design |
+| **[openpilot](https://github.com/commaai/openpilot)** | — | Why inference matters in production | Full edge/AV stack, perception→control | Real workloads for hardware design |
 
 ---
 
@@ -329,27 +269,48 @@ This roadmap is explicitly designed so that, by the time you reach **Step 3 (DL 
 
 ---
 
-## How to Use This With the 5-Phase Curriculum
+## About This Roadmap
 
+**Who is this for?** EE/ECE students, software ML engineers, embedded engineers, and career changers targeting AI accelerator design, edge AI, or autonomous systems. No prior AI/ML experience required — the roadmap teaches AI fundamentals after you have the hardware foundation.
+
+**What is it?** A 5-phase self-study curriculum (digital design → hardware platforms → acceleration → AI & edge deployment → specialization) that supports the four-step career progression above. You build the digital logic, program the FPGAs, optimize the inference engines, and design the accelerator architectures that make AI run in the real world.
+
+**Prerequisites:**
+- Algebra and basic calculus (derivatives, matrix operations)
+- Working knowledge of at least one language (C preferred; Python acceptable)
+- No prior hardware experience — Phase 1 starts from scratch
+- Computer running Linux (or WSL); FPGA dev boards recommended from Phase 2
+
+**Estimated timeline:** ~2.5–5 years part-time (~10–15 hrs/week). Full-time learners move significantly faster.
+
+---
+
+## 5-Phase Curriculum
+
+The four steps above are built on a **5-phase foundation**. Full phase-by-phase content, topic guides, and project lists: **[CURRICULUM.md](CURRICULUM.md)**.
+
+| Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 |
+|:--------|:--------|:--------|:--------|:--------|
+| **Digital Foundations** | **Hardware Platforms** | **Acceleration** | **AI & Edge Deployment** | **Specialization Tracks** |
+| 6–12 mo | 6–12 mo | 6–12 mo | 6–12 mo | Ongoing |
+| Logic, Verilog, Embedded C, Linux | Vivado, Zynq SoC, Embedded Linux, Protocols | Timing, HLS, OpenCL, Computer Vision | Neural Networks, Jetson, TensorRT, Sensor Fusion, ROS2 | Autonomous Driving, AI Chips, HPC, Robotics, Security |
+
+**How the phases map to the steps:**
 - **Phases 1–3** are the **foundation** for all four steps (digital, SoC, parallel compute, HLS/OpenCL).
 - **Phase 4** is where **Steps 1 and 2** converge: parallel optimization (CUDA, Jetson) and DL inference (tinygrad, TensorRT, quantization).
 - **Phase 5** is **specialization**: Autonomous Driving (openpilot + tinygrad) for **Step 3**; AI Chip Design (tinygrad + FPGA/custom) for **Step 4**.
 
-See **[CURRICULUM.md](CURRICULUM.md)** for the full phase-by-phase topic guide with resources, guides, and projects.
-
-**Suggested path if your target is "NVIDIA-style" inference optimization (edge/AV/robotics):**
+**Suggested path for "NVIDIA-style" inference optimization (edge/AV/robotics):**
 
 1. Complete Phase 1–3 (or equivalent) for foundations.
 2. Use Phase 4 to become strong in **Step 1** (parallel/CUDA) and **Step 2** (DL inference, tinygrad, TensorRT).
 3. Deep-dive **Step 3** via Phase 5 Autonomous Driving: openpilot end-to-end, camerad, modeld, tinygrad on device.
 4. Optionally add **Step 4** via Phase 5 AI Chip Design and Phase 3 HLS/OpenCL/FPGA for custom hardware.
 
-**Reference projects summary:**
-
-| Project | Step 1 | Step 2 | Step 3 | Step 4 |
-|---------|--------|--------|--------|--------|
-| **tinygrad** | Backends, op→kernel | IR, scheduling, BEAM, quantization | Inference on device (e.g. openpilot) | Custom backend, workload for accelerator design |
-| **openpilot** | — | Why inference matters in production | Full edge/AV stack, perception→control | Real workloads for hardware design |
+**How to navigate:**
+1. Phases 1–3 are sequential — each builds on the last.
+2. Phase 4 is the bridge — if you already have hardware experience, start here and backfill.
+3. Phase 5 tracks are independent — choose based on your target step/role.
 
 ---
 
@@ -367,8 +328,6 @@ See **[CURRICULUM.md](CURRICULUM.md)** for the full phase-by-phase topic guide w
 ---
 
 ## Academic References
-
-For those interested in formal programs or self-study aligned with top university curricula:
 
 [**CMU Robotics & AI Courses**](CMU-Robotics-AI-Courses.md) — 07-280 AI/ML I schedule, B.S. Robotics curriculum, and course catalog. Useful for supplementing Phase 4 (AI Fundamentals) and Track D (Robotics).
 
