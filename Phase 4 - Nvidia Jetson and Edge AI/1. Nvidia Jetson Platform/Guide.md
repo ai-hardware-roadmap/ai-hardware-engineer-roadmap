@@ -1046,6 +1046,10 @@ self.cmd_pub = self.create_publisher(
 
 > **Deep dive:** For DLA-specific optimization — hardware architecture, TensorRT DLA integration, supported layers, multi-engine scheduling (DLA + GPU), profiling, and production deployment patterns — see [**Orin Nano DLA Deep Dive**](Orin-Nano-DLA-Deep-Dive/Guide.md).
 
+> **Deep dive:** For CUDA programming on Jetson — unified memory, kernel optimization, streams, shared memory, GStreamer/TensorRT integration, and power-aware CUDA patterns — see [**Orin Nano CUDA Programming**](Orin-Nano-CUDA-Programming/Guide.md).
+
+> **Deep dive:** For real-time and deterministic inference — TensorRT engine optimization, DLA latency consistency, CUDA graphs, CPU isolation, multi-model scheduling, Triton serving, and p99 latency profiling — see [**Orin Nano Real-Time & Deterministic Inference**](Orin-Nano-Real-Time-Inference/Guide.md).
+
 ### Precision Tradeoffs
 
 ```
@@ -1187,6 +1191,8 @@ benchmark_inference(inferencer, dummy_input)
 ---
 
 ## 9. End-to-End AI Pipeline: Sensors → Inference → Control
+
+> **Deep dive:** For hardware video codecs, GStreamer accelerated pipelines, and DeepStream SDK — NVDEC/NVENC specs, transcoding, multi-stream inference, analytics, zero-copy video pipeline, and RTSP serving — see [**Orin Nano Video Codec & DeepStream**](Orin-Nano-Video-Codec-DeepStream/Guide.md).
 
 ### Full Pipeline Architecture
 
@@ -1336,6 +1342,10 @@ for t in threads:
 ---
 
 ## 10. LiDAR, Camera, IMU — Practical Integration
+
+> **Deep dive:** For camera subsystem internals — NVCSI/VI/ISP hardware, sensor driver development, device tree configuration, ISP tuning, Libargus API, multi-camera sync, and camera-to-CUDA zero-copy — see [**Orin Nano Camera ISP & Sensor Bringup**](Orin-Nano-Camera-ISP-Sensor-Bringup/Guide.md).
+
+> **Deep dive:** For 40-pin header peripherals — GPIO, I2C, SPI, UART, PWM, CAN bus, pin multiplexing, sensor integration, motor control, and custom device tree overlays — see [**Orin Nano GPIO/SPI/I2C/CAN**](Orin-Nano-GPIO-SPI-I2C-CAN/Guide.md).
 
 ### Camera Integration
 
@@ -1671,6 +1681,8 @@ For complex peripherals not covered by jetson-io, manual overlay creation is nec
 
 ## 12. Power and Thermal Management in Practice
 
+> **Deep dive:** For power and thermal internals — PMIC architecture, nvpmodel deep dive, DVFS mechanics, INA3221 power measurement, thermal zones, fan control, battery operation, per-workload power profiling, enclosure thermal design, and production optimization — see [**Orin Nano Power Optimization & Thermal Design**](Orin-Nano-Power-Thermal/Guide.md).
+
 ### Power Modes
 
 The Orin Nano 8GB has configurable TDP levels:
@@ -1987,6 +1999,8 @@ docker compose up -d
 
 ## 14. Security Hardening
 
+> **Deep dive:** For security architecture internals — T234 Security Engine, secure boot chain, OP-TEE trusted applications, disk encryption with hardware AES, fuse programming, secure storage (RPMB), firmware update security, runtime hardening (seccomp/AppArmor), model protection, debug lockdown, and supply chain security — see [**Orin Nano Security Deep Dive**](Orin-Nano-Security/Guide.md).
+
 ### Threat Model for Jetson Edge Devices
 
 ```
@@ -2170,6 +2184,8 @@ Start from a fresh Jetson install. Apply all items in the Security Audit Checkli
 ---
 
 ## 16. Jetson Containers — Cloud-Native ML Deployment
+
+> **Deep dive:** For container and fleet deployment — nvidia-container-runtime, L4T base images, jetson-containers project, cross-compilation, GPU/camera access in containers, Docker Compose, K3s on Jetson, fleet management (Balena/AWS IoT/Azure IoT Edge), CI/CD pipelines, monitoring, and container security — see [**Orin Nano Container & Fleet Deployment**](Orin-Nano-Container-Fleet/Guide.md).
 
 [jetson-containers](https://github.com/dusty-nv/jetson-containers) is a modular container build system that provides the latest AI/ML packages for NVIDIA Jetson and JetPack-L4T. It enables **cloud-native deployment** on edge devices: reproducible environments, version-pinned dependencies, and OTA-friendly updates via `docker pull`.
 
