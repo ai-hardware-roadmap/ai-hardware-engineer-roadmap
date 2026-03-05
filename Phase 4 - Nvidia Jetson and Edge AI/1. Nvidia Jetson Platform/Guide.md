@@ -1848,7 +1848,9 @@ Runtime on 5Ah@12V: 60Wh / 12W = 5 hours
 
 ## 13. OTA Update Best Practices
 
-> **Deep dive:** For production-level rootfs architecture, A/B redundancy internals, flash XML layout, safe field update design, and bootloop debugging, see [**Orin Nano Rootfs & A/B Redundancy Deep Dive**](Orin-Nano-Rootfs-and-AB-Redundancy/Guide.md).
+> **Deep dive:** For complete OTA internals — nv_update_engine, BUP generation, Tegra bootloader update chain, QSPI flash operations, payload signing, delta updates, SWUpdate/Mender/RAUC integration, fleet-scale deployment, rollback mechanisms, power-fail safety, and field failure case studies — see [**Orin Nano OTA Deep Dive**](Orin-Nano-OTA-Deep-Dive/Guide.md).
+>
+> For production-level rootfs architecture, A/B redundancy internals, flash XML layout, safe field update design, and bootloop debugging, see [**Orin Nano Rootfs & A/B Redundancy Deep Dive**](Orin-Nano-Rootfs-and-AB-Redundancy/Guide.md).
 
 ### OTA Update Strategies on Jetson
 
