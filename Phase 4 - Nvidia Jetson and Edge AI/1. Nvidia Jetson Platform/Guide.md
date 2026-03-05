@@ -1598,6 +1598,8 @@ class FusionNode(Node):
 
 ## 11. Device Tree Configuration
 
+> **Deep dive:** For full kernel internals — source tree structure, build system, device tree architecture, driver model, camera kernel stack, nvgpu driver, boot time optimization, custom module development, and production hardening — see [**Orin Nano Kernel Internals & Customization**](Orin-Nano-Kernel-Internals/Guide.md).
+
 Device tree configuration on NVIDIA Jetson platforms is critical for enabling I2C buses, configuring GPIO pins on the 40-pin header, and integrating camera sensors (CSI). Jetson systems utilize **Device Tree Overlays** (`.dtbo`) to modify base hardware configurations during boot, allowing for peripheral customization without re-flashing the entire board.
 
 ### What is Pinmux?
