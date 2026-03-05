@@ -2,10 +2,10 @@
 
 # AI Hardware Engineer Roadmap
 
-**From Parallel Optimization to Custom AI Chip Design**
+**From Kernel-Level Parallel Programming to Custom AI Inference Accelerator Design — powered by NVIDIA GPUs, Jetson, and tinygrad**
 
-[![GitHub stars](https://img.shields.io/github/stars/ai-hpc/ai-hardware-engineer-roadmap?style=flat-square)](https://github.com/ai-hpc/ai-hardware-engineer-roadmap/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/ai-hpc/ai-hardware-engineer-roadmap?style=flat-square)](https://github.com/ai-hpc/ai-hardware-engineer-roadmap/network/members)
+[![GitHub stars](https://img.shields.io/github/stars/ai-hpc/ai-hardware-engineer-roadmap)](https://github.com/ai-hpc/ai-hardware-engineer-roadmap/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/ai-hpc/ai-hardware-engineer-roadmap)](https://github.com/ai-hpc/ai-hardware-engineer-roadmap/network/members)
 
 *A purpose-oriented, 4-step career progression — backed by a 5-phase hands-on curriculum — that takes you from kernel-level parallel programming to designing custom AI inference accelerators. Reference projects: [tinygrad](https://github.com/tinygrad/tinygrad) (compiler, IR, kernels) and [openpilot](https://github.com/commaai/openpilot) (edge/AV stack using tinygrad).*
 
