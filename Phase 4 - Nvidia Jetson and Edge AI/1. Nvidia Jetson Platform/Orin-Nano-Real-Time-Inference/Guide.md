@@ -78,6 +78,8 @@ capture latency and pre-processing are often underestimated.
 
 ## 2. Jetson Real-Time Capabilities
 
+> **Deep dive:** For kernel-level RT internals — PREEMPT_RT patch architecture, preemption models, interrupt threading, lock primitives under RT, priority inversion and PI mutexes, SCHED_DEADLINE, complete rt-tests suite (cyclictest, hwlatdetect, signaltest, pip_stress), ARM Cortex-A78AE RT specifics, GICv3 tuning, WCET analysis, RT-safe kernel module development, ftrace RT debugging, and production certification — see [**Orin Nano RT Linux Deep Dive**](../Orin-Nano-RT-Linux-Deep-Dive/Guide.md).
+
 ### 2.1 PREEMPT_RT Kernel on Jetson
 
 NVIDIA ships a real-time capable kernel starting with JetPack 6.0. The

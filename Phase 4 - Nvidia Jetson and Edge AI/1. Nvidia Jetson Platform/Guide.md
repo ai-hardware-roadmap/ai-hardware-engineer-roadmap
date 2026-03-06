@@ -1051,6 +1051,8 @@ self.cmd_pub = self.create_publisher(
 > **Deep dive:** For CUDA programming on Jetson — unified memory, kernel optimization, streams, shared memory, GStreamer/TensorRT integration, and power-aware CUDA patterns — see [**Orin Nano CUDA Programming**](Orin-Nano-CUDA-Programming/Guide.md).
 
 > **Deep dive:** For real-time and deterministic inference — TensorRT engine optimization, DLA latency consistency, CUDA graphs, CPU isolation, multi-model scheduling, Triton serving, and p99 latency profiling — see [**Orin Nano Real-Time & Deterministic Inference**](Orin-Nano-Real-Time-Inference/Guide.md).
+>
+> For kernel-level RT Linux internals — PREEMPT_RT patch architecture, interrupt threading, lock primitives, priority inversion/PI mutexes, SCHED_DEADLINE, rt-tests suite, ARM Cortex-A78AE specifics, GICv3 tuning, WCET analysis, RT-safe kernel modules, and ftrace debugging — see [**Orin Nano RT Linux Deep Dive**](Orin-Nano-RT-Linux-Deep-Dive/Guide.md).
 
 ### Precision Tradeoffs
 
