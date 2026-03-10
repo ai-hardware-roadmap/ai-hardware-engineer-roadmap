@@ -1,8 +1,14 @@
 # Lecture 5: Kernel Modules, Boot Process & Device Tree
 
+## Overview
+
+Before any AI inference can happen, the hardware must be initialized, the kernel must be loaded, and every device — camera sensor, NPU, GPIO expander — must be discovered and driven. The core challenge this lecture addresses is: how does a kernel that cannot know about all possible hardware in advance still manage to drive it correctly? The mental model has two parts: the **boot sequence** as a chain of trust (each stage verifies and hands off to the next), and the **Device Tree** as a hardware description contract (a data file that tells the kernel what hardware exists without hardcoding it into kernel source). For an AI hardware engineer, this matters every time you bring up a new camera sensor, integrate an FPGA accelerator, or debug why an inference accelerator node never gets a `probe()` call at boot.
+
+---
+
 ## Linux Boot Sequence on ARM SoC
 
-Modern embedded AI boards (Jetson Orin, Zynq UltraScale+, i.MX8) follow this sequence:
+Modern embedded AI boards (Jetson Orin, Zynq UltraScale+, i.MX8) follow this sequence. Each stage is a separate program that runs, initializes a layer of hardware, and then launches the next stage.
 
 | Stage | Responsible | Artifact loaded | Notes |
 |---|---|---|---|
@@ -15,6 +21,57 @@ Modern embedded AI boards (Jetson Orin, Zynq UltraScale+, i.MX8) follow this seq
 | 7. PID 1 | systemd (or `init`) | Mounts rootfs, starts services | udev creates `/dev` nodes |
 
 On x86: UEFI (or legacy BIOS) replaces U-Boot. On Jetson: NVIDIA's MB1 (Miniboot) and MB2 correspond to SPL and U-Boot; CBoot is NVIDIA's U-Boot replacement in JetPack 5.
+
+```
+ARM SoC Boot Chain — Jetson Example
+                    Power applied
+                         │
+                         ▼
+               ┌─────────────────┐
+               │  BootROM (EL3)  │  ← burned into SoC silicon
+               │  checks OTP     │
+               │  verifies MB1   │
+               └────────┬────────┘
+                         │ loads signed MB1 from eMMC
+                         ▼
+               ┌─────────────────┐
+               │  MB1 (EL3)      │  ← NVIDIA Miniboot
+               │  init DRAM      │
+               │  clock setup    │
+               └────────┬────────┘
+                         │ loads MB2 + TF-A BL31
+                         ▼
+               ┌─────────────────┐
+               │  TF-A BL31(EL3) │  ← ARM Trusted Firmware
+               │  PSCI handler   │  stays resident in EL3
+               │  switches to EL1│
+               └────────┬────────┘
+                         │ loads CBoot / UEFI
+                         ▼
+               ┌─────────────────┐
+               │  CBoot / UEFI   │  ← like U-Boot for Jetson
+               │  (EL2 / EL1)    │
+               │  loads kernel   │
+               │  + DTB +initrd  │
+               └────────┬────────┘
+                         │ jumps to kernel entry (EL1)
+                         ▼
+               ┌─────────────────┐
+               │  Linux Kernel   │  ← start_kernel()
+               │  (EL1)          │
+               │  subsystem init │
+               │  device probing │
+               └────────┬────────┘
+                         │ executes /sbin/init
+                         ▼
+               ┌─────────────────┐
+               │  systemd (EL0)  │  ← PID 1
+               │  mounts rootfs  │
+               │  starts services│
+               └─────────────────┘
+```
+
+> **Key Insight:** The boot chain is not just a sequence of programs — it is a **chain of trust**. Each stage verifies the digital signature of the next before executing it. If any link in the chain is broken (wrong key, tampered binary), the boot halts. For production AV platforms, this chain is the security foundation: it guarantees that the running kernel and inference binaries have not been tampered with since the manufacturer signed them.
 
 ---
 
@@ -30,6 +87,8 @@ Trust chain from ROM to running kernel: each stage verifies the signature of the
 **Jetson Secure Boot**: BCT (Boot Configuration Table) and BL31 are signed with NVIDIA's key by default; production deployment uses a customer RSA-2048/4096 or ECDSA key pair fused into OTP. `tegraflash` handles signing and flashing.
 
 Secure boot is mandatory for production AV platforms — prevents substitution of a malicious kernel image or modified inference binary at the bootloader stage.
+
+> **Common Pitfall:** During development, it is tempting to disable secure boot for convenience. The danger is forgetting to re-enable it before shipping a product. A development image with secure boot disabled will accept any unsigned kernel — including one an attacker installs via physical access to the eMMC. Always develop with secure boot enabled using developer keys, and switch to production keys for release builds.
 
 ---
 
@@ -56,9 +115,15 @@ Both load the kernel image, a DTB, and optionally an initramfs into memory, then
 
 ```bash
 mkdir /tmp/initrd && cd /tmp/initrd
-zcat /boot/initrd.img | cpio -idm    # inspect initramfs contents
+zcat /boot/initrd.img | cpio -idm    # decompress and extract the initramfs cpio archive
 ls -la                               # busybox, lib, udev, etc.
 ```
+
+The initramfs extraction above unpacks the entire early userspace, revealing what tools and scripts the kernel uses before the real root filesystem is mounted.
+
+> **Key Insight:** The initramfs exists because the kernel cannot always mount the real root filesystem without drivers that haven't been loaded yet. For example, if root is on a LUKS-encrypted NVMe drive, the kernel needs `cryptsetup` from initramfs to unlock it before it can mount root. On Jetson, initramfs handles board identification (TNSPEC) so the same kernel image can boot on multiple Jetson variants with different carrier boards.
+
+Now that we understand how the kernel gets loaded, let's look at how it discovers what hardware it needs to drive — the Device Tree.
 
 ---
 
@@ -66,9 +131,42 @@ ls -la                               # busybox, lib, udev, etc.
 
 ### Purpose
 
-Hardware description for SoCs without self-describing buses. PCIe is self-describing (devices report vendor/device IDs); I2C, SPI, UART, AXI, and MMIO peripherals are not — the kernel must be told they exist.
+**Hardware description** for SoCs without self-describing buses. PCIe is self-describing (devices report vendor/device IDs); I2C, SPI, UART, AXI, and MMIO peripherals are not — the kernel must be told they exist.
 
 The Device Tree replaces per-board `#ifdef` hacks in kernel source with a data file the bootloader passes to the kernel at runtime. U-Boot places the DTB address in a register before jumping to the kernel entry point.
+
+Think of the Device Tree as a wiring diagram: it tells the kernel "there is a Sony IMX477 camera sensor connected to I2C bus 0 at address 0x1a, reset by GPIO 42, and its CSI output connects to CSI port 0."
+
+```
+Device Tree → Driver Binding Flow
+┌──────────────────────────────────────────────────────────┐
+│  Device Tree (DTB file, loaded by bootloader)            │
+│                                                          │
+│  i2c0 {                                                  │
+│    camera0: imx477@1a {                                  │
+│      compatible = "sony,imx477";  ← binding key         │
+│      reg = <0x1a>;                                       │
+│    };                                                    │
+│  };                                                      │
+└───────────────────────┬──────────────────────────────────┘
+                        │ kernel parses DTB at boot
+                        ▼
+┌──────────────────────────────────────────────────────────┐
+│  Kernel OF (Open Firmware) matching                      │
+│  → scans all registered drivers                         │
+│  → finds imx477 driver with of_match_table:             │
+│    { .compatible = "sony,imx477" }                      │
+└───────────────────────┬──────────────────────────────────┘
+                        │ match found
+                        ▼
+┌──────────────────────────────────────────────────────────┐
+│  Driver probe() called                                   │
+│  → reads reg property (I2C addr 0x1a)                   │
+│  → requests GPIO 42 for reset                           │
+│  → registers V4L2 subdevice                             │
+│  → camera is now accessible at /dev/videoN              │
+└──────────────────────────────────────────────────────────┘
+```
 
 ### Node Structure
 
@@ -76,15 +174,15 @@ The Device Tree replaces per-board `#ifdef` hacks in kernel source with a data f
 /* Example: IMX477 camera sensor on I2C bus */
 &i2c0 {
     camera0: imx477@1a {
-        compatible = "sony,imx477";
-        reg = <0x1a>;                          /* I2C address */
-        clocks = <&clk IMX477_CLK>;
+        compatible = "sony,imx477";      /* driver match string */
+        reg = <0x1a>;                    /* I2C address 0x1a */
+        clocks = <&clk IMX477_CLK>;      /* clock provider reference */
         clock-names = "xclk";
-        reset-gpios = <&gpio 42 GPIO_ACTIVE_LOW>;
+        reset-gpios = <&gpio 42 GPIO_ACTIVE_LOW>; /* GPIO 42, active-low reset */
         port {
             cam0_ep: endpoint {
-                remote-endpoint = <&csi0_ep>;
-                data-lanes = <1 2>;
+                remote-endpoint = <&csi0_ep>;  /* connects to CSI port 0 */
+                data-lanes = <1 2>;            /* uses MIPI D-PHY lanes 1 and 2 */
             };
         };
     };
@@ -103,15 +201,23 @@ The Device Tree replaces per-board `#ifdef` hacks in kernel source with a data f
 ### Compilation and Inspection
 
 ```bash
-dtc -I dts -O dtb -o my_board.dtb my_board.dts    # compile DTS → DTB
-dtc -I dtb -O dts -o decoded.dts my_board.dtb      # decompile for inspection
+dtc -I dts -O dtb -o my_board.dtb my_board.dts    # compile DTS → DTB binary
+dtc -I dtb -O dts -o decoded.dts my_board.dtb      # decompile DTB back to readable DTS
 ls /sys/firmware/devicetree/base/                   # live DT from running kernel
 cat /sys/firmware/devicetree/base/model             # board model string
 ```
 
 ### Device Tree Overlays (DTBO)
 
-Overlays patch the base DT at runtime without rebuilding the kernel or base DTB.
+**Overlays** patch the base DT at runtime without rebuilding the kernel or base DTB. This is the mechanism for adding support for a new sensor or peripheral to a platform that ships with a fixed base DTB.
+
+The overlay sequence:
+
+1. **Write a `.dts` overlay file** that adds or modifies nodes in the base tree.
+2. **Compile to `.dtbo`** using `dtc`.
+3. **Apply at runtime** (Raspberry Pi) or configure in the bootloader (Jetson extlinux.conf).
+4. **Kernel merges the overlay** into the live device tree in memory.
+5. **Driver probe() fires** for any newly enabled node.
 
 - **Jetson pin mux overlays**: select UART vs SPI vs I2C function for carrier board expansion pins
 - **Raspberry Pi HAT overlays**: enable I2S audio, SPI ADC, camera sensor nodes
@@ -123,6 +229,10 @@ cat /boot/extlinux/extlinux.conf        # FDT_OVERLAYS= line on Jetson
 ls /sys/firmware/devicetree/base/       # verify overlay nodes appeared
 ```
 
+> **Key Insight:** Device Tree overlays are the correct mechanism for adding carrier board peripherals to a base Jetson or Raspberry Pi image without modifying the vendor-provided base DTB. A custom carrier board with an IMX477 camera on a non-standard I2C bus can be supported with a 20-line overlay file, rather than requiring a full DTB modification that would break on every L4T update.
+
+> **Common Pitfall:** If a driver's `probe()` never runs, the first thing to check is whether the DT node has `status = "okay"`. Nodes default to `"disabled"` if the property is absent or set to any other value. This is a frequent mistake when porting overlays between platforms — the `status` property must be explicitly set to `"okay"` for the kernel to attempt to bind a driver to the node.
+
 ---
 
 ## Kernel Modules
@@ -131,17 +241,17 @@ ls /sys/firmware/devicetree/base/       # verify overlay nodes appeared
 
 ```c
 static const struct of_device_id my_of_match[] = {
-    { .compatible = "vendor,my-accel" },
-    { }
+    { .compatible = "vendor,my-accel" },  /* match DT node with this compatible string */
+    { }                                    /* sentinel; marks end of match table */
 };
 MODULE_DEVICE_TABLE(of, my_of_match);    /* writes alias → modules.alias → udev auto-load */
 
 static struct platform_driver my_driver = {
-    .probe  = my_probe,
-    .remove = my_remove,
+    .probe  = my_probe,    /* called when a matching DT node is found */
+    .remove = my_remove,   /* called when the device is removed or module unloaded */
     .driver = {
         .name           = "my-accel",
-        .of_match_table = my_of_match,
+        .of_match_table = my_of_match,  /* binds this driver to DT nodes */
     },
 };
 module_platform_driver(my_driver);       /* wraps module_init / module_exit */
@@ -161,6 +271,8 @@ When a DT node with `compatible = "vendor,my-accel"` appears (at boot or via ove
 | `lsmod` | List loaded modules, usage count, dependents |
 | `modinfo nvme` | Show parameters, license, firmware version fields |
 
+> **Key Insight:** `modprobe` is almost always the right command to use. `insmod` loads a single `.ko` file without checking dependencies. If your FPGA PCIe driver depends on the `dma-buf` subsystem module, `insmod` will fail with a cryptic symbol resolution error, while `modprobe` automatically loads `dma-buf` first. Always use `modprobe` in scripts and systemd units; use `insmod` only when you are testing a single module during development.
+
 ### Module Signing
 
 - `CONFIG_MODULE_SIG_FORCE` rejects unsigned modules; production Jetson and automotive ECU kernels enforce this
@@ -169,15 +281,17 @@ When a DT node with `compatible = "vendor,my-accel"` appears (at boot or via ove
 
 ### DKMS
 
-Dynamic Kernel Module Support rebuilds out-of-tree modules automatically when the kernel is updated.
+**Dynamic Kernel Module Support** rebuilds out-of-tree modules automatically when the kernel is updated.
 
 ```bash
-dkms add -m my-fpga-driver -v 1.0
-dkms build -m my-fpga-driver -v 1.0
-dkms install -m my-fpga-driver -v 1.0
+dkms add -m my-fpga-driver -v 1.0       # register the module source with DKMS
+dkms build -m my-fpga-driver -v 1.0    # compile against current kernel
+dkms install -m my-fpga-driver -v 1.0  # install the compiled .ko
 ```
 
 DKMS is standard for the NVIDIA proprietary GPU driver on development hosts and for custom FPGA PCIe drivers that must survive kernel point-release updates without manual rebuilds.
+
+> **Common Pitfall:** DKMS rebuilds fail silently if the kernel headers are not installed for the new kernel version. After a `apt upgrade` that upgrades the kernel, run `apt install linux-headers-$(uname -r)` before rebooting, or the DKMS post-install hook will fail to rebuild. On systems where CUDA/TensorRT is critical, include this in the upgrade procedure.
 
 ---
 
@@ -201,6 +315,18 @@ cat /proc/cmdline                         # inspect active boot parameters
 cat /sys/devices/system/cpu/isolated      # verify isolcpus took effect
 ```
 
+The CPU isolation triple — `isolcpus`, `nohz_full`, `rcu_nocbs` — works together as a unit:
+
+1. **`isolcpus=4-7`**: removes cores 4–7 from the general scheduler pool. No normal process will be scheduled there unless explicitly pinned.
+2. **`nohz_full=4-7`**: stops the 250 Hz scheduler tick interrupt on those cores. Without this, the tick fires 250 times per second even on isolated cores, causing jitter.
+3. **`rcu_nocbs=4-7`**: moves RCU (Read-Copy-Update) grace-period callbacks off isolated cores. Without this, occasional RCU work fires on the isolated core.
+
+All three together give inference threads essentially interrupt-free CPU time.
+
+> **Key Insight:** `isolcpus` alone is not sufficient for real-time isolation. Without `nohz_full`, the scheduler tick fires 250 Hz on the isolated core, adding 4 ms periodic jitter. Without `rcu_nocbs`, RCU callbacks fire occasionally — typically a few microseconds, but at unpredictable intervals. The combination of all three eliminates the kernel's involuntary intrusions into the isolated core's execution.
+
+> **Common Pitfall:** Changes to the kernel command line on Jetson require modifying `extlinux.conf` (for CBoot/extlinux) or the UEFI boot variables (for JetPack 6 UEFI). Editing `/proc/cmdline` has no effect — it is read-only. After changing `extlinux.conf`, verify with `cat /proc/cmdline` after reboot that the parameters actually took effect.
+
 ---
 
 ## Summary
@@ -213,6 +339,15 @@ cat /sys/devices/system/cpu/isolated      # verify isolcpus took effect
 | Kernel entry | `head.S` → `start_kernel()` | Subsystem init | L4T kernel image |
 | Early userspace | initramfs `/init` | Mount real rootfs | NVIDIA TNSPEC + `switch_root` |
 | PID 1 | systemd | All services, udev | Jetson systemd inference target |
+
+### Conceptual Review
+
+- **Why does the boot sequence have so many stages instead of jumping directly from ROM to kernel?** Each stage initializes hardware (DRAM, clocks, secure monitor) that the next stage depends on. ROM code is tiny and cannot initialize DRAM; U-Boot SPL initializes DRAM and then loads the full bootloader; the full bootloader has enough memory to read the kernel and DTB from storage. Each stage does the minimum needed to enable the next.
+- **What is the Device Tree and why was it needed?** The Device Tree is a data file describing what hardware is present on a board — memory addresses, bus connections, IRQ numbers, clock sources. Before Device Trees, this information was hardcoded as `#ifdef BOARD_X` in kernel source. A single kernel binary can now support thousands of different boards because the hardware description is external data, not compiled-in code.
+- **What is the `compatible` property in a Device Tree node?** It is a string (or list of strings) that the kernel uses to match a device node to a driver. The kernel compares the DT node's `compatible` value against every registered driver's `of_match_table`. When a match is found, the driver's `probe()` function is called with a pointer to the device node.
+- **What does DKMS do and when is it necessary?** DKMS rebuilds out-of-tree kernel modules when the running kernel is updated. It is necessary for any driver that is not part of the upstream kernel source — NVIDIA's proprietary GPU driver, custom FPGA PCIe drivers, vendor-specific sensor drivers. Without DKMS, a `apt upgrade` that updates the kernel breaks these drivers until manually rebuilt.
+- **What is the effect of `isolcpus` in the kernel command line?** It removes specified CPU cores from the general scheduler pool. Normal processes will not be scheduled on these cores. Inference threads pinned to the isolated cores run without interference from other processes. This is the foundation of hard real-time isolation on multi-core embedded AI platforms.
+- **Why is initramfs needed before mounting the real root filesystem?** The real root filesystem may be encrypted (LUKS), on a RAID array, or on a device whose driver is not built into the kernel. initramfs provides a minimal environment with the tools needed to set up the real root (cryptsetup, mdadm, fsck) before `switch_root` transfers execution to the permanent root.
 
 ---
 
