@@ -43,10 +43,10 @@ graph LR
   R4 --> N3
 
   subgraph Phases
-    P1["Phase 1<br/>(Digital, OS, Embedded Basics)"]
-    P2["Phase 2<br/>(SoC & Embedded Linux)"]
-    P3["Phase 3<br/>(HLS, OpenCL, FPGA Acceleration)"]
-    P4["Phase 4<br/>(AI & Edge: Jetson, tinygrad, TensorRT)"]
+    P1["Phase 1<br/>(Digital, OS, AI Fundamentals)"]
+    P2["Phase 2<br/>(Embedded Systems)"]
+    P3["Phase 3<br/>(Xilinx FPGA)"]
+    P4["Phase 4<br/>(Jetson, TensorRT, Sensor Fusion, ROS2)"]
     P5A["Phase 5A<br/>(Autonomous Driving: openpilot + tinygrad)"]
     P5B["Phase 5B<br/>(AI Chip Design: tinygrad + FPGA)"]
   end
@@ -101,8 +101,8 @@ graph LR
 | Phase | Topics that feed Step 1 |
 |-------|-------------------------|
 | **[Phase 1](Phase%201%20-%20Foundational%20Knowledge)** | Digital design (data paths, memory), OS (processes, scheduling, memory management) |
-| **[Phase 2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems)** | SoC and embedded Linux (heterogeneous CPU + accelerators) |
-| **[Phase 3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration)** *(optional for Step 1)* | OpenCL (kernels, work-groups, heterogeneous compute), HLS (pipelining, dataflow) — useful but not strictly required if you focus on CPU/GPU parallelism first |
+| **[Phase 2](Phase%202%20-%20Embedded%20Systems)** | ARM MCU + FreeRTOS (real-time scheduling, sensor I/O), embedded Linux (heterogeneous CPU + accelerators) |
+| **[Phase 3](Phase%203%20-%20Xilinx%20FPGA)** *(optional for Step 1)* | OpenCL (kernels, work-groups, heterogeneous compute), HLS (pipelining, dataflow) — useful but not strictly required if you focus on CPU/GPU parallelism first |
 | **[Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** | Jetson Platform (CUDA, Nsight), Edge AI Optimization (CUDA kernels, TensorRT under the hood) |
 
 **tinygrad / openpilot:**
@@ -126,7 +126,8 @@ graph LR
 
 | Phase | Topics that feed Step 2 |
 |-------|--------------------------|
-| **[Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** | AI Fundamentals (neural nets, backprop, CNNs, tinygrad), Jetson (CUDA, TensorRT), Edge AI Optimization (quantization in tinygrad, TensorRT, tinygrad→ONNX→TensorRT) |
+| **[Phase 1](Phase%201%20-%20Foundational%20Knowledge)** | AI Fundamentals (neural nets, backprop, CNNs, tinygrad) |
+| **[Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** | Jetson (CUDA, TensorRT), Edge AI Optimization (quantization in tinygrad, TensorRT, tinygrad→ONNX→TensorRT) |
 | **[Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) – Autonomous Driving** | tinygrad guides (internals, ops, custom backend), BEAM search, pattern matching |
 
 **tinygrad / openpilot:**
@@ -175,9 +176,9 @@ graph LR
 
 | Phase | Topics that feed Step 4 |
 |-------|--------------------------|
-| **[Phase 1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems)** | Digital design, Verilog, SoC (PS/PL, embedded Linux) |
-| **[Phase 3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration)** | Advanced FPGA design, HLS, OpenCL, Computer Vision (workloads to accelerate) |
-| **[Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** | AI Fundamentals, tinygrad (operator semantics, memory patterns) |
+| **[Phase 1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems)** | Digital design, Verilog, ARM MCU, FreeRTOS, embedded Linux, AI Fundamentals (tinygrad, operator semantics, memory patterns) |
+| **[Phase 3](Phase%203%20-%20Xilinx%20FPGA)** | Advanced FPGA design, HLS, OpenCL, Computer Vision (workloads to accelerate) |
+| **[Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** | Jetson (CUDA, Nsight), Edge AI Optimization, Sensor Fusion, ROS2 |
 | **[Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) – AI Chip Design** | tinygrad as reference ML stack; accelerator architecture (systolic, dataflow); FPGA prototyping; RTL/HLS; path to ASIC |
 
 **tinygrad / openpilot:**
@@ -196,7 +197,7 @@ This roadmap is explicitly designed so that, by the time you reach **Step 3 (DL 
 
 - **Architectures:** Transformers, attention variants, ViT/vision encoders, multi-modal VLMs, diffusion/flow-matching models, state space models (SSMs), hybrid SSM–Transformer backbones, multi-camera tokenizers.
   - **Where you build this:**
-    - [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) AI Fundamentals (CNNs, attention, sequence models) → Step 2.
+    - [Phase 1](Phase%201%20-%20Foundational%20Knowledge) AI Fundamentals (CNNs, attention, sequence models) → Step 2.
     - [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) Autonomous Driving + tinygrad guides (vision backbones, BEV/VLM-style architectures, multi-camera perception) → Steps 2–3.
 - **Model-level reasoning (down to operator/kernel):**
   - Step 2 via tinygrad internals (ops → IR → kernels, BEAM, scheduling) and TensorRT pipeline.
@@ -216,9 +217,9 @@ This roadmap is explicitly designed so that, by the time you reach **Step 3 (DL 
   - Step 1 projects: custom CUDA kernels, Nsight profiling, memory-bound vs compute-bound diagnosis.
   - Step 2: using that knowledge to understand compiler-generated kernels (tinygrad, TensorRT) and guide their optimization.
 - **Parallel programming (CUDA, OpenMP-style patterns, data/pipeline parallelism and utilization):**
-  - [Phase 3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration) OpenCL + HLS dataflow; [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) CUDA on Jetson; Step 1 as consolidation.
+  - [Phase 3](Phase%203%20-%20Xilinx%20FPGA) OpenCL + HLS dataflow; [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) CUDA on Jetson; Step 1 as consolidation.
 - **Heterogeneous compute (GPU + ARM SoC, offload strategies):**
-  - [Phase 2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems) Zynq/SoC; [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) Jetson/DRIVE-style SoCs; Step 1 + Step 3 when deploying to real edge hardware.
+  - [Phase 3](Phase%203%20-%20Xilinx%20FPGA) Zynq/SoC; [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) Jetson/DRIVE-style SoCs; Step 1 + Step 3 when deploying to real edge hardware.
 
 ### Inference Toolchains & Compilers
 
@@ -226,7 +227,7 @@ This roadmap is explicitly designed so that, by the time you reach **Step 3 (DL 
   - [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) Jetson + Edge AI Optimization and TensorRT pipeline → Step 2.
   - Step 3: applying the same stack to AV/robotics workloads (openpilot-like systems).
 - **Compiler concepts (IRs, graph optimizations, lowering, scheduling, codegen, memory planning):**
-  - tinygrad IR and compiler ([Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) AI Fundamentals tinygrad section + [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) tinygrad guides) → Step 2.
+  - tinygrad IR and compiler ([Phase 1](Phase%201%20-%20Foundational%20Knowledge) AI Fundamentals tinygrad section + [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) tinygrad guides) → Step 2.
   - AI Chip Design track (TVM/MLIR-style concepts, accelerator IRs) → Step 4.
 - **Bonus stacks (TVM, MLIR, XLA, Triton; runtime contributions):**
   - Step 2/4: after tinygrad/TensorRT, you can plug in TVM/MLIR/Triton as parallel study paths; the roadmap assumes you'll be comfortable enough with IR and kernels to contribute to such toolchains.
@@ -235,9 +236,9 @@ This roadmap is explicitly designed so that, by the time you reach **Step 3 (DL 
 
 - **Operating systems (QNX/Linux internals, processes, scheduling, drivers, real-time constraints):**
   - [Phase 1](Phase%201%20-%20Foundational%20Knowledge) Operating Systems (Caltech-style course notes).
-  - [Phase 2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems) Embedded Linux + drivers; Step 3 when reasoning about real-time/near-real-time AV/robotics constraints.
+  - [Phase 2](Phase%202%20-%20Embedded%20Systems) Embedded Linux + drivers; Step 3 when reasoning about real-time/near-real-time AV/robotics constraints.
 - **System software (C/C++, memory management, concurrency, low-level debugging):**
-  - [Phase 1](Phase%201%20-%20Foundational%20Knowledge) Embedded Systems Basics (C), [Phase 2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems)/[3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration) FPGA + HLS/OpenCL (C/C++), and tinygrad/openpilot C++ where relevant.
+  - [Phase 1](Phase%201%20-%20Foundational%20Knowledge) Computer Hardware Basics (C), [Phase 2](Phase%202%20-%20Embedded%20Systems) ARM MCU + FreeRTOS (C), [Phase 3](Phase%203%20-%20Xilinx%20FPGA) HLS/OpenCL (C/C++), and tinygrad/openpilot C++ where relevant.
 - **Deployment constraints (power, thermal, latency/throughput SLAs, reliability):**
   - Step 3 edge/AV/robotics focus: Jetson/DRIVE-style SoCs, openpilot running under thermal and power limits, ROS2 robots.
 
@@ -289,26 +290,26 @@ This roadmap is explicitly designed so that, by the time you reach **Step 3 (DL 
 
 The four steps above are built on a **5-phase foundation**. Full phase-by-phase content, topic guides, and project lists: **[CURRICULUM.md](CURRICULUM.md)**.
 
-| [Phase 1](Phase%201%20-%20Foundational%20Knowledge) | [Phase 2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems) | [Phase 3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration) | [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) |
+| [Phase 1](Phase%201%20-%20Foundational%20Knowledge) | [Phase 2](Phase%202%20-%20Embedded%20Systems) | [Phase 3](Phase%203%20-%20Xilinx%20FPGA) | [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) |
 |:--------|:--------|:--------|:--------|:--------|
-| **Digital Foundations** | **Hardware Platforms** | **Acceleration** | **AI & Edge Deployment** | **Specialization Tracks** |
+| **Digital Foundations + AI Basics** | **Embedded Systems** | **Xilinx FPGA** | **Edge AI Deployment** | **Specialization Tracks** |
 | 6–12 mo | 6–12 mo | 6–12 mo | 6–12 mo | Ongoing |
-| Logic, Verilog, Embedded C, Linux | Vivado, Zynq SoC, Embedded Linux, Protocols | Timing, HLS, OpenCL, Computer Vision | Neural Networks, Jetson, TensorRT, Sensor Fusion, ROS2 | Autonomous Driving, AI Chips, HPC, Robotics, Security |
+| Logic, Verilog, Computer Hardware, OS, Neural Networks, tinygrad | ARM MCU, FreeRTOS, SPI/UART/I2C/CAN, Embedded Linux | Vivado, Zynq SoC, Advanced FPGA, HLS, OpenCL, Computer Vision | Jetson, CUDA, TensorRT, Sensor Fusion, ROS2 | Autonomous Driving, AI Chips, HPC, Robotics, Security |
 
 **How the phases map to the steps:**
-- **[Phases 1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration)** are the **foundation** for all four steps (digital, SoC, parallel compute, HLS/OpenCL).
+- **[Phases 1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Xilinx%20FPGA)** are the **foundation** for all four steps (digital, SoC, parallel compute, HLS/OpenCL).
 - **[Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** is where **Steps 1 and 2** converge: parallel optimization (CUDA, Jetson) and DL inference (tinygrad, TensorRT, quantization).
 - **[Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization)** is **specialization**: Autonomous Driving (openpilot + tinygrad) for **Step 3**; AI Chip Design (tinygrad + FPGA/custom) for **Step 4**.
 
 **Suggested path for "NVIDIA-style" inference optimization (edge/AV/robotics):**
 
-1. Complete [Phase 1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration) (or equivalent) for foundations.
+1. Complete [Phase 1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Xilinx%20FPGA) (or equivalent) for foundations.
 2. Use [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) to become strong in **Step 1** (parallel/CUDA) and **Step 2** (DL inference, tinygrad, TensorRT).
 3. Deep-dive **Step 3** via [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) Autonomous Driving: openpilot end-to-end, camerad, modeld, tinygrad on device.
-4. Optionally add **Step 4** via [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) AI Chip Design and [Phase 3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration) HLS/OpenCL/FPGA for custom hardware.
+4. Optionally add **Step 4** via [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) AI Chip Design and [Phase 3](Phase%203%20-%20Xilinx%20FPGA) HLS/OpenCL/FPGA for custom hardware.
 
 **How to navigate:**
-1. [Phases 1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration) are sequential — each builds on the last.
+1. [Phases 1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Xilinx%20FPGA) are sequential — each builds on the last.
 2. [Phase 4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) is the bridge — if you already have hardware experience, start here and backfill.
 3. [Phase 5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization) tracks are independent — choose based on your target step/role.
 
@@ -318,20 +319,20 @@ The four steps above are built on a **5-phase foundation**. Full phase-by-phase 
 
 | Role | Primary Phases | Specialization Track |
 |------|---------------|---------------------|
-| AI Accelerator / Chip Design Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) (AI Fundamentals) | Track B: AI Chip Design |
-| Edge AI / Embedded ML Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | — |
-| ADAS / Autonomous Driving Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track A: Autonomous Driving |
+| AI Accelerator / Chip Design Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track B: AI Chip Design |
+| Edge AI / Embedded ML Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | — |
+| ADAS / Autonomous Driving Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track A: Autonomous Driving |
 | GPU / HPC Infrastructure Engineer | [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track C: HPC |
-| Robotics Engineer | [2](Phase%202%20-%20Xilinx%20and%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track D: Robotics |
-| Hardware Security Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Advanced%20FPGA%20and%20Acceleration) | Track E: Embedded Security |
+| Robotics Engineer | [2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track D: Robotics |
+| Hardware Security Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Xilinx%20FPGA) | Track E: Embedded Security |
 
 ---
 
 ## Academic References
 
-[**CMU Robotics & AI Courses**](CMU-Robotics-AI-Courses.md) — 07-280 AI/ML I schedule, B.S. Robotics curriculum, and course catalog. Useful for supplementing Phase 4 (AI Fundamentals) and Track D (Robotics).
+[**CMU Robotics & AI Courses**](CMU-Robotics-AI-Courses.md) — 07-280 AI/ML I schedule, B.S. Robotics curriculum, and course catalog. Useful for supplementing Phase 1 (AI Fundamentals) and Track D (Robotics).
 
-[**Caltech CS124 Operating Systems**](https://users.cms.caltech.edu/~donnie/cs124/lectures/) — 24-lecture OS course (processes, threads, scheduling, memory, filesystems). Our [Operating Systems guide](Phase%201%20-%20Foundational%20Knowledge/5.%20Operating%20Systems/Guide.md) provides detailed notes aligned with this curriculum.
+[**Caltech CS124 Operating Systems**](https://users.cms.caltech.edu/~donnie/cs124/lectures/) — 24-lecture OS course (processes, threads, scheduling, memory, filesystems). Our [Operating Systems guide](Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Guide.md) provides detailed notes aligned with this curriculum.
 
 ---
 
