@@ -12,6 +12,7 @@ Detailed guides for real-world GPU cluster configurations:
 | **L40S x12** | Cost-efficient inference deployment (576 GB GDDR6, PCIe) | [L40S-x12-Inference/](./L40S-x12-Inference/README.md) |
 | **NCCL Deep Dive** | GPU-to-GPU communication: algorithms, tuning, debugging, 1T-scale | [NCCL-Deep-Dive/](./NCCL-Deep-Dive/README.md) |
 | **CUDA Advanced Optimization** | CUDA Graphs, Cooperative Groups, Persistent Kernels, Fusion, Warp Specialization | [CUDA-Advanced-Optimization/](./CUDA-Advanced-Optimization/README.md) |
+| **GPUDirect Storage (GDS)** | Direct NVMe→GPU DMA, NVMe-oF, WD OpenFlex + RapidFlex, libcufile API | [GPUDirect-Storage/](./GPUDirect-Storage/README.md) |
 
 ### 8x H200 — Topics
 - [01 Hardware Architecture](./8x-H200-Training-Inference/01-Hardware-Architecture.md) — GH100 die, HBM3e, NVLink 4.0, NVSwitch topology
@@ -43,6 +44,14 @@ Detailed guides for real-world GPU cluster configurations:
 - [03 Persistent Kernels](./CUDA-Advanced-Optimization/03-Persistent-Kernels.md) — always-resident GPU workers, GPU-side work queues, zero-overhead dispatch
 - [04 Kernel Fusion](./CUDA-Advanced-Optimization/04-Kernel-Fusion.md) — HBM round-trip elimination, Triton, torch.compile, FlashAttention as fusion example
 - [05 Warp Specialization](./CUDA-Advanced-Optimization/05-Warp-Specialization.md) — producer/consumer warpgroups, TMA, WGMMA, software pipelining, CUTLASS 3.x
+
+### GPUDirect Storage (GDS) — Topics
+- [01 Architecture & Data Path](./GPUDirect-Storage/01-Architecture-and-Data-Path.md) — CPU vs GDS data paths, PCIe topology, NUMA pinning, 3 transport modes
+- [02 Hardware Setup](./GPUDirect-Storage/02-Hardware-Setup.md) — WD OpenFlex reference config (A100 + CX-7 + SN3700), PCIe layout, version matrix
+- [03 Software Stack](./GPUDirect-Storage/03-Software-Stack.md) — OFED 5.8, GDS 2.17.3, libcufile install, gdscheck verification, cufile.json config
+- [04 libcufile API](./GPUDirect-Storage/04-libcufile-API.md) — cuFileRead/Write, buffer registration, batch I/O, PyTorch DataLoader integration
+- [05 Performance Tuning](./GPUDirect-Storage/05-Performance-Tuning.md) — 512-byte alignment, optimal transfer size, queue depth, buffer pool, benchmarks
+- [06 Disaggregated Storage](./GPUDirect-Storage/06-Disaggregated-Storage.md) — NVMe-oF over RoCEv2, WD OpenFlex + RapidFlex, 75 GB/s scale-out, lossless config
 
 ---
 
