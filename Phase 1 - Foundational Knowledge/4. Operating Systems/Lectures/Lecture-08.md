@@ -1,112 +1,184 @@
-# Lecture 8: Kernel Stacks, Interrupts, Reentrancy
+# Lecture 8: Multi-Core Scheduling, CPU Affinity & isolcpus
 
-**Source:** [CS124 Lec08](https://users.cms.caltech.edu/~donnie/cs124/lectures/CS124Lec08.pdf)
+## SMP Scheduler Architecture
 
----
+Linux SMP scheduler uses **per-CPU runqueues** (`struct rq`) to reduce contention:
 
-## Kernel Stacks
+- `load_balance()` triggered by: idle CPU detection, periodic `rebalance_domains()`, and explicit migration requests
+- Load metric: sum of task weights (CFS nice-weighted) on each runqueue
+- `migration/N` kernel threads execute the actual task moves on behalf of the scheduler
+- Goal: equalize load across CPUs while respecting topology constraints (prefer same-core > same-package > same-NUMA node)
 
-- **Each process** has a **kernel stack** — used when process is in kernel (syscall, fault, interrupt)
-- **Separate from user stack** — kernel doesn't trust user stack; protects kernel from user
-- **Kernel stack** holds: saved registers, local variables, call frames during syscall/interrupt handling
+## CPU Topology Hierarchy
 
-### Kernel Stack Initialization
+```
+Physical Package (Socket)
+  └── DIE
+        └── MC (physical core)
+              └── SMT Thread (hyperthreading — 2 logical CPUs per core)
+```
 
-- **Allocated** when process is created
-- **Fixed size** (e.g., 8 KB) — overflow = kernel panic
-- **Per-thread** in multithreaded processes (each thread has own kernel stack)
+Linux models this as a `struct sched_domain` hierarchy. Imbalance threshold and migration cost increase at higher domain levels; the scheduler is reluctant to migrate across NUMA boundaries.
 
----
+### Topology Inspection
 
-## Kernel Control Paths
+```bash
+lscpu                                                     # summary + per-CPU table
+lscpu -e                                                  # extended per-CPU table
+cat /sys/devices/system/cpu/cpu0/topology/core_id         # physical core ID
+cat /sys/devices/system/cpu/cpu0/topology/physical_package_id  # socket ID
+cat /sys/devices/system/cpu/cpu0/topology/thread_siblings # sibling SMT bitmask
+cat /sys/devices/system/cpu/cpu0/topology/core_cpus_list  # all logical CPUs on this core
+```
 
-- **Path of execution** through kernel code
-- **Can be interrupted** — e.g., syscall handling interrupted by timer
-- **Reentrant kernel:** Multiple kernel control paths can be active (e.g., one per CPU, or nested interrupts)
+SMT siblings share L1/L2 caches and execution units. Inference workloads should pin to physical cores (one thread per core), not to both siblings of an SMT pair, to avoid resource contention.
 
----
+## CPU Affinity
 
-## Process Context vs Interrupt Context
+Affinity mask: bitmask specifying which CPUs a task is allowed to execute on.
 
-| | Process context | Interrupt context |
-|---|-----------------|-------------------|
-| **Triggered by** | Syscall, fault from user | Hardware interrupt |
-| **Associated process** | Yes (current) | No (or "current" may be undefined) |
-| **Can sleep?** | Yes (e.g., wait for I/O) | No — cannot block |
-| **Can access user memory?** | Yes (with care) | Risky — no user process |
+```c
+// System call interface
+cpu_set_t mask;
+CPU_ZERO(&mask);
+CPU_SET(2, &mask); CPU_SET(3, &mask);
+sched_setaffinity(pid, sizeof(mask), &mask);
+sched_getaffinity(pid, sizeof(mask), &mask);
+```
 
-**Rule:** In interrupt context, cannot call functions that might sleep (e.g., `kmalloc` with GFP_KERNEL, `mutex_lock`).
+```bash
+taskset -c 2,3 ./inference_app      # launch process with affinity to CPUs 2 and 3
+taskset -cp 2,3 <pid>               # apply affinity to an already-running process
+cat /proc/<pid>/status | grep Cpus_allowed
+```
 
----
+Benefits of affinity pinning:
+- Eliminates scheduler-induced migrations; preserves L1/L2 cache warmth
+- Avoids TLB flush cost on migration (~thousands of cycles on x86)
+- Reduces latency variance; makes timing more predictable
 
-## IA32 Protected-Mode Interrupt Mechanics
+| Mechanism | Kernel Interface | Granularity | Persistence | Tool |
+|---|---|---|---|---|
+| CPU affinity | `sched_setaffinity` | Per-task | Until process exits | `taskset` |
+| `isolcpus` | Boot parameter | Per-CPU | Boot-time | kernel cmdline |
+| cpuset cgroup | `/sys/fs/cgroup/cpuset` | Per-cgroup | Until reconfigured | `cgset`, k8s |
+| `numactl` | `numactl --cpunodebind` | Per-NUMA node | Per-invocation | `numactl` |
+| Intel CAT | `/sys/fs/resctrl` | Per-LLC-way | Until reconfigured | `pqos`, `resctrl` |
 
-- **IDT (Interrupt Descriptor Table):** Maps interrupt vector → handler
-- **Vector 0–31:** Exceptions (faults, traps, aborts)
-- **Vector 32+:** Hardware interrupts (IRQs)
-- **On interrupt:** CPU saves state, switches to kernel, jumps to handler
+## isolcpus — Removing CPUs from the General Scheduler
 
----
+`isolcpus=` is a kernel boot parameter. CPUs listed are removed from the general scheduling pool permanently at boot. No task is placed on an isolated CPU unless explicitly assigned via `taskset` or `sched_setaffinity`.
 
-## Overlapping Interrupt Handlers
+Complementary parameters for full isolation:
 
-- **Interrupts can nest** — handler for IRQ 1 can be interrupted by IRQ 2
-- **Or:** Kernel can disable interrupts to prevent nesting
-- **Trade-off:** Disabling = simpler, but higher latency for other interrupts
+```
+isolcpus=2,3,4,5 nohz_full=2,3,4,5 rcu_nocbs=2,3,4,5 irqaffinity=0,1
+```
 
-### Linux: Critical, Noncritical, Deferrable
+| Parameter | Effect |
+|---|---|
+| `isolcpus=N` | Removes CPU N from general scheduler pool |
+| `nohz_full=N` | Disables periodic scheduler tick on CPU N (tickless) |
+| `rcu_nocbs=N` | Offloads RCU callbacks off CPU N to `rcuoc` kthreads |
+| `irqaffinity=0,1` | Routes all hardware IRQs to CPUs 0 and 1 only |
 
-- **Critical:** Must run immediately; interrupts disabled
-- **Noncritical:** Run soon; may defer
-- **Softirqs, tasklets:** Deferrable work — run after interrupt, before returning to user
+Combined effect: OS jitter reduced from ~200µs worst-case to <10µs on isolated cores. After boot, verify with `cyclictest` and confirm no IRQs are delivered to isolated CPUs via `cat /proc/interrupts`.
 
----
+`tuna`: command-line tool that wraps `isolcpus` and IRQ affinity management for runtime CPU shielding configuration.
 
-## Preemptive vs Non-Preemptive Kernels
+## CPU Frequency Scaling
 
-### Non-Preemptive
+| Governor | Behavior | Use Case |
+|---|---|---|
+| `performance` | Always at maximum frequency | Deterministic RT / inference latency |
+| `powersave` | Always at minimum frequency | Battery-constrained idle systems |
+| `schedutil` | Tracks CFS utilization signal | General throughput workloads |
+| `ondemand` | Ramps on load, scales down on idle | Legacy desktop |
 
-- **Process in kernel** runs until it voluntarily yields or blocks
-- **No timer interrupt** to preempt kernel code
-- **Simpler** — fewer race conditions in kernel
-- **Worse latency** — long syscall delays other processes
+```bash
+# Set performance governor on all CPUs
+echo performance > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+# Or via cpupower
+cpupower frequency-set -g performance
+```
 
-### Preemptive
+Variable frequency causes timing jitter; frequency transitions add up to 200µs of latency. Always use `performance` governor on RT and inference cores.
 
-- **Kernel can be preempted** (except in critical sections)
-- **Timer** can switch to another process even during syscall
-- **Better responsiveness**
-- **More complex** — must protect shared data (spinlocks, etc.)
+## cpuset Cgroup Controller
 
-### Dispatch Latency
+Assigns a process group to a CPU and memory-node subset at runtime without kernel reboot.
 
-- **Time** from when high-priority task becomes ready until it runs
-- **Preemptive kernel** reduces dispatch latency
+```bash
+mkdir /sys/fs/cgroup/cpuset/inference
+echo "4-7" > /sys/fs/cgroup/cpuset/inference/cpuset.cpus
+echo "0"   > /sys/fs/cgroup/cpuset/inference/cpuset.mems
+echo <pid> > /sys/fs/cgroup/cpuset/inference/cgroup.procs
+```
 
----
+Kubernetes uses `cpu_manager_policy=static` to allocate exclusive CPUs to **Guaranteed QoS** pods via cpuset internally. Pair with `topologyManagerPolicy=single-numa-node` to align CPU and GPU PCIe topology for GPU pods.
 
-## Race Conditions (Heisenbugs)
+## Cache Topology and Intel CAT
 
-- **Concurrent access** to shared data without synchronization
-- **Result:** Non-deterministic bugs — "disappears when debugging"
-- **Fix:** Critical sections, mutual exclusion
+### Cache Sharing
 
----
+- L1 (32–64 KB), L2 (256 KB–1 MB): private per physical core
+- L3 / LLC (8–64 MB+): shared across all cores in a package
+- SMT siblings share L1 + L2 + execution units; avoid co-locating competing workloads on same physical core
 
-## Critical Sections and Mutual Exclusion
+```bash
+perf stat -e cache-misses,cache-references ./inference    # measure LLC miss rate
+```
 
-- **Critical section:** Code that accesses shared resource
-- **Mutual exclusion:** Only one thread in critical section at a time
-- **Requirements:** No two in CS simultaneously; progress (someone eventually enters); bounded waiting
+### Intel Cache Allocation Technology (CAT / RDT)
 
----
+Partitions LLC ways between workloads using Capacity Bitmasks (CBM). Prevents co-located OS daemons from evicting hot model weights.
+
+```bash
+mount -t resctrl resctrl /sys/fs/resctrl
+mkdir /sys/fs/resctrl/inference
+# Allocate LLC ways 0–3 (4 ways) exclusively to inference group
+echo "L3:0=0x000f" > /sys/fs/resctrl/inference/schemata
+echo <pid> > /sys/fs/resctrl/inference/tasks
+```
+
+Management tool: `pqos` (Intel RDT OSS tools). Also supports Memory Bandwidth Allocation (MBA) to limit DRAM bandwidth consumed by background workloads.
+
+## NUMA Affinity
+
+```bash
+# Pin process to socket 0 CPUs + socket 0 memory
+numactl --cpunodebind=0 --membind=0 ./inference
+
+# Show CPU <-> GPU PCIe topology
+nvidia-smi topo -m
+
+# Show per-process NUMA access stats
+numastat -p <pid>
+
+# Show NUMA hit/miss counters
+numastat
+```
+
+AutoNUMA (`/proc/sys/kernel/numa_balancing`): disable on latency-sensitive inference nodes. Automatic page migration causes TLB shootdown IPIs that add jitter spikes.
 
 ## Summary
 
-| Concept | Description |
-|---------|-------------|
-| Kernel stack | Per-process stack for kernel execution |
-| Interrupt context | Cannot sleep; no user process |
-| Reentrant kernel | Multiple kernel paths active |
-| Preemptive kernel | Timer can preempt kernel code |
-| Critical section | Must have mutual exclusion |
+| Mechanism | Kernel/User? | Granularity | Persistence | Tool |
+|---|---|---|---|---|
+| `sched_setaffinity` | Kernel syscall | Per-task | Process lifetime | `taskset` |
+| `isolcpus` | Kernel boot param | Per-CPU | Boot-time | kernel cmdline |
+| `nohz_full` | Kernel boot param | Per-CPU | Boot-time | kernel cmdline |
+| `rcu_nocbs` | Kernel boot param | Per-CPU | Boot-time | kernel cmdline |
+| cpuset cgroup | Kernel cgroup | Per-cgroup | Dynamic | `cgset`, kubectl |
+| `cpufreq performance` | Kernel driver | Per-CPU | Dynamic | `cpupower` |
+| Intel CAT | Kernel resctrl | Per-LLC-way | Dynamic | `pqos` |
+| `numactl` | Userspace wrapper | Per-NUMA node | Per-invocation | `numactl` |
+
+## AI Hardware Connection
+
+- `isolcpus=4-11 nohz_full=4-11 rcu_nocbs=4-11` on Jetson Orin dedicates 8 ARM cores exclusively to AI inference threads; the OS and sensor drivers run on cores 0–3, preventing OS jitter from entering the inference latency budget
+- Kubernetes `cpu_manager_policy=static` uses cpuset cgroups to give TensorRT inference pods exclusive physical CPU cores, eliminating noisy-neighbor scheduler interference in multi-tenant inference clusters
+- CPU affinity pinning for ROS2 real-time callback groups ensures deterministic execution of LiDAR processing and motion control nodes; scheduler migration would invalidate WCET measurements
+- NUMA-aware memory binding (`numactl -m 0`) reduces first-inference latency on multi-socket servers where the GPU PCIe root port attaches to socket 0; model weights in socket-1 memory incur cross-NUMA fetch overhead on every forward pass
+- Intel CAT partitions LLC so OS daemons cannot evict hot model layer weights during inference; without CAT, a `kworker` burst can flush 30–50% of LLC, causing a spike of LLC-miss latency at the start of the next forward pass
+- `cpufreq performance` governor is non-negotiable on AV edge compute: frequency ramp-up delay from a low-power C-state can add 100–200µs to the first GPU kernel launch after an idle period

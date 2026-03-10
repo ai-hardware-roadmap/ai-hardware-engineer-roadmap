@@ -1,126 +1,149 @@
-# Lecture 21: Filesystems — Structure and Allocation
+# Lecture 21: Filesystems: ext4, btrfs, F2FS & overlayfs
 
-**Source:** [CS124 Lec21](https://users.cms.caltech.edu/~donnie/cs124/lectures/CS124Lec21.pdf)
+## Filesystem Role and VFS
 
----
+A filesystem organizes files into directories, provides persistence across power cycles, manages free space, and ensures metadata consistency after crashes.
 
-## Persistent Storage: Files and Filesystem
+### VFS (Virtual File System)
 
-- **File:** Named, persistent byte sequence
-- **Filesystem:** Organizes files on disk (or other block device)
-- **Block device:** Storage addressed in fixed-size blocks (e.g., 512 B, 4 KB)
+Linux VFS is an abstraction layer that presents a uniform API regardless of the underlying filesystem implementation.
 
----
+Key data structures:
 
-## File Names and Extensions
+- `struct super_block`: per-mounted-filesystem state; points to root inode
+- `struct inode`: per-file metadata (uid, gid, size, timestamps, block pointers); no filename
+- `struct dentry`: name-to-inode cache entry; forms the directory tree in memory
+- `struct file`: per-open-file state; current offset, flags; points to inode
 
-- **Name** — human-readable identifier (e.g., `report.pdf`)
-- **Extension** — convention (e.g., `.pdf`) — often not enforced by OS
-- **Metadata** — size, timestamps, permissions — stored separately (e.g., inode)
+Key operations table: `struct file_operations` — `open`, `read`, `write`, `mmap`, `ioctl`, `fsync`, `llseek`. Every filesystem registers its own implementation of these callbacks. `mmap` is critical for AI workloads: memory-mapped dataset files avoid read() syscalls entirely.
 
----
+## ext4
 
-## Directories (Folders)
+ext4 is the default Linux filesystem; backward-compatible with ext2/ext3.
 
-- **Directory:** Special file containing list of (name, inode#) or (name, metadata)
-- **Hierarchical** — directory can contain subdirectories
-- **Root directory** `/` — top of tree
+### Key Features
 
-### Directory Structures
+- **Extent-based allocation**: replaces indirect block maps; one extent = (logical block, physical block, length); reduces metadata for large contiguous files
+- **64-bit block addresses**: supports volumes up to 1 EB
+- **Delayed allocation** (`delalloc`): batch block allocation at writeback time; improves spatial locality; `nodelalloc` disables it
+- **dir_index** (htree): large directories stored as hash B-tree; O(log n) lookup vs O(n) linear scan
 
-- **Single-level:** All files in one directory — doesn't scale
-- **Two-level:** Per-user directory — still limited
-- **General graph:** Directories can contain subdirs — tree or DAG (with links)
+### Journal Modes
 
----
+| Mode | What is journaled | Data safety | Performance |
+|---|---|---|---|
+| `data=ordered` (default) | Metadata only; data written before commit | Good | Fast |
+| `data=journal` | Metadata + data | Best | Slowest |
+| `data=writeback` | Metadata only; data order not guaranteed | Weakest | Fastest |
 
-## Paths
+Mount with `mount -o data=ordered /dev/mmcblk0p1 /mnt`. For Jetson rootfs, `data=ordered` is the standard.
 
-- **Absolute:** From root (e.g., `/home/user/file.txt`)
-- **Relative:** From current directory (e.g., `./file.txt`, `../other/file.txt`)
-- **Current directory** — per-process (e.g., `cwd`)
+Default journal size: 128 MB (tunable via `tune2fs -J size=N`). Journal is a circular log; on crash, uncommitted transactions are discarded; committed but not checkpointed are replayed.
 
----
+## btrfs
 
-## Hard Links and Symbolic Links
+btrfs is a Copy-on-Write B-tree filesystem with features designed for modern storage and system management.
 
-### Hard Link
+### Core Features
 
-- **Multiple directory entries** point to same inode
-- **Same file** — same data, delete when link count = 0
-- **Cannot** cross filesystems (inode# is per-fs)
-- **Cannot** link to directory (usually — avoid cycles)
+- **Copy-on-Write (CoW)**: writes never overwrite existing data in place; new data is written to free space, then the B-tree root pointer is atomically updated
+- **Snapshots**: O(1) creation; a snapshot is simply a new B-tree root pointing to the same leaf nodes; used for A/B rootfs in OTA update strategies
+- **Subvolumes**: independent filesystem trees within the same btrfs pool; can be mounted separately or snapshotted individually
+- **Checksums**: CRC32c (default), xxHash, SHA256, or Blake2 on both data and metadata; detects silent bit rot
+- **RAID modes**: RAID 0, 1, 10, 5, 6 across multiple devices
+- **Transparent compression**: zstd (best ratio), lzo (fastest), zlib; per-file or per-subvolume
+- **send/receive**: compute a delta between two snapshots and stream it to another system; enables incremental OTA updates
 
-### Symbolic Link (Symlink)
+### A/B Rootfs with btrfs Snapshots
 
-- **Special file** containing path to target
-- **Can** cross filesystems, point to directories
-- **Dangling** if target deleted
-- **Followed** by kernel on open
+```bash
+# Create read-only snapshot before OTA
+btrfs subvolume snapshot -r /rootfs /.snapshots/$(date +%Y%m%d)
 
----
+# After update, create new snapshot from updated rootfs
+btrfs subvolume snapshot /rootfs_new /.snapshots/new
 
-## File Access Patterns
+# Rollback: delete new rootfs, restore from snapshot
+```
 
-- **Sequential:** Read/write in order (e.g., 0, 1, 2, ...)
-- **Direct (random):** Seek to offset, then read/write
-- **Indexed:** Key → record (database-style)
+`btrfs scrub start /`: verify all data blocks against stored checksums; background operation; critical for long-running edge AI devices where silent corruption is a concern.
 
----
+## F2FS (Flash-Friendly File System)
 
-## File Layout — Allocation Methods
+F2FS is designed for NAND flash storage: eMMC, UFS, and NVMe SSDs. Developed by Samsung; merged into Linux 3.8.
 
-### Contiguous Allocation
+### Design Principles
 
-- **File** occupies consecutive blocks on disk
-- **Pros:** Simple, fast sequential access
-- **Cons:** External fragmentation, need to know size at creation
-- **Compaction** — move files to consolidate free space (expensive)
+- **Log-structured with node/data separation**: node area (inodes and index) and data area are logged separately; reduces fragmentation from mixed updates
+- **Adaptive logging**: switches between normal logging (high utilization) and threaded logging (low utilization) to balance write amplification and fragmentation
+- **Reduced write amplification**: flash-aware allocation avoids partial block updates; aligns writes to flash erase block size
+- **Optimized `fsync()` latency**: important for database workloads (SQLite on Android); uses a roll-forward recovery mechanism to avoid full checkpoint on every fsync
 
-### Extents
+Use cases: Android (since Android 9 default on eMMC/UFS), Chromebooks, embedded AI devices with eMMC storage.
 
-- **Extent** = (start block, length)
-- **File** can have multiple extents
-- **Reduces** fragmentation vs pure contiguous; more flexible
+## overlayfs
 
-### Linked Allocation
+overlayfs overlays two directory trees into a unified view:
 
-- **Each block** has pointer to next
-- **No** random access (must traverse)
-- **FAT** — File Allocation Table: array of "next block" per block; faster traversal
+- **lower**: read-only base layer (one or more stacked layers)
+- **upper**: writable layer; receives all modifications
+- **workdir**: temporary directory on the same filesystem as `upper`; used for atomic rename operations
 
-### Indexed Allocation
+On first write to a file from `lower`, the file is copied up to `upper` (copy-on-write). Subsequent writes go directly to `upper`.
 
-- **Index block** for each file — list of block numbers
-- **Random access** — lookup in index
-- **Large files** — need multi-level index (linked index blocks, or tree)
+### Mount Syntax
 
----
+```bash
+mount -t overlay overlay \
+  -o lowerdir=/image/layer2:/image/layer1,\
+     upperdir=/container/rw,\
+     workdir=/container/work \
+  /container/merged
+```
 
-## Index Structures
+### Use Cases
 
-- **Linked sequence:** Index blocks chained
-- **Multilevel:** Tree of index blocks (e.g., 2-level, 3-level)
-- **Hybrid:** Direct blocks + indirect blocks (like Unix inodes)
+- **Docker/OCI containers**: image layers form the `lower` stack; the container's writable layer is `upper`; the container sees `/merged` as its rootfs
+- **Jetson OTA**: new rootfs image as `lower`; persistent user data in `upper`; avoids a full rootfs copy for configuration
+- **Read-only rootfs with writable overlay**: boot from read-only squashfs; mount overlayfs with tmpfs as `upper`; writable rootfs in RAM without modifying flash
 
----
+## tmpfs: Filesystem in RAM
 
-## Ext2 Inodes
+`tmpfs` uses anonymous pages (RAM + swap) for storage; no disk I/O for reads or writes.
 
-- **Inode** — metadata + block pointers
-- **Direct blocks:** First N (e.g., 12) block numbers
-- **Single indirect:** Block containing more block numbers
-- **Double indirect:** Block of single indirect blocks
-- **Triple indirect:** One more level
-- **Supports** very large files with limited inode size
+```bash
+mount -t tmpfs -o size=1G tmpfs /dev/shm
+```
 
----
+- `/dev/shm` and `/run` are tmpfs by default on systemd systems
+- `shm_open()` / `mmap(MAP_SHARED)` use tmpfs for POSIX shared memory
+- openpilot `cereal` msgq allocates shared memory segments via `shm_open()` on `/dev/shm`; all IPC between processes (modeld, plannerd, controlsd) traverses these RAM-backed segments
+
+## TRIM and Flash Longevity
+
+`fstrim` notifies the SSD of freed block ranges so the controller can reclaim them during idle time.
+
+- `discard` mount option: issue TRIM inline on every `unlink()` (higher latency per delete)
+- `systemd-fstrim.timer`: weekly `fstrim` sweep (preferred; batches TRIMs)
+- Without TRIM, the FTL does not know which logical blocks are free; write amplification increases as the drive ages
+- Critical for embedded AI devices with eMMC (dashcams, edge inference boxes) that write continuously and cannot be taken offline for maintenance
 
 ## Summary
 
-| Allocation | Pros | Cons |
-|------------|------|------|
-| Contiguous | Simple, fast sequential | Fragmentation |
-| Linked | No fragmentation | No random access |
-| Indexed | Random access | Overhead |
-| Extents | Balance | More complex |
+| Filesystem | Journaling | CoW | Best for | Key limitation |
+|---|---|---|---|---|
+| ext4 | Yes (ordered/journal/writeback) | No | General-purpose Linux rootfs | No snapshot support |
+| btrfs | No (CoW replaces journal) | Yes | A/B OTA, snapshot-based rollback | Higher CPU overhead |
+| F2FS | Checkpointing | No | eMMC/UFS embedded devices | Not ideal for HDDs |
+| overlayfs | Inherits from upper layer | On first write | Container rootfs, OTA overlay | upper/lower must differ |
+| tmpfs | None (RAM) | No | IPC shared memory, /tmp | Lost on reboot/OOM |
+| ext4 + F2FS | Yes | No | Mixed: rootfs (ext4) + data (F2FS) | Separate partitions needed |
+
+## AI Hardware Connection
+
+- btrfs snapshots provide O(1) A/B rootfs switching in openpilot Agnos and Jetson OTA update pipelines; on failed boot, the bootloader activates the previous snapshot without data movement
+- F2FS on eMMC significantly reduces write amplification in embedded AI edge devices (dashcams, robotics controllers) that perform continuous camera recording
+- overlayfs enables containerized TensorRT inference deployments where the base image layer is read-only and immutable while the container adds only runtime state in the upper layer
+- tmpfs and `shm_open()` underpin openpilot cereal msgq IPC; all model outputs, trajectory plans, and control commands between processes traverse RAM-backed shared memory segments
+- ext4 `data=ordered` mode is the standard for Jetson rootfs partitions; it provides the strongest crash consistency guarantee without the overhead of full data journaling
+- `systemd-fstrim.timer` is a mandatory configuration item for any long-running eMMC-based AI edge device; without it, write amplification degrades throughput and reduces flash lifespan

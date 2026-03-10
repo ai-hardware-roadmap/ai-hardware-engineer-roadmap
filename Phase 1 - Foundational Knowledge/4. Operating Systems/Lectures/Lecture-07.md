@@ -1,112 +1,190 @@
-# Lecture 7: The Thread Abstraction
+# Lecture 7: Real-Time Linux: PREEMPT_RT & Determinism
 
-**Source:** [CS124 Lec07](https://users.cms.caltech.edu/~donnie/cs124/lectures/CS124Lec07.pdf)
+## Real-Time Definitions
 
----
+Real-time does not mean fast. It means **bounded worst-case latency** — a deadline that must always be met.
 
-## Threads vs Processes
+- **Soft RT**: missing a deadline degrades quality (e.g., dropped audio frame, delayed video render)
+- **Hard RT**: missing a deadline is a system failure (e.g., motor overshoot, brake actuation too late)
+- Metric of interest: **worst-case latency (WCL)**, not average; a single 1ms spike violates a 500µs hard deadline even if the average is 10µs
 
-| | Process | Thread |
-|---|---------|--------|
-| **Address space** | Own | Shared with other threads in process |
-| **Resources** | Own (files, etc.) | Shared |
-| **Creation cost** | High (fork) | Lower |
-| **Switch cost** | High (address space switch) | Lower (same address space) |
+## Linux Preemption Models
 
-**Thread:** Lightweight unit of execution within a process. Shares address space with other threads.
+Configured at build time via `CONFIG_PREEMPT_*`:
 
----
+| Config | Preemptibility | Typical Worst-Case Latency | Use Case |
+|---|---|---|---|
+| `PREEMPT_NONE` | Not preemptible (yield points only) | >1ms | Servers, throughput workloads |
+| `PREEMPT_VOLUNTARY` | `might_resched()` points added | ~500µs | General desktop Linux |
+| `PREEMPT` | Most kernel paths preemptible | ~100–200µs | Interactive desktop |
+| `PREEMPT_RT` | Fully preemptible kernel | <50µs achievable | Robotics, motor control, AV |
 
-## Threads and Performance
+`PREEMPT_RT` was mainlined in **Linux 6.12** (released November 2024). Prior to that it was a long-running out-of-tree patch series maintained by Thomas Gleixner and Ingo Molnar.
 
-### Responsiveness
+## PREEMPT_RT Internals
 
-- **One thread blocks** (e.g., on I/O) — other threads can still run
-- **GUI** stays responsive while I/O happens in background thread
+### Spinlock Conversion
 
-### Scalability
+Under `PREEMPT_RT`, `spinlock_t` is converted to a sleeping `rtmutex`:
 
-- **Multiple cores** — threads can run in parallel
-- **Single process** can use multiple CPUs
+- **Pre-RT behavior**: `spin_lock()` disables preemption and busy-waits; no other task can run on that CPU while holding the lock
+- **RT behavior**: `spin_lock()` puts the task to sleep if the lock is contended; a higher-priority task can preempt and run
+- **`raw_spinlock_t`**: the escape hatch — remains a true non-preemptible spinlock; reserved for very short hardware-critical sections (e.g., per-CPU counter updates, arch interrupt entry code)
 
-### Resource Sharing
+### Hardirq Threading
 
-- **Shared memory** — no IPC overhead for data sharing
-- **Careful:** Need synchronization (locks, etc.)
+- IRQ handlers become **threaded kernel threads** under RT
+- Default thread priority: `SCHED_FIFO`, priority 50
+- `IRQF_NO_THREAD` flag: opt-out for specific handlers that cannot sleep (e.g., the timer interrupt hardware path)
+- Consequence: an RT task at priority 99 can preempt an IRQ handler running at priority 50
 
-### Economy
+### Softirq Handling
 
-- **Cheaper** to create/switch threads than processes
-- **Less memory** — shared address space
+- Softirqs run in `ksoftirqd` kernel threads (one per CPU)
+- `ksoftirqd` is a normal preemptible task; RT tasks can preempt it at any point
+- Prevents softirq storms from blocking high-priority RT tasks for unbounded time
 
----
+### Sleeping in Kernel
 
-## Concurrency vs Parallelism
+- Pre-RT: many kernel code paths had "cannot sleep here" constraints because spinlocks held preemption off
+- With RT: sleeping is safe in most contexts because `spinlock_t` is now a sleeping lock
+- Remaining `raw_spinlock_t` sections still cannot sleep; these must be kept extremely short
 
-- **Concurrency:** Multiple tasks in progress; may interleave on one CPU
-- **Parallelism:** Multiple tasks execute simultaneously on multiple CPUs
-- **Concurrent** ≠ necessarily parallel (e.g., single-core time-sharing)
+## Measuring Scheduling Latency
 
-### Amdahl's Law
+`cyclictest` is the standard tool for measuring RT scheduling latency:
 
-Speedup limited by sequential portion:
+```bash
+# Basic: 1 thread, SCHED_FIFO priority 99, nanosleep, 1ms interval, 10000 loops
+cyclictest -t1 -p 99 -n -i 1000 -l 10000
 
-$$\text{Speedup} = \frac{1}{(1-P) + P/N}$$
+# Histogram mode: 60-second run, histogram up to 200µs buckets
+cyclictest --histogram=200 -D 60s -p 99 -n
+```
 
-- $P$ = fraction parallelizable
-- $N$ = number of processors
-- **Bottleneck:** Sequential part limits speedup
+Targets by application domain:
 
-### Gustafson-Barsis' Law
+| Domain | Max Acceptable Latency |
+|---|---|
+| AV planning loop (soft RT) | <100µs |
+| Robotics servo control | <500µs |
+| Motor drive control (hard RT) | <50µs |
+| Safety-critical (ASIL-B certified) | <20µs |
 
-With more processors, problem size can grow — different scaling model.
+## Latency Sources
 
----
+### Quantifiable Software Sources
 
-## Blocking vs Non-Blocking Operations
+- **IRQ disable sections**: `raw_spinlock_t` hold time, hardware register access sequences; goal: <1µs
+- **Memory allocation on hot path**: `GFP_ATOMIC` bypasses direct reclaim but still acquires zone locks
+- **Cache misses / TLB shootdowns**: IPI to flush remote TLBs on large SMP systems adds ~10–30µs
+- **CPU frequency transitions**: `schedutil` governor can step frequency mid-task; transition adds up to ~200µs
 
-- **Blocking:** Thread waits until operation completes (e.g., `read()` on socket)
-- **Non-blocking:** Returns immediately; may need to poll or use async I/O
-- **Threads** allow blocking without freezing entire process — other threads run
+### SMI (System Management Interrupts)
 
----
+- Generated by BIOS/UEFI/BMC firmware for power management, thermal throttling, ECC memory scrubbing
+- **Invisible to the OS**: CPU enters SMM (ring -2), OS clock stops, OS cannot observe or account for this time
+- Typical impact: 50–300µs per SMI event; some platforms fire 10–100 SMIs per second
+- **Detection tool**: `hwlatdetect` — polls a hardware timer in a tight loop; large polling gaps indicate SMI
 
-## User-Space Threading vs Kernel Threads
+```bash
+hwlatdetect --duration=60s --threshold=20
+```
 
-### User-Space (Many-to-One)
+### NUMA and Hardware Effects
 
-- **Library** implements threads (e.g., GNU Pth, old Java green threads)
-- **Kernel** sees one process
-- **Pros:** Fast switch (no kernel call), portable
-- **Cons:** One thread blocks on I/O → entire process blocks; cannot use multiple CPUs
+- Cross-NUMA memory access adds ~100ns per LLC miss on two-socket servers
+- CPU C-state exit latency: C1 ~1µs, C6 ~100µs; use `idle=poll` or `intel_idle.max_cstate=1` to eliminate
+- Turbo boost frequency settling after idle exit adds variable latency; `performance` governor avoids this
 
-### Kernel Threads (One-to-One)
+## RT Tuning Checklist
 
-- **Each thread** is a kernel schedulable entity
-- **OS** schedules threads
-- **Pros:** True parallelism, blocking I/O doesn't block process
-- **Cons:** More overhead (kernel involvement)
+### Kernel Configuration
 
-### Many-to-Many (Hybrid)
+```
+CONFIG_PREEMPT_RT=y
+CONFIG_HZ_1000=y
+CONFIG_NO_HZ_FULL=y
+CONFIG_RCU_NOCB_CPU=y
+```
 
-- **M** user threads map to **N** kernel threads ($M \geq N$)
-- **Scheduler activations** — kernel notifies user-level scheduler when thread blocks
-- **Flexibility** — can have many user threads, fewer kernel threads
+### Boot Parameters
 
----
+```
+isolcpus=2,3 nohz_full=2,3 rcu_nocbs=2,3 irqaffinity=0,1
+```
 
-## Scheduler Activations, Upcalls
+- `isolcpus=`: removes CPUs from kernel scheduler pool; tasks must be explicitly placed with `taskset`
+- `nohz_full=`: disables the periodic scheduler tick on isolated CPUs (tickless operation)
+- `rcu_nocbs=`: offloads RCU callbacks to `rcuoc` kthreads running on non-isolated CPUs
+- `irqaffinity=`: routes all hardware IRQs away from isolated CPUs
 
-- **Upcall:** Kernel calls into user space (e.g., "thread T blocked")
-- **User-level scheduler** can switch to another thread
-- **Reduces** kernel involvement while allowing parallelism
+### Runtime Tuning
 
----
+```bash
+# Fix CPU frequency to maximum; eliminates frequency ramp-up jitter
+cpupower frequency-set -g performance
+
+# Disable NUMA auto-balancing; page migrations cause TLB shootdown jitter
+echo 0 > /proc/sys/kernel/numa_balancing
+
+# Disable transparent hugepages; async promotions cause unpredictable latency
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+```
+
+### Application-Level RT Setup
+
+```c
+// Lock all process pages into RAM; no major page faults during execution
+mlockall(MCL_CURRENT | MCL_FUTURE);
+
+// Set SCHED_FIFO policy with explicit priority
+struct sched_param param = { .sched_priority = 80 };
+sched_setscheduler(0, SCHED_FIFO, &param);
+
+// Pre-fault thread stack before entering RT loop
+char stack_probe[8192];
+memset(stack_probe, 0, sizeof(stack_probe));
+
+// Pre-allocate ALL buffers before entering the real-time loop
+// No malloc() calls inside the RT loop
+```
+
+## ftrace Latency Tracer
+
+```bash
+echo 0 > /sys/kernel/tracing/tracing_on
+echo latency > /sys/kernel/tracing/current_tracer
+echo 1 > /sys/kernel/tracing/tracing_on
+# ... wait for or trigger a latency event ...
+cat /sys/kernel/tracing/trace
+```
+
+Output includes: timestamp, worst-case wakeup latency, and full kernel call stack from wakeup trigger to task resumption. Identifies the exact function responsible for the worst observed latency spike.
+
+## QNX: Commercial RTOS Reference
+
+- Microkernel architecture: drivers, filesystems, and network stack run as isolated user-space processes
+- Fully preemptive from initial design — no retrofit required, unlike PREEMPT_RT on Linux
+- Deployment: QNX CAR platform, BlackBerry IVY, medical devices, avionics flight management
+- Adaptive partitioning scheduler: CPU time budget reserved per partition with guaranteed minimums even under overload
+- Relevance: QNX + hypervisor pairing (e.g., on NXP S32G, TI TDA4VM) isolates safety-certified RTOS from Linux ADAS stack on the same SoC
 
 ## Summary
 
-| Model | User Threads | Kernel Threads | Blocking I/O | Multi-CPU |
-|-------|--------------|----------------|--------------|-----------|
-| Many-to-one | Many | 1 | Blocks process | No |
-| One-to-one | 1:1 | 1:1 | OK | Yes |
-| Many-to-many | Many | N | OK (with upcalls) | Yes |
+| Config | Max Latency (Typical) | Suitable For | Tradeoff |
+|---|---|---|---|
+| `PREEMPT_NONE` | >1ms | Batch compute, servers | Highest throughput |
+| `PREEMPT_VOLUNTARY` | ~500µs | General Linux | Minimal overhead |
+| `PREEMPT` | ~100–200µs | Desktop, light RT | Moderate overhead |
+| `PREEMPT_RT` | <50µs | Robotics, AV, motor control | Small throughput reduction |
+| QNX | <10µs | Hard RT, safety-certified | Commercial license required |
+
+## AI Hardware Connection
+
+- `PREEMPT_RT` is required for openpilot `controlsd`: CAN frame writes to the vehicle bus must complete within 10ms or the safety watchdog triggers a controlled disengage; scheduler jitter cannot be allowed to violate this bound
+- `cyclictest` histogram output feeds directly into ISO 26262 ASIL-B timing analysis; the histogram tail (worst observed latency) must fall within the allocated WCET budget for each safety function
+- `isolcpus` + `nohz_full` on Jetson Orin (e.g., cores 4–11 for DNN inference, 0–3 for OS) prevents Linux background jitter from appearing as latency spikes in the inference timing loop
+- `mlockall(MCL_CURRENT|MCL_FUTURE)` is mandatory in any real-time inference process; a single major page fault during model execution can add 1–10ms of unexpected latency, violating hard deadlines
+- `hwlatdetect` is run during ECU bring-up to locate SMI sources on embedded x86 platforms; firmware vendors must bound or eliminate SMI latency to achieve ASIL certification
+- `rcu_nocbs=` on isolated inference cores removes RCU callback invocations that would otherwise appear as random multi-microsecond latency spikes inside the inference loop timing window

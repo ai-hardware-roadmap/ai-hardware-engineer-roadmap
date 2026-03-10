@@ -1,107 +1,128 @@
-# Lecture 22: File Locking, SSDs, Write Amplification
+# Lecture 22: Embedded Storage: eMMC, UFS, NVMe & OTA Partitioning
 
-**Source:** [CS124 Lec22](https://users.cms.caltech.edu/~donnie/cs124/lectures/CS124Lec22.pdf)
+## Storage Hierarchy for Embedded AI Devices
 
----
+Three storage technologies appear in AI edge hardware, chosen by cost, form factor, and throughput requirements:
 
-## Concurrent File Access
+| Technology | Interface | Seq Read | Random IOPS | Form Factor |
+|---|---|---|---|---|
+| eMMC 5.1 | Parallel (8-bit HS400) | ~400 MB/s | ~15K | Soldered BGA |
+| UFS 3.1 | Serial MIPI M-PHY | ~2100 MB/s | ~70K | Soldered / socket |
+| UFS 4.0 | Serial MIPI M-PHY | ~4200 MB/s | ~130K | Soldered / socket |
+| NVMe Gen4 x4 | PCIe | ~7000 MB/s | ~1M | M.2 / BGA |
 
-- **Multiple processes** can open same file
-- **Without coordination** — races, corruption
-- **File locking** — coordinate access
+## eMMC (embedded MultiMediaCard)
 
----
+eMMC implements the JEDEC JESD84 standard. The flash controller, wear leveling, ECC, and bad block management are all integrated inside the package.
 
-## File Locking
+### Internal Partition Structure
 
-### Advisory vs Mandatory
+Every eMMC device exposes fixed partitions:
 
-- **Advisory:** Lock is a hint — processes must cooperate; if they ignore, no enforcement
-- **Mandatory:** Kernel enforces — read/write blocks if lock held by another
-- **Unix** typically advisory (flock, lockf)
+- **BOOT0 / BOOT1**: two independent boot areas, each up to 4 MB; write-protected after provisioning; hold bootloader (U-Boot SPL, UEFI)
+- **RPMB (Replay Protected Memory Block)**: 4 MB authenticated storage; read/write protected by HMAC-SHA256 using a device-unique key provisioned at manufacturing
+- **User Data Area (UDA)**: the main storage region; GPT-partitioned by the OS
 
-### Lock Scope
+### RPMB Security Properties
 
-- **Whole file** — lock entire file
-- **Region (byte-range)** — lock specific bytes (e.g., bytes 1000–2000)
-- **Region** allows concurrent access to different parts
+RPMB prevents rollback attacks on firmware. The secure world (OP-TEE, ARM TrustZone) increments a write counter on each write; the eMMC controller rejects any write that does not carry a valid HMAC and a counter value ≥ current. Used in Jetson secure boot to store:
 
-### flock() and lockf()
+- Firmware version counter (anti-rollback)
+- Encryption key material for full-disk encryption
 
-- **flock()** — whole-file, advisory (BSD)
-- **lockf()** — byte-range, advisory (POSIX)
-- **fcntl()** F_SETLK, F_SETLKW — byte-range, POSIX
-- **Locks** are per-process (or per fd) — not inherited across fork (or are, depending on call)
+### eMMC Reliability
 
----
+- Consumer grade: 3K–10K P/E cycles per cell (MLC); 1K–3K (TLC)
+- Enterprise grade (JEDEC JESD84-B51): 16 PBW (petabytes written) rated
+- Over-provisioning: 10–28% of raw capacity reserved for wear leveling and bad block replacement
 
-## File Deletion and Data Remanence
+## UFS (Universal Flash Storage)
 
-- **unlink()** — remove directory entry; file data freed when no fd open
-- **Data remanence** — deleted data may remain on disk until overwritten
-- **Secure delete** — overwrite before freeing (slow, not always effective on SSDs)
+UFS uses a serial, full-duplex MIPI M-PHY physical layer with a SCSI-based command set (UFS Transport Protocol). Key advantages over eMMC:
 
----
+- **Command queuing**: up to 32 commands in flight (vs eMMC single-command); critical for random I/O latency
+- **Full duplex**: simultaneous read and write; improves mixed workload throughput
+- **Lower CPU overhead**: command processing offloaded to UFS device controller
 
-## Free-Space Management
+UFS uses the same logical partition structure as eMMC (BOOT, RPMB, UDA). It is the standard on Qualcomm Snapdragon platforms. The comma 3X (openpilot primary hardware) uses a Snapdragon 845 with UFS storage for camera recording and OS.
 
-### Bitmap
+## NVMe on Embedded Platforms
 
-- **One bit per block** — 0 = free, 1 = used
-- **Find free block** — scan bitmap (or use auxiliary structure)
-- **Compact** — small space
+Jetson Orin exposes an M.2 Key M slot connected to PCIe Gen4 x4 (~7 GB/s):
 
-### Linked List of Free Blocks
+- Supports standard NVMe 2280 and 2230 form-factor SSDs
+- Used when large-scale dataset logging, replay, or high-frequency sensor recording is needed
+- `blk-mq` with per-CPU NVMe queues; combine with `io_uring` + `O_DIRECT` for maximum throughput
+- `nvme list` to enumerate devices; `nvme smart-log /dev/nvme0` for health and wear indicators
 
-- **Each free block** points to next
-- **Head** pointer in superblock
-- **Allocation** — take from head
-- **Fragmentation** of free list — can use grouping
+## OTA Partition Layouts
 
----
+Over-the-air update strategy determines recovery behavior and downtime on failure.
 
-## Solid State Drives (SSDs)
+### A/B Seamless Update
 
-### Flash Translation Layer (FTL)
+Two full system partition sets (slot A and slot B). The inactive slot receives the update while the active slot runs normally.
 
-- **Flash** — erase in large blocks (e.g., 128 KB), write in pages (e.g., 4 KB)
-- **Cannot** overwrite in place — must erase first
-- **FTL** — maps logical blocks to physical; hides erase/write asymmetry
-- **Wear leveling** — spread writes across blocks to avoid burning out
+```
+/dev/mmcblk0p1  boot_a      (active)
+/dev/mmcblk0p2  boot_b      (inactive → receives new image)
+/dev/mmcblk0p3  system_a    (active rootfs)
+/dev/mmcblk0p4  system_b    (inactive → receives new rootfs)
+/dev/mmcblk0p5  userdata    (persistent, not updated)
+```
 
-### Erase Blocks, Read/Write
+On reboot: bootloader marks slot B as active, tries to boot. If boot count exceeds threshold (typically 3) without a successful boot marker, bootloader reverts to slot A. Used in: Android A/B, openpilot Agnos, Jetson UEFI capsule update.
 
-- **Read** — page granularity, fast
-- **Write** — page granularity, but must erase block first (slow)
-- **Erase** — block granularity, slow
+### Recovery Partition Update
 
-### Write Amplification
+Single active partition + a small recovery image. Update process: download new image → reboot into recovery → flash system partition → reboot into new system. No rollback without a backup image. Used in older Android devices and simple embedded systems.
 
-- **Logical write** of 4 KB may require: read block, modify, erase block, write block
-- **Amplification** = physical writes / logical writes
-- **Random writes** — worst case (many blocks partially updated)
-- **Sequential** — better (fewer block updates)
+### OSTree: Git-Like Atomic Updates
 
-### TRIM Command
+OSTree maintains a content-addressed object store of filesystem trees, analogous to git. Deployed updates are hard-linked from the object store; atomic switchover via a symlink update. Used in Automotive Grade Linux (AGL) and automotive ECU Linux platforms. Compatible with ext4 (hard links) and btrfs.
 
-- **OS** tells SSD which blocks are unused (e.g., after file delete)
-- **SSD** can erase blocks in background, improve future write performance
-- **Without TRIM** — SSD doesn't know blocks are free; write amplification worse
+## Partition Tools and Kernel Interfaces
 
-### Effects on Random Writes
+- `parted` / `sgdisk`: create and modify GPT partition tables
+- `partprobe /dev/mmcblk0`: re-read partition table without reboot
+- `/proc/partitions`: kernel's view of all block devices and partitions
+- `/sys/block/mmcblk0/mmcblk0p1/size`: partition size in 512-byte sectors
+- `/dev/mmcblk0p1`, `/dev/nvme0n1p1`: device nodes for partition access
 
-- **Random writes** to SSD — high write amplification, slower
-- **Design** for sequential when possible (e.g., log-structured filesystems)
-- **Fragmentation** — less of an issue than HDD (no seek) but write amplification matters
+## Wear Leveling and Write Amplification
 
----
+Flash storage degrades with Program/Erase (P/E) cycles. The Flash Translation Layer (FTL) manages longevity:
+
+- **Dynamic wear leveling**: preferentially writes to least-worn blocks; effective for frequently updated data
+- **Static wear leveling**: periodically migrates cold data from worn blocks to fresh ones; prevents hot/cold imbalance
+- **Write Amplification Factor (WAF)**: physical writes / logical writes; WAF of 1.0 is ideal; random small writes to consumer SSDs can produce WAF of 10–50 without filesystem cooperation
+- Minimize WAF with: sequential writes, large block sizes, F2FS or btrfs, and proper TRIM configuration
+
+## Storage Diagnostics
+
+```bash
+iostat -x 1          # per-device: util%, await (ms), r/s, w/s, rMB/s, wMB/s
+blktrace -d /dev/mmcblk0 -o trace    # per-request block I/O events
+blkparse trace.blktrace.0            # parse and display timing breakdown
+```
+
+`await` in `iostat` output is the average I/O service time including queue wait. A rising `await` under camera recording load indicates the storage is saturated. `blktrace` identifies which process is responsible for latency spikes.
 
 ## Summary
 
-| Concept | Description |
-|---------|-------------|
-| Advisory lock | Cooperative; not enforced |
-| Mandatory lock | Kernel enforces |
-| FTL | Maps logical to physical; wear leveling |
-| Write amplification | Physical writes > logical |
-| TRIM | Inform SSD of freed blocks |
+| Storage type | Interface | Sequential read | Random IOPS | Typical use in AI hardware |
+|---|---|---|---|---|
+| eMMC 5.1 | 8-bit parallel HS400 | ~400 MB/s | ~15K | Jetson Nano, low-cost edge devices |
+| UFS 3.1 | MIPI M-PHY serial | ~2100 MB/s | ~70K | comma 3X (Snapdragon), mid-range SoC |
+| UFS 4.0 | MIPI M-PHY serial | ~4200 MB/s | ~130K | Flagship mobile AI SoC |
+| NVMe Gen4 x4 | PCIe Gen4 | ~7000 MB/s | ~1M | Jetson Orin (M.2 slot), dataset logging |
+| NVMe Gen3 x4 | PCIe Gen3 | ~3500 MB/s | ~500K | Workstation AI dev, cloud training node |
+
+## AI Hardware Connection
+
+- A/B OTA partition layout is the foundation of openpilot Agnos update strategy; the active slot continues running while the new firmware is written to the inactive slot, with automatic rollback on failed boot
+- RPMB authenticated storage is how Jetson secure boot prevents firmware downgrade attacks; the TrustZone secure world increments the anti-rollback counter on each successful firmware update
+- UFS on the Snapdragon 845 (comma 3X) provides the random IOPS needed to sustain simultaneous recording from three cameras while running inference
+- NVMe on Jetson Orin enables large-scale on-device dataset logging for continuous learning pipelines; PCIe P2P allows the logged data to be pre-processed directly in GPU memory
+- F2FS on eMMC is the correct filesystem choice for long-running edge AI dashcam devices; it minimizes write amplification and extends eMMC lifespan compared to ext4
+- `iostat -x 1` is the first diagnostic tool to run when a camera recording pipeline drops frames; `await` rising above the camera frame period indicates a storage bottleneck
