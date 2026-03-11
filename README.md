@@ -143,7 +143,7 @@ graph LR
 | **B: AI Chip Design** | Phase 3 (HLS, Advanced FPGA), Phase 4 (AI Fundamentals) | Systolic arrays, dataflow architectures, tinygrad as hardware-software interface, FPGA prototyping, ASIC flow overview | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/5.%20AI%20Chip%20Design/Guide.md) |
 | **C: HPC & GPU Infrastructure** | Phase 4 (CUDA) | Multi-GPU NCCL, NVLink/NVSwitch, InfiniBand, RDMA, GPUDirect for distributed training, cluster scheduling | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20with%20Nvidia%20GPU/Guide.md) |
 | **D: Robotics** | Phase 4 (ROS2, Sensor Fusion) | Nav2, MoveIt manipulation, motion planning, ROS-Industrial, sensor fusion for autonomous robots | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/2.%20Robotics%20Application/Guide.md) |
-| **E: Embedded Security** | Phases 1–3 (Digital Design, FPGA) | Cryptography implementations, secure boot, side-channel resistance, FPGA bitstream security | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Security%20in%20Embedded%20Systems/Guide.md) |
+| **E: Edge AI / Embedded ML** | Phases 1–2, Phase 4 (Jetson, TensorRT) | Efficient architectures (MobileNet, EfficientNet, YOLO), quantization, TinyML, edge inference runtimes, system integration | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Edge%20AI%20and%20Embedded%20ML/Guide.md) |
 
 ---
 
@@ -152,11 +152,10 @@ graph LR
 | Role | Primary Phases | Specialization Track |
 |------|---------------|---------------------|
 | AI Accelerator / Chip Design Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track B: AI Chip Design |
-| Edge AI / Embedded ML Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | — |
+| Edge AI / Embedded ML Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track E: Edge AI / Embedded ML |
 | ADAS / Autonomous Driving Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track A: Autonomous Driving |
 | GPU / HPC Infrastructure Engineer | [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track C: HPC |
 | Robotics Engineer | [2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track D: Robotics |
-| Hardware Security Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Xilinx%20FPGA) | Track E: Embedded Security |
 
 ---
 
