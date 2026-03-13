@@ -229,7 +229,1107 @@ A comprehensive guide to modern computer hardware — CPUs, memory, storage, GPU
 
 ---
 
-## 6. Form Factor Deep Dives
+## 6. Architectural Fundamentals
+
+Understanding how processors are designed — from ISA specification through microarchitecture implementation — is essential for predicting where performance comes from and why different CPUs behave differently. This section bridges the gap between abstract instruction sets and the silicon reality described in Section 1.
+
+### 6.1 Instruction Set Architecture (ISA) Design
+
+An **Instruction Set Architecture** is the contract between software and hardware. It defines which operations a programmer can request, how those operations are encoded into binary, and what results to expect. Three elements define an ISA:
+
+1. **Operation vocabulary:** What instructions exist (ADD, LOAD, BRANCH, etc.)
+2. **Encoding:** How instructions are represented in memory (instruction formats, bit layouts)
+3. **Semantics:** What each instruction does to registers, memory, and CPU state
+
+**ISA Comparison: x86-64 vs. ARM64 vs. RISC-V**
+
+| Aspect | x86-64 | ARM64 (aarch64) | RISC-V |
+|--------|--------|-----------------|--------|
+| **Instruction Count** | ~1,500+ (complex) | ~300 (simpler) | ~150 core (extensible) |
+| **Registers** | 16 general (RAX–R15) | 31 general + SP | 31 general + SP |
+| **Addressing Modes** | Rich (8+ modes) | Limited (3 modes) | Minimal (2 modes) |
+| **Variable Instr. Length** | Yes (1–15 bytes) | Fixed 4-byte | Typically 4-byte, compressed 2-byte |
+| **Floating Point** | Integrated (x87, SSE) | Separate (NEON, SVE) | Separate (F/D extensions) |
+| **Conditional Codes** | Flag register (EFLAGS) | Per-instruction condition | Separate branch comp. registers |
+
+**Why ISA Matters for AI Hardware:**
+
+* **Register Pressure:** Matrix operations on x86 with 16 registers vs. ARM64 with 31 registers means different register allocation strategies
+* **SIMD Width:** x86 AVX-512 (512-bit) vs. ARM SVE (up to 2048-bit) vs. RISC-V Vector (configurable) affects throughput for tensor operations
+* **Memory Addressing:** RISC-V's simple addressing encourages compiler optimization for deep pipelines; x86's complex modes reduce instruction count but complicate hardware
+
+**Key Insight:** Changing ISA requires recompilation of all software and OS support — it's a strategic choice made once per product line, not lightly modified. Apple chose ARM to enable tight integration with custom silicon; Intel stays with x86 for ecosystem compatibility; RISC-V attracts greenfield projects without legacy constraints.
+
+### 6.2 Microarchitecture Fundamentals: The Pipeline
+
+**Microarchitecture** answers "how does hardware implement the ISA?" The most visible aspect is the **pipeline** — breaking instruction execution into stages to increase throughput.
+
+**Simple In-Order Pipeline (5 stages, like ARM Cortex-A57):**
+
+```
+┌──────────┬────────┬─────────┬────────┬──────────┐
+│  Fetch   │ Decode │ Execute │ Memory │ Writeback│
+│          │        │         │        │          │
+│ Fetch    │ Parse  │ ALU ops │ L1/L2  │ Reg      │
+│ from L1i │ instr. │ calcs   │ access │ update   │
+└──────────┴────────┴─────────┴────────┴──────────┘
+
+One instruction per stage → up to 1 instruction per cycle (IPC = 1.0 best case)
+```
+
+**Pipeline Hazards (causes of stalls):**
+
+1. **Data Hazard:** Instruction needs result from previous instruction still in pipeline
+   * Example: `R1 = R2 + R3` followed by `R4 = R1 * R5` — must wait for R1
+   * Mitigation: Forwarding paths bypass later pipeline stages to earlier stages
+
+2. **Control Hazard:** Branch outcome unknown until execute stage, but fetch already chose wrong path
+   * Example: `if (x) { ... }` with delayed branch prediction penalty
+   * Mitigation: Branch prediction (discussed Section 6.4)
+
+3. **Structural Hazard:** Multiple instructions competing for same hardware resource
+   * Example: Two instructions need ALU in same cycle
+   * Mitigation: Replicate hardware (multiple ALUs) or serialize
+
+**Deeper Pipeline (Intel P-cores: 12–15 stages):**
+* Longer pipelines increase clock frequency (less logic per stage = faster propagation)
+* Trade-off: Branch misprediction penalty larger (must flush more pipeline stages)
+* Benefit: Higher frequency compensates (e.g., 5 GHz with 15-stage pipeline beats 3 GHz with 5-stage)
+
+### 6.3 Out-of-Order Execution
+
+**Problem:** A stall in a 5-stage pipeline wastes 80% of throughput while waiting for data. Example: branch misprediction waiting for memory load.
+
+**Solution:** Fetch and decode many instructions (wide front-end), execute them **out of original program order**, but commit results in order to maintain correctness. This is **Out-of-Order (OoO) execution.**
+
+**Key Hardware Components:**
+
+* **Instruction Window:** Tracks 50–300 unfinished instructions (Intel: 256-entry Reorder Buffer; ARM A78: 128-entry)
+* **Reservation Stations:** Queue instructions waiting for operands, issue when ready
+* **Load/Store Queue:** Separate tracking for memory operations to detect conflicts
+* **Reorder Buffer (ROB):** Maintains original program order for committing results
+
+**Example: OoO Execution with Memory Stall**
+
+```
+Program order:  1: R1 = LOAD(addr)    [memory miss, stalls 100 cycles]
+                2: R2 = R3 + R4       [independent, executes immediately]
+                3: R5 = R6 * R7       [independent, executes immediately]
+
+OoO CPU execution order: 2 → 3 → ... → 1 (when memory returns)
+                        But commits: 1 → 2 → 3
+```
+
+**Trade-off Table:**
+
+| Feature | In-Order | Out-of-Order |
+|---------|----------|-------------|
+| **Complexity** | Simple (~1M transistors) | Very complex (~5M transistors) |
+| **Power Efficiency** | High (less logic) | Lower (more logic, larger window) |
+| **IPC Potential** | 1.0–2.0 | 2.0–5.0+ |
+| **Latency (fixed work)** | Same if no stalls | Same (execution latency unchanged) |
+| **Latency (with hazards)** | Stalls directly visible | Masked if other work available |
+| **Example Chips** | ARM Cortex-M, older ARM A55 | Intel P-cores, ARM A78/A715, AMD Zen |
+
+**Real Example: ARM Cortex-A78 OoO Configuration**
+* 8-wide fetch, 4-wide decode, 4-wide execute
+* 128-entry reorder buffer
+* 4 ALU units + 2 load/store units + 2 multiply-accumulate units
+* Mispredict latency: 11 cycles (penalty for recovering from wrong path)
+* Achievable IPC on real code: 2.5–3.5 (depends on memory stalls and branch frequency)
+
+**Key Insight:** OoO execution masks memory stalls by finding independent work. If no independent work ("in-order" scenario), OoO provides no benefit—this is why memory bandwidth matters as much as frequency.
+
+### 6.4 Branch Prediction
+
+A **branch** changes program flow based on a condition (`if`, `for`, `while`). Until the condition is computed (cycle 4+ in pipeline), the CPU doesn't know which instruction to fetch next.
+
+**Problem:** Fetching wrong path wastes the entire pipeline depth worth of instructions (15+ cycles for modern CPUs).
+
+**Solution:** **Branch Predictor** guesses the outcome before it's computed, allows fetching to continue. If guess is wrong, flush speculative work and restart.
+
+**Predictor Designs (Complexity vs. Accuracy Trade-off):**
+
+| Type | Accuracy | Latency | Method |
+|------|----------|---------|--------|
+| **Always-Taken** | 50% (on random) | 0 cycles | Assume taken |
+| **1-bit History** | 80% | 1 cycle | "Same as last time" |
+| **2-bit Saturating Counter** | 85% | 2 cycles | Hysteresis: need 2 mispredicts to flip |
+| **Branch History Table** | 92–94% | 2–3 cycles | Use recent branch pattern as index |
+| **Gshare** | 95% | 3 cycles | Blend global + local history |
+| **TAGE (Tagless Geometric)** | 97%+ | 4–5 cycles | Multiple geometric tables, championship-winning design (modern CPUs) |
+
+**Spectre/Meltdown Note:** These exploits abused the fact that modern CPUs speculatively execute past branch mispredicts, leaving traces in caches. Fixes: speculation barriers, microcode updates, CET (Control-flow Enforcement Technology).
+
+**Real-World Impact on AI Workloads:**
+
+* **Tight loops (common in kernels):** Branch is highly predictable (95%+ success) → minimal penalty
+* **Irregular graphs (graph neural nets):** Variable patterns → 90% accuracy → 1–2 cycle average penalty per branch
+* **Deep decision trees:** Less predictable → can approach 10–15% IPC loss
+
+**Key Insight:** Modern branch predictors exceed human intuition in accuracy (95%+). Focus optimization effort elsewhere unless branch-heavy code dominates (uncommon in compute kernels).
+
+### 6.5 Superscalar Execution & Instructions Per Cycle (IPC)
+
+**Superscalar** means executing multiple instructions per cycle. Achieved by:
+1. Wide fetch (grab multiple instructions per cycle)
+2. Independent execution units in parallel
+3. Out-of-order issuing to avoid blocking on hazards
+
+**IPC Calculation:**
+
+```
+IPC = Instructions Completed / CPU Cycles
+
+Peak IPC = width of front-end (Intel 8-wide fetch → max 8 IPC, but in practice 3–4)
+Actual IPC = depends on dependencies and memory stalls
+```
+
+**Real-World IPC Ranges:**
+
+| Scenario | Typical IPC | Reason |
+|----------|------------|--------|
+| **Memory-bound (cache misses)** | 0.8–1.2 | Waiting for main memory (100+ cycle latency) |
+| **Integer-heavy (loops)** | 1.5–2.0 | ALU saturation, branch penalty |
+| **Floating-point (no memory)** | 2.5–3.5 | Multiply-accumulate units can run in parallel |
+| **Perfect (all independent ops)** | 4–8 | Limited by fetch/decode width, not execution |
+
+**Why It Matters for AI:**
+
+Matrix multiply has **high arithmetic intensity** (many FLOPs per memory access) → compute-bound → achieves 3+ IPC → utilizes multiple execution units → saturates compute throughput.
+
+Image preprocessing (memory-bound) → achieves 1.0 IPC → CPUs waste execution units → GPUs better suited.
+
+**Key Insight:** IPC = (Frequency × Width × Efficiency). You can't exceed width; you can't approach width if dependencies are high. AI accelerators side-step the IPC problem by hardwiring the dataflow (systolic arrays, etc.).
+
+---
+
+## 7. Memory Hierarchy Deep Dive
+
+Modern CPUs trade memory **speed** for **size** and **cost**. The hierarchy from fastest-smallest to slowest-largest is: registers → L1 cache → L2 cache → L3 cache → main DRAM → SSD → HDD. Understanding this hierarchy is critical for optimization.
+
+### 7.1 Cache Hierarchy Design
+
+Caches are small, fast memories that hold copies of frequently-used data. Each level has different size, latency, and bandwidth.
+
+**Typical 3-Level Cache Hierarchy:**
+
+```
+┌──────────────────────────────────────────────┐
+│          CPU Die (1 socket)                  │
+│  ┌────────────────────────────────────────┐  │
+│  │  Core 0        ┌─────────────────────┐ │  │
+│  │   Registers    │  L1i Cache (32 KB)  │ │  │
+│  │   (256 bytes)  │  L1d Cache (32 KB)  │ │  │
+│  │                └─────────────────────┘ │  │
+│  │                │  L2 Cache (256 KB)  │ │  │
+│  │                └─────────────────────┘ │  │
+│  └────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────┐  │
+│  │  Core 1        Similar to Core 0      │  │
+│  │ ...                                    │  │
+│  └────────────────────────────────────────┘  │
+│                                              │
+│  ┌────────────────────────────────────────┐  │
+│  │  L3 Cache (2–32 MB, shared)            │  │
+│  │  (all cores access)                    │  │
+│  └────────────────────────────────────────┘  │
+└──────────────────────────────────────────────┘
+         │
+         │ System Interconnect (100s of GB/s)
+         ↓
+   ┌──────────────────┐
+   │  Main DRAM (8GB) │  (10–20 GB/s bandwidth)
+   └──────────────────┘
+```
+
+**Cache Specifications by Architecture:**
+
+| Level | Intel Xeon | AMD EPYC | Apple M4 Pro |
+|-------|-----------|----------|--------------|
+| **L1i** | 32 KB / core | 32 KB / core | 16 KB / core |
+| **L1d** | 32 KB / core | 32 KB / core | 16 KB / core |
+| **L1 Latency** | 4 cycles | 3 cycles | 3–4 cycles |
+| **L2** | 1 MB / core | 1 MB / core | 256 KB / core |
+| **L2 Latency** | 11 cycles | 10 cycles | 9 cycles |
+| **L3** | 36 MB / socket | 32 MB / socket | 12 MB / cluster |
+| **L3 Latency** | 42 cycles | 40 cycles | 35 cycles |
+| **Line Size** | 64 bytes | 64 bytes | 64 bytes |
+
+**Cache Line and Spatial Locality:**
+
+Cache operates at **64-byte granularity** (one L1→L2 transfer moves 64 bytes). Accessing adjacent bytes in the same cache line is free (already loaded). Algorithms that exploit spatial locality (sequential memory access, matrix tiling) benefit enormously.
+
+**Example: Sequential vs. Random Access**
+
+```c
+// Sequential (good spatial locality)
+for (int i = 0; i < N; i++) {
+    sum += array[i];  // Each address in different 64-byte line
+}                     // Cache line prefetch: 1 miss per 8 integers
+
+// Random (poor spatial locality)
+for (int i = 0; i < N; i++) {
+    sum += array[random() % N];  // Random addresses
+}                                 // Cache line prefetch useless: 1 miss per integer
+```
+
+**Result:** Sequential: ~5 GB/s throughput; Random: ~200 MB/s (25x slower!).
+
+### 7.2 Cache Coherency Protocols (MESI)
+
+**Problem:** With private L1/L2 caches per core, how does the system ensure that all cores see the same value for shared data?
+
+**Solution:** **Cache Coherency Protocol** (e.g., MESI, MOESI) ensures that whenever one core modifies data, other cores' caches are invalidated or updated.
+
+**MESI State Diagram:**
+
+```
+┌─────────────────────┐
+│ Modified (M)        │  Cache line recently written by this core
+│ This core's data is │  Other caches must be invalidated
+│ the only valid copy │
+└─────────────────────┘
+         ↕
+┌─────────────────────┐
+│ Exclusive (E)       │  Unmodified, only in this cache
+│ Only this core has  │  Can write without bus traffic
+│ the line (unmodified)
+└─────────────────────┘
+         ↕
+┌─────────────────────┐
+│ Shared (S)          │  Unmodified, in multiple caches
+│ Other cores may     │  Writing requires invalidating others
+│ also have it        │  (transition to M)
+└─────────────────────┘
+         ↕
+┌─────────────────────┐
+│ Invalid (I)         │  Not in this cache
+│ Must fetch from     │  Occupied cache lines can be evicted
+│ memory or another   │
+│ cache to use        │
+└─────────────────────┘
+```
+
+**Coherency Traffic Overhead:**
+
+Coherency messages (invalidations, acknowledgments) consume memory bus bandwidth. On a high-core-count system (16 cores all updating shared data), coherency can account for 30–50% of bus traffic.
+
+**Real-World Impact:**
+
+* **Fully Coherent (Apple M4 Max, Intel 12th gen+):** All cores see consistent memory → easier programming, higher coherency overhead
+* **NUMA (AMD EPYC):** Local DRAM fully coherent; remote DRAM access slower → requires `numactl` binding or performance penalty
+
+**Key Insight:** Coherency is automatic but not free. If all cores constantly modify the same cache line, coherency traffic dominates and speedup plateaus (Amdahl's Law effect).
+
+### 7.3 DRAM Design & Refresh
+
+While caches are speed-optimized SRAM, main memory uses **DRAM** (Dynamic RAM) for cost. DRAM cells leak charge and must be **refreshed** every 64ms.
+
+**DRAM Cell (1T-1C Design):**
+
+```
+Wordline ──────┬─────────────
+               │ Transistor
+               │   (access gate)
+               │
+              === Capacitor (1 bit: charged = 1, discharged = 0)
+               │
+Bitline ───────┴─────────────
+```
+
+**Access Timing:**
+* **Row Activate (tRCD):** ~15 ns (open row buffer)
+* **Column Select (tCAS):** ~12 ns (selected column output)
+* **Row Precharge (tRP):** ~15 ns (prepare for next different row)
+* **Refresh (tREF):** ~64 ms (every cell must be read and rewritten)
+
+**Addressing:**
+
+DRAM organized as 2D array (rows × columns):
+```
+Example: 8 GB DRAM, 64-bit bus, 8 ns cycle
+
+Bank 0 (4 GB):
+  Row address (16 bits): 64K rows
+  Column address (10 bits): 1K columns
+  = 64K × 1K × 8 bytes = 512 MB per bank
+  Usually 8–16 banks per channel
+```
+
+**Row Buffer Locality:**
+
+If consecutive accesses hit the same row, no precharge needed → **3x faster** (skip tRP). This is why sequential access is much faster than random.
+
+**Refresh Overhead:**
+
+Refreshing 1 device every 64 ms on an 8 Gb (1 GB) DRAM:
+* ~8,000 rows × 15ns/row ≈ 2% bandwidth overhead
+
+**Real: DDR5 Specifications**
+
+| Metric | DDR5-5600 | DDR5-6400 | DDR5-8000 |
+|--------|-----------|-----------|-----------|
+| **Transfer Rate** | 5600 MT/s | 6400 MT/s | 8000 MT/s |
+| **Bandwidth / Ch** | 44.8 GB/s | 51.2 GB/s | 64 GB/s |
+| **tCAS** | 42 ns | 37.5 ns | 30 ns |
+| **tRCD** | 38 ns | 34 ns | 30 ns |
+| **Latency (RAS-to-CAS)** | ~90 ns | ~75 ns | ~60 ns |
+| **Per Server (8ch)** | 358 GB/s | 410 GB/s | 512 GB/s |
+
+**Key Insight:** DRAM latency hasn't improved much (fundamental physics: charge/recharge cycles). Row buffer locality is your best friend for DRAM performance; sequential streaming beats random.
+
+**Common Pitfall:** Assuming all memory accesses cost the same. Row buffer hits 3x cache lines faster; random access to different rows costs 3x more.
+
+### 7.4 Multi-Socket Coherency & NUMA Latency
+
+Most servers and workstations use **multi-socket configurations** (2+ CPUs on same motherboard) to scale core count and memory capacity.
+
+**NUMA (Non-Uniform Memory Access):**
+
+Each socket has local DRAM. Accessing local DRAM is fast (~60 ns); accessing remote (another socket's DRAM) is slow (~120–180 ns) due to inter-socket protocol (QPI on Intel, Infinity Fabric on AMD).
+
+**Topology Example: Dual-Socket EPYC:**
+
+```
+┌─────────────────────────────────────┐
+│ EPYC Socket 0 (96 cores)            │
+│  ┌──────────────────────────────────┤
+│  │ Local DRAM: 6 TB / 12 channels   │  Latency: ~70 ns
+│  │ (192 GB DDR5-5600 / DRAM module  │
+│  └──────────────────────────────────┤
+└──────────────┬──────────────────────┘
+               │ Infinity Fabric
+               │ (128 GB/s bidirectional)
+┌──────────────┴──────────────────────┐
+│ EPYC Socket 1 (96 cores)            │
+│  ┌──────────────────────────────────┤
+│  │ Local DRAM: 6 TB / 12 channels   │  Latency: ~70 ns
+│  │ Remote access to Socket 0: ~150ns│  (2.1x slowdown)
+│  └──────────────────────────────────┤
+└─────────────────────────────────────┘
+```
+
+**Performance Impact:**
+
+Thread pinned to Socket 0 accessing local DRAM: 70 ns RTT
+
+```
+for (int i = 0; i < 1B; i++) {
+    remote_sum += remote_array[i];  // 2.1x loop time due to memory latency
+}
+```
+
+**Solutions:**
+
+1. **`numactl` Binding:** Pin threads + allocate memory to same socket
+   ```bash
+   numactl --cpunodebind=0 --membind=0 ./app
+   ```
+
+2. **NUMA-Aware Data Layout:** Partition data across NUMA domains:
+   ```c
+   // Thread 0 works on array[0..N/2]  → allocated on NUMA node 0
+   // Thread 1 works on array[N/2..N]  → allocated on NUMA node 1
+   ```
+
+3. **CXL Memory Pooling (emerging):** CXL 2.0 allows disaggregated memory attached over PCIe, partially hiding NUMA.
+
+**Key Insight:** NUMA-aware programming is tedious but necessary for workloads larger than single-socket capacity. AI training (multi-GPU, multi-node) must consider NUMA scaling.
+
+### 7.5 Unified Memory Architecture (Apple Silicon)
+
+Apple's approach **eliminates the NUMA problem** by integrating CPU, GPU, and Neural Engine into a single die with shared memory.
+
+**Traditional Discrete CPU+GPU:**
+
+```
+┌────────────┐              ┌─────────────┐
+│  Xeon CPU  │              │  RTX 3090   │
+│ 64 GB DDR5 │─────PCIe─────│  24 GB GDDR6│
+└────────────┘   (16 GB/s)  │  (mem copy) │
+                            └─────────────┘
+Bottleneck: PCIe × 16 transfers at 16 GB/s, latency ~5 µs per transfer
+```
+
+**Apple M4 Max Unified Memory:**
+
+```
+┌──────────────────────────────────────────┐
+│         M4 Max (Single Die)              │
+│ ┌───────────┬──────────────┬─────────┐  │
+│ │  CPU      │  GPU         │  NE     │  │
+│ │ 12 cores  │  40 cores    │ 16 core │  │
+│ │ (RISC SoC)│ (streaming   │ (Tensor)│  │
+│ └───────────┴──────────────┴─────────┘  │
+│          Shared 128 GB LPDDR5             │
+│          (120 GB/s bandwidth)             │
+│          (500 ns latency)                 │
+└──────────────────────────────────────────┘
+
+Zero PCIe overhead; GPU accesses CPU memory without copy
+CPU accesses GPU memory without copy
+```
+
+**Impact on Machine Learning:**
+
+* **Traditional (copy): CPU→GPU:**
+  * Prepare tensor on CPU (1 ms)
+  * Copy to GPU (0.5 ms for 8 GB)
+  * Execute on GPU (10 ms)
+  * Copy back (0.5 ms)
+  * Total: 12 ms; 83% GPU-time
+
+* **Unified Memory (M4 Max):**
+  * Execute on GPU (10 ms)
+  * No copy overhead
+  * Total: 10 ms; 100% GPU-time
+
+For small tensors (inference models): unified memory eliminates 1–3 ms of transfer latency per pass → significant for latency-critical applications (AR, robotics).
+
+**Key Insight:** Unified memory requires custom silicon integration (Apple's advantage). Discrete GPUs never achieve this; CXL attempts to approach it.
+
+---
+
+## 8. Performance Analysis & Measurement
+
+Optimizing code requires **measurement before optimization**. This section covers tools, methodologies, and mental models for identifying bottlenecks.
+
+### 8.1 Benchmarking Fundamentals
+
+**Microbenchmark:** Isolated measurement of one component (cache latency, memory bandwidth, branch misprediction cost)
+
+**Application Benchmark:** Real workload running end-to-end
+
+**Reproducibility Checklist:**
+
+- [ ] Disable CPU turbo boost (`echo 1 | tee /sys/devices/system/cpu/intel_pstate/no_turbo`)
+- [ ] Pin threads to specific cores (`taskset -c 0-7 ./program`)
+- [ ] Warm cache by running once before measuring
+- [ ] Run multiple iterations; report median/stddev
+- [ ] Close other processes; silence background noise
+
+### 8.2 Roofline Model
+
+The **Roofline Model** is a visual way to identify whether code is **compute-bound** or **memory-bound**.
+
+**Axes:**
+
+* Horizontal (X): **Arithmetic Intensity** = FLOPs per byte loaded from DRAM
+* Vertical (Y): **Performance** = GFLOPs achieved
+
+**Two Constraints:**
+
+1. **Compute Roofline:** `Performance = Peak FLOPs` (doesn't scale with intensity)
+   * Example: 3 TFLOPS (Orin Nano GPU) → horizontal line at Y=3
+
+2. **Memory Roofline:** `Performance = Memory Bandwidth × Arithmetic Intensity`
+   * Example: 50 GB/s × Arithmetic Intensity = Memory limited throughput
+   * 50 GB/s × 1 FLOP/byte = 50 GFLOPS max if intensity=1
+
+**Visual:**
+
+```
+Performance (GFLOPS)
+      ↑
+  3.0 ├────┬─────────────────────── Compute Roofline (Peak TFLOPS)
+      │    │\
+  1.0 ├────┤ \  Memory Roofline
+      │    │  \   (Slope = Bandwidth)
+  0.5 ├────┤   \___
+      │    │       \___
+      └────┴─────────────\──────→ Arithmetic Intensity
+           0      1      4        (FLOPs per byte)
+
+Interpretation:
+  * Intensity < 1: Memory-bound (dot below roofline)
+  * Intensity > 1: Approaches compute roofline; ideally at compute roofline
+```
+
+**Case Study: Matrix Multiply on Orin Nano**
+
+Orin Nano GPU:
+* Peak: 1.5 TFLOPS
+* Memory: 51.2 GB/s (LPDDR5x, 4-channel)
+
+For N×N matrix multiply:
+* FLOPs: 2×N³ (multiply + add)
+* Memory: 3×N² bytes loaded (A, B, + partial C)
+* Arithmetic Intensity = 2N³ / 3N² = 2N/3
+
+For N=512: Intensity = 341 FLOPS/byte → Should reach 1.5 TFLOPS (compute-bound ✓)
+For N=64: Intensity = 43 FLOPS/byte → Roofline limits to ~2.1 GFLOPS (memory-bound)
+For N=16: Intensity = 11 FLOPS/byte → Roofline limits to ~0.55 GFLOPS
+
+**Optimization Strategy:**
+* Large N: Compute-bound; optimize kernel
+* Small N: Memory-bound; batch, fuse operations
+
+**Key Insight:** Roofline explains 80% of performance problems. Measure roofline once per hardware platform; use it to predict scalability before optimizing.
+
+### 8.3 Amdahl's Law & Parallel Scaling
+
+Not all code parallelizes. **Amdahl's Law** predicts the maximum speedup from parallel execution.
+
+**Formula:**
+
+```
+Speedup = 1 / (1 - P + P/S)
+
+P = fraction of code that is parallel (0 to 1)
+S = speedup of parallel portion (number of cores)
+```
+
+**Examples (2% Serial, 98% Parallel):**
+
+| Cores | Speedup | % Peak |
+|-------|---------|--------|
+| 1 | 1.0 | 100% |
+| 4 | 3.5 | 87% |
+| 8 | 6.2 | 78% |
+| 16 | 10.9 | 68% |
+| 32 | 18.5 | 58% |
+
+The serial 2% (a few synchronization barriers, I/O operations) becomes the bottleneck as core count increases.
+
+**For AI Workloads:**
+
+* **Data Parallelism (batching):** Near-linear scaling if batch processing doesn't require global synchronization
+* **Model Parallelism (split model across GPUs):** Requires all-reduce communications → lower scaling efficiency due to synchronization
+* **Pipeline Parallelism (each GPU stage N):** Scales linearly if stages are balanced
+
+**Key Insight:** Multi-GPU scaling rarely exceeds 80% efficiency due to synchronization. Doubling GPUs → expect 1.6x–1.8x throughput (not 2x).
+
+### 8.4 Profiling Tools & Workflow
+
+**CPU Profiling (Linux):**
+
+```bash
+# Record CPU samples
+sudo perf record -F 99 -g ./myprogram
+
+# Analyze: which functions consume time
+perf report
+
+# Flamegraph visualization
+perf script | ~/prof/flamegraph/stackcollapse-perf.pl | flamegraph.pl > profile.svg
+```
+
+**GPU Profiling (NVIDIA, Jetson):**
+
+```bash
+# Profile CUDA kernels, memory transfers
+nsys profile -o profile.nsys-rep ./myprogram
+
+# Wait for completion, open in UI
+nsys-ui profile.nsys-rep
+
+# Output: Timeline of kernels, memory transfers, CPU-GPU sync points
+```
+
+**Memory Profiling (Cache Behavior):**
+
+```bash
+# Measure L1/L2/L3 misses, memory traffic
+valgrind --tool=cachegrind ./myprogram
+
+# Generates cachegrind.out.PID with detailed cache stats
+cg_annotate cachegrind.out.PID | head -50
+```
+
+**Custom Microbenchmarks:**
+
+```c
+// Measure FLOPS
+for (int i = 0; i < ITERATIONS; i++) {
+    sum += a[i] * b[i];  // 1 FLOP per iteration
+}
+double gflops = (double)ITERATIONS / elapsed_seconds / 1e9;
+
+// Measure Memory Bandwidth
+for (int i = 0; i < N; i++) {
+    dst[i] = src[i];  // Load + Store = 16 bytes
+}
+double gb_s = (double)(2 * N * sizeof(float)) / elapsed_seconds / 1e9;
+```
+
+### 8.5 Case Studies: Bottleneck Analysis
+
+**Case 1: Vector Dot Product (Memory-Bound)**
+
+```python
+# Python pseudocode
+result = 0
+for i in range(N):
+    result += a[i] * b[i]  # 1 Load + 1 Load + 1 FLOP + 1 Store
+```
+
+* Arithmetic Intensity: 1 FLOP / 16 bytes loaded (2 loads) = 0.0625
+* Roofline (assume 500 GB/s CPU memory): 500 × 0.0625 = 31 GFLOPS
+* Actual Performance: ~30 GFLOPS
+* Conclusion: **Memory-bound** (can't improve with wider vectors; fix with algorithmic changes like blocked GEMM)
+
+**Case 2: Matrix Multiply (Compute-Bound if Blocked)**
+
+```c
+// Naive (N³ memops, poor cache reuse)
+for (int i = 0; i < N; i++)
+    for (int j = 0; j < N; j++)
+        for (int k = 0; k < N; k++)
+            C[i][j] += A[i][k] * B[k][j];
+
+// Blocked (fits small matrices in L3 cache)
+// Tile size: 64×64 (if B_tile fits in L3)
+// Intensity: (2 × 64³) / (3 × 64²) = 85 FLOPS/byte → compute-bound
+```
+
+* Naive: ~50 GFLOPS (memory-bound, intensity ≈ 0.25)
+* Blocked: 450 GFLOPS (compute-bound, intensity ≈ 85)
+* **9x improvement** from cache locality, not SIMD or clock speed
+
+**Case 3: Sparse Matrix-Vector Multiply (Unpredictable Memory)**
+
+```c
+// A is sparse (CSR format), v is dense
+for (int i = 0; i < M; i++) {
+    y[i] = 0;
+    for (int j = row_ptr[i]; j < row_ptr[i+1]; j++) {
+        y[i] += A_val[j] * v[col_idx[j]];  // v[] is random access
+    }
+}
+```
+
+* Random accesses to v[] → no prefetch, cache misses
+* Memory bandwidth utilization: ~10% (stalls waiting for L1 on every 10th byte loaded)
+* Performance: 10–50 GFLOPS (despite 200+ GFLOPS peak)
+* **Fix:** Reorder matrix to improve locality, use sparse GPU kernels, decompress if sparsity is >90%
+
+**Bottleneck Diagnosis Table:**
+
+| Symptom | Root Cause | Fix |
+|---------|-----------|-----|
+| Using <20% of peak FLOPS | Memory-bound | Batch, increase arithmetic intensity |
+| High cache miss rate L3 | Poor locality | Tile/block, prefetch |
+| Low IPC (<1.5) | Dependencies | Parallelize independent ops |
+| Branch mispredict % high | Irregular control | Branchless code, predication |
+| Many context switches | Contention | Pin threads, reduce sharing |
+
+**Key Insight:** The roofline model explains 80% of problems; the other 20% require profiling-based diagnosis.
+
+---
+
+## 9. Hands-On Labs & Projects
+
+Understanding architecture in the abstract is useful; validating theory experimentally is essential. This section specifies labs that directly test the concepts from Sections 6–8.
+
+### 9.1 Lab 1: Cache Behavior Analysis (6–8 hours)
+
+**Objective:** Understand how cache size, line size, and associativity affect real performance.
+
+**Tools:** `valgrind --tool=cachegrind` (open source, accurate L1/L2/L3 simulation)
+
+**Setup:**
+
+```bash
+# Install valgrind (Linux)
+sudo apt-get install valgrind
+
+# Write test program in C
+cat > cache_test.c << 'EOF'
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+    int size = atoi(argv[1]);  // Array size in bytes
+    int stride = atoi(argv[2]); // Access stride
+
+    int *array = malloc(size);
+    int sum = 0;
+    clock_t start = clock();
+
+    for (int i = 0; i < size / sizeof(int); i += stride / sizeof(int)) {
+        sum += array[i];
+    }
+
+    double elapsed = (double)(clock() - start) / CLOCKS_PER_SEC;
+    printf("Size: %d, Stride: %d, Sum: %d, Time: %.3f\n", size, stride, sum, elapsed);
+    free(array);
+    return 0;
+}
+EOF
+
+gcc -O2 -o cache_test cache_test.c
+```
+
+**Tasks:**
+
+1. **Vary array size, measure cache misses:**
+   ```bash
+   for size in 8192 16384 32768 65536 262144 1048576 4194304; do
+       valgrind --tool=cachegrind ./cache_test $size 4 2>&1 | grep "L1d MR\|L2 MR\|L3 MR"
+   done
+   ```
+
+   Expected output:
+   ```
+   Size 32K (L1): Low miss rate (~1%)
+   Size 256K (L2): Low miss rate (~2%)
+   Size 2M (L3): Mid miss rate (~5%)
+   Size 4M (beyond L3): High miss rate (~50%)
+   ```
+
+2. **Measure stride impact:**
+   ```bash
+   # Sequential (stride = 1 integer = 4 bytes)
+   valgrind --tool=cachegrind ./cache_test 1048576 4
+
+   # Strided (stride = 64 bytes, skips within cache line)
+   valgrind --tool=cachegrind ./cache_test 1048576 64
+
+   # Very strided (stride = 256 bytes, multiple cache lines)
+   valgrind --tool=cachegrind ./cache_test 1048576 256
+   ```
+
+   Expected: Sequential prefetch works; stride >64 bytes defeats prefetch.
+
+3. **Construct L1/L2/L3 miss rate matrix:**
+
+   | Array Size | L1 MR | L2 MR | L3 MR |
+   |-----------|-------|-------|-------|
+   | 8 KB | <1% | <1% | <1% |
+   | 32 KB | 1% | <1% | <1% |
+   | 256 KB | 30% | 2% | <1% |
+   | 1 MB | 40% | 20% | 1% |
+   | 4 MB | 45% | 35% | 10% |
+   | 16 MB | 47% | 40% | 25% |
+
+**Success Metric:** Identify L1/L2/L3 cache size boundaries ±10% (should be 32KB/256KB/8MB on typical system).
+
+**Deliverables:**
+* C program with variable-size array access
+* Valgrind output showing L1/L2/L3 miss rates
+* Analysis: Where does miss rate inflect (cache boundary)?
+
+### 9.2 Lab 2: Branch Predictor Simulation (8–10 hours)
+
+**Objective:** Implement a branch predictor and measure real branch traces.
+
+**Tools:** Linux `perf` (branch tracing), Python (simulator), GCC
+
+**Setup:**
+
+```bash
+# Collect branch trace on real code
+cat > branch_test.c << 'EOF'
+#include <stdio.h>
+#include <stdlib.h>
+
+int binary_search(int *arr, int n, int target) {
+    int low = 0, high = n - 1;
+    while (low <= high) {  // BRANCH: loop condition
+        int mid = (low + high) / 2;
+        if (arr[mid] == target)  // BRANCH: equality check
+            return mid;
+        else if (arr[mid] < target)  // BRANCH: less-than check
+            low = mid + 1;
+        else
+            high = mid - 1;
+    }
+    return -1;
+}
+
+int main() {
+    int arr[1000];
+    for (int i = 0; i < 1000; i++) arr[i] = i;
+
+    long sum = 0;
+    for (int i = 0; i < 100000; i++) {
+        sum += binary_search(arr, 1000, rand() % 1000);
+    }
+    printf("Sum: %ld\n", sum);
+    return 0;
+}
+EOF
+
+gcc -O2 -o branch_test branch_test.c
+```
+
+**Tasks:**
+
+1. **Collect branch trace:**
+   ```bash
+   perf record -b ./branch_test  # -b = branch tracing
+   perf script -F brstack > branches.txt
+   ```
+
+2. **Implement predictors in Python:**
+   ```python
+   # 2-bit saturating counter predictor
+   class TwoBitPredictor:
+       def __init__(self):
+           self.counters = {}  # PC -> counter (0,1,2,3)
+
+       def predict(self, pc):
+           counter = self.counters.get(pc, 2)  # Default: weakly taken
+           return counter >= 2  # True if taken
+
+       def update(self, pc, taken):
+           counter = self.counters.get(pc, 2)
+           if taken:
+               counter = min(3, counter + 1)
+           else:
+               counter = max(0, counter - 1)
+           self.counters[pc] = counter
+
+   # Parse branch trace and evaluate
+   correct = 0
+   total = 0
+   for line in branches:
+       pc, actual_taken = parse_branch(line)
+       predicted = predictor.predict(pc)
+       if predicted == actual_taken:
+           correct += 1
+       predictor.update(pc, actual_taken)
+       total += 1
+
+   accuracy = correct / total
+   print(f"2-bit Predictor: {accuracy:.1%} accuracy")
+   ```
+
+3. **Try multiple predictor models:**
+   - Always-taken
+   - 1-bit history
+   - 2-bit saturating counter
+   - Bimodal (16K entries)
+   - Gshare (8K entries, use global history)
+
+**Success Metric:** Achieve >95% accuracy on conditional branches (realistic), demonstrate how accuracy improves with history.
+
+**Deliverables:**
+* Branch trace from perf
+* Python simulator with 3+ predictor models
+* Accuracy comparison table
+* Analysis: Which prediction scheme works best for binary search?
+
+### 9.3 Lab 3: Memory Bandwidth Measurement (4–6 hours)
+
+**Objective:** Measure actual memory bandwidth for sequential vs. random access.
+
+**Tools:** Custom C program, `taskset` (CPU affinity)
+
+**Setup:**
+
+```c
+#include <stdio.h>
+#include <time.h>
+#include <string.h>
+#include <stdlib.h>
+
+#define MB (1024 * 1024)
+#define ITERATIONS 100
+
+double measure_bandwidth(int *data, int size, int stride, int iterations) {
+    int sum = 0;
+    struct timespec start, end;
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (int iter = 0; iter < iterations; iter++) {
+        for (int i = 0; i < size / sizeof(int); i += stride / sizeof(int)) {
+            sum += data[i];
+        }
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    double elapsed = (end.tv_sec - start.tv_sec) +
+                     (end.tv_nsec - start.tv_nsec) / 1e9;
+    double bytes = (long long)iterations * size;
+    return bytes / elapsed / 1e9;  // GB/s
+}
+
+int main() {
+    int *data = malloc(256 * MB);
+    memset(data, 0, 256 * MB);
+
+    printf("Sequential Read Bandwidth:\n");
+    for (int mb = 1; mb <= 256; mb *= 2) {
+        double bw = measure_bandwidth(data, mb * MB, 4, ITERATIONS);
+        printf("%d MB: %.1f GB/s\n", mb, bw);
+    }
+
+    printf("\nRandom Read Bandwidth:\n");
+    for (int mb = 1; mb <= 256; mb *= 2) {
+        double bw = measure_bandwidth(data, mb * MB, 256, ITERATIONS);
+        printf("%d MB: %.1f GB/s\n", mb, bw);
+    }
+
+    free(data);
+    return 0;
+}
+```
+
+**Tasks:**
+
+1. **Compile and run:**
+   ```bash
+   gcc -O3 -o bandwidth bandwidth.c
+   taskset -c 0 ./bandwidth  # Pin to core 0
+   ```
+
+2. **Measure scaling:**
+   * Sequential read (stride = 4 bytes): Should reach peak bandwidth (~50 GB/s on DDR5-5600)
+   * Stride = 64 bytes: Should still be close to peak (prefetcher works)
+   * Stride = 256 bytes: Should drop significantly (~20–30% of peak)
+   * Random (stride = random): Should drop to membar ~10% of peak
+
+**Success Metric:** Demonstrate 5–10x bandwidth difference between sequential and random access.
+
+**Deliverables:**
+* C program with bandwidth measurement
+* Output table: size vs. stride vs. achieved bandwidth
+* Graph: sequential vs. random bandwidth
+
+### 9.4 Lab 4: Roofline Analysis of Real Kernel (8–10 hours)
+
+**Objective:** Profile a real algorithm (matrix multiply), measure roofline, validate theory.
+
+**Tools:** CUDA or OpenMP, custom timing + FLOPs counter
+
+**Setup:**
+
+```c
+// Matrix multiply in C (CPU version)
+void matmul(float *C, float *A, float *B, int N) {
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            float sum = 0.0f;
+            for (int k = 0; k < N; k++) {
+                sum += A[i*N + k] * B[k*N + j];
+            }
+            C[i*N + j] = sum;
+        }
+    }
+}
+
+// Measure FLOPs + bandwidth
+int main() {
+    for (int N = 64; N <= 1024; N *= 2) {
+        float *A = malloc(N*N*sizeof(float));
+        float *B = malloc(N*N*sizeof(float));
+        float *C = malloc(N*N*sizeof(float));
+        // Initialize...
+
+        struct timespec start, end;
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        matmul(C, A, B, N);
+        clock_gettime(CLOCK_MONOTONIC, &end);
+
+        double elapsed = (end.tv_sec - start.tv_sec) +
+                        (end.tv_nsec - start.tv_nsec) / 1e9;
+        double flops = 2LL * N * N * N;  // Multiply + add
+        double gflops = flops / elapsed / 1e9;
+
+        // Roofline metrics
+        double bytes_loaded = 3LL * N * N * sizeof(float);  // A, B, C
+        double intensity = flops / bytes_loaded;
+
+        printf("N=%d: %.1f GFLOPS, Intensity=%.1f FLOP/byte\n", N, gflops, intensity);
+
+        free(A); free(B); free(C);
+    }
+}
+```
+
+**Tasks:**
+
+1. **Measure for different N:**
+   ```
+   N=64:   10 GFLOPS, Intensity = 5.3 FLOP/byte
+   N=128:  25 GFLOPS, Intensity = 10.7 FLOP/byte
+   N=256:  80 GFLOPS, Intensity = 21.3 FLOP/byte
+   N=512:  150 GFLOPS, Intensity = 42.7 FLOP/byte
+   N=1024: 200 GFLOPS, Intensity = 85.3 FLOP/byte
+   ```
+
+2. **Plot on roofline:**
+   * X-axis: Arithmetic Intensity
+   * Y-axis: GFLOPS
+   * Draw roofline: Compute roofline (peak GFLOPS) + Memory roofline (bandwidth × intensity)
+   * Plot measurements as points
+
+3. **Interpret:**
+   * Lower N points should lie below memory roofline (memory-bound)
+   * Higher N points should approach compute roofline (compute-bound)
+
+**Success Metric:** Observe transition from memory-bound to compute-bound as N increases; validate roofline prediction within ±10%.
+
+**Deliverables:**
+* C code measuring matrix multiply (N=64 to 1024)
+* Plot: measured GFLOPS + roofline model
+* Analysis: At what N does code become compute-bound?
+
+### 9.5 Lab 5: NUMA & Multi-Socket Impact (Optional, 6–8 hours)
+
+**Objective:** Measure performance on local vs. remote DRAM in multi-socket system.
+
+**Tools:** `numactl`, `perf`, Linux multi-socket system (Threadripper, Xeon, EPYC)
+
+**Setup:**
+
+```bash
+# Check NUMA topology
+numactl --hardware
+
+# Example output:
+# available: 2 nodes (0-1)
+# node 0 cpus: 0-31
+# node 0 memory: 96128 MB
+# node 1 cpus: 32-63
+# node 1 memory: 96128 MB
+```
+
+**Tasks:**
+
+1. **Measure local access:**
+   ```bash
+   # Pin to socket 0, allocate on socket 0
+   numactl --cpunodebind=0 --membind=0 ./bandwidth
+   # Record output: local_bandwidth
+   ```
+
+2. **Measure remote access:**
+   ```bash
+   # Pin to socket 0, allocate on socket 1 (remote)
+   numactl --cpunodebind=0 --membind=1 ./bandwidth
+   # Record output: remote_bandwidth
+
+   # Calculate penalty: local_bandwidth / remote_bandwidth
+   ```
+
+3. **Measure latency impact:**
+   ```c
+   // Address-dependent chain: each load depends on previous
+   int sum = 0;
+   for (int i = 0; i < N; i++) {
+       idx = data[idx];  // Cannot pipeline; depends on previous
+   }
+
+   // Measure time: remote ~150 ns/iteration, local ~70 ns
+   ```
+
+**Success Metric:** Demonstrate 2–3x latency penalty for remote DRAM, significant bandwidth reduction.
+
+**Deliverables:**
+* NUMA topology output
+* Local vs. remote bandwidth table
+* Latency measurement (address-dependent chain)
+* Analysis: NUMA impact on matrix multiply with poor thread/memory binding
+
+---
+
+## 10. Form Factor Deep Dives
+
+In practice, computers come in different **form factors** optimized for different use cases. Understanding form factor constraints shapes architecture decisions.
 
 ### Laptops (2025–2026)
 
@@ -368,7 +1468,7 @@ The ARM PC ecosystem has matured dramatically in 2024–2026, shifting from a ni
 
 ---
 
-## 7. Motherboard & Platform
+## 11. Motherboard & Platform
 
 ### Desktop Platforms
 
@@ -394,7 +1494,7 @@ The ARM PC ecosystem has matured dramatically in 2024–2026, shifting from a ni
 
 ---
 
-## 8. Power Supply & Thermal Management
+## 12. Power Supply & Thermal Management
 
 ### Power Supply
 
@@ -413,7 +1513,7 @@ The ARM PC ecosystem has matured dramatically in 2024–2026, shifting from a ni
 
 ---
 
-## 9. CES 2026 Key Announcements Summary
+## 13. CES 2026 Key Announcements Summary
 
 | Category | Notable Announcements |
 |---|---|
