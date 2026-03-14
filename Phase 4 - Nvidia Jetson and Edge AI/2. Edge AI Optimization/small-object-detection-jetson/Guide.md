@@ -191,6 +191,7 @@ These are established improvements for small objects in aerial/drone imagery; us
 | **SPD (space-to-depth)** | Replace stride-2 conv/pool with SPD modules to retain information for small objects (e.g. SPD-YOLOv8). |
 | **Anchor / loss tuning** | Adjust anchor scales for small boxes; use losses that help small objects (e.g. Wise-IoU, EfficiCIoU, MPDIoU). |
 | **Lightweight attention** | Lightweight attention (e.g. in LPAE-YOLOv8) for better feature weighting without blowing up latency. |
+| **Tiling (slicing / tiled inference)** | Split high-resolution images into overlapping patches; run detection per tile and merge results so small objects keep enough pixels. |
 
 The following subsections explain each technique and how to apply it to reach the project goal.
 
@@ -321,6 +322,53 @@ YOLOv8 is **anchor-free** (uses anchor-free regression heads). “Anchor tuning�
 
 ---
 
+#### 7. Tiling (slicing / tiled inference)
+
+**What it is:**  
+**Tiling** (also called **slicing** or **sliding-window inference**) divides high-resolution images into smaller, often **overlapping** patches (tiles). The detector runs on each tile at native model input size (e.g. 640×640), so small objects in the full image are seen at a larger effective scale inside the tile. At inference, detections from all tiles are **merged** and transformed back to the original image coordinates (with NMS across overlapping regions to remove duplicates).
+
+**Why it helps small objects:**  
+- In a single pass at 640×640, a 4K frame is heavily downsampled and tiny objects can shrink to a handful of pixels or less.  
+- By tiling (e.g. 640×640 windows with overlap), each tile is at full model resolution; a small object that would be 2×2 pixels in a downsampled full image may be 10×10 or more inside one tile, making it detectable.  
+- Overlap ensures objects near tile boundaries are not cut in half and missed; they appear fully in at least one tile.
+
+**Key aspects:**
+
+| Aspect | Recommendation |
+|--------|----------------|
+| **Overlapping tiles** | Use overlap (e.g. **25%** or 50%) so objects at tile edges are fully contained in at least one tile. Reduces boundary cut-off and missed detections. |
+| **Inference flow** | Run the model on each tile → get boxes in tile coordinates → map boxes to full-image coordinates → run NMS over all detections to merge duplicates from overlapping tiles. |
+| **Tools** | **SAHI** (Slicing Aided Hyper Inference) is a popular library for tiled inference with YOLO and other detectors. Custom scripts can also slice images, run inference, and merge. |
+| **Performance** | Tiling improves detection accuracy on high-res imagery but **increases compute and memory**: many tiles per image mean many forward passes. On Jetson, balance tile size, overlap, and throughput. |
+
+**When to use:**  
+Tiling is especially useful for **aerial imagery**, **drone footage**, and **medical imaging**, where images are large (e.g. 1920×1080, 4K) and small details are critical. Use it when single-frame downsampling would make your targets too small for the model.
+
+**How to achieve it:**
+
+- **SAHI (Slicing Aided Hyper Inference):**  
+  Install `sahi`, then use it to slice the image (or video frame), run your YOLO (or other) model on each slice, and merge results. Supports overlap ratio, slice size, and NMS after merge.
+
+  ```bash
+  pip install sahi
+  ```
+
+  Example pattern (concept): define slice dimensions and overlap, run `get_sliced_prediction()` (or equivalent) with your model and image; SAHI returns merged detections in original image coordinates.
+
+- **Custom pipeline:**  
+  1. Split image into tiles (e.g. 640×640, stride = 640×(1 − overlap)).  
+  2. Run detector on each tile; collect boxes.  
+  3. Offset box coordinates by tile top-left.  
+  4. Run NMS on the combined list (IoU threshold e.g. 0.5) to drop duplicates from overlapping tiles.
+
+- **Training:**  
+  You can also **train** on tiles (e.g. crop high-res images into overlapping patches and annotate or map labels to tiles). That way the model always sees “zoomed” content; at inference, use the same tiling strategy.
+
+**Jetson note:**  
+Tiling multiplies inference count per frame. For real-time video, use fewer/smaller tiles or lower overlap if needed, or reserve tiling for key frames / offline processing when accuracy matters more than latency.
+
+---
+
 ### Suggested application order to achieve the goal
 
 1. **Quick wins (no model change):**  
@@ -334,6 +382,9 @@ YOLOv8 is **anchor-free** (uses anchor-free regression heads). “Anchor tuning�
 
 4. **Jetson deployment:**  
    Prefer **YOLOv8n or YOLOv8s** (or equivalent variant) + **FP16 or INT8** TensorRT. Use **832** as a compromise resolution if 960 is too slow; document the resolution vs accuracy vs latency tradeoff.
+
+5. **Very high-res or 4K drone footage:**  
+   Use **tiling** (e.g. **SAHI** or custom slicing): overlapping tiles (e.g. 25% overlap), run detector per tile, merge and NMS in full-image coordinates. Trade off tile count/overlap vs real-time throughput on Jetson.
 
 ### Data Augmentation (important for small objects)
 
@@ -510,6 +561,7 @@ Always re-check mAP (and optional per-class precision/recall) on the val set aft
 - [ ] Integrate engine into DeepStream primary GIE; set batch size, input size, and labels.
 - [ ] Tune confidence and NMS in DeepStream config; add tracking and optional secondary classification if needed.
 - [ ] Run full pipeline (video ingest → detection → optional classification → streaming/recording); measure latency and quality; document resolution vs speed tradeoffs.
+- [ ] If using high-res or 4K input: consider **tiling** (e.g. SAHI) with overlapping tiles; merge detections and run NMS; tune tile size/overlap vs throughput on Jetson.
 
 ---
 
@@ -528,6 +580,14 @@ Always re-check mAP (and optional per-class precision/recall) on the val set aft
 - **SPD-YOLOv8** — SPD-Conv, MPDIoU; improved mAP on VisDrone.
 - **LPAE-YOLOv8** — lightweight; LSE-Head, small-object layer, adaptive attention; VisDrone benchmarks.
 - **RLRD-YOLO** — improved YOLOv8 for UAV small-object detection.
+
+### Tiling / Slicing (high-resolution and small objects)
+
+- **SAHI (Slicing Aided Hyper Inference)** — [GitHub](https://github.com/obss/sahi): run detection on sliced/overlapping tiles and merge results; supports YOLO and other backends.
+- **Microsoft Learn** — overlapping tiles (e.g. 25% overlap) so objects at boundaries are fully captured.
+- **“How to Use SAHI Tiling Windows to Detect Small Objects”** (Nicolai Nielsen, YouTube) — practical tiled inference with YOLO.
+- **“Improving Small Object Detection in 4K Drone Footage Using Tiling”** (Hailo Community) — tiling for aerial/drone and edge deployment.
+- **CVF / IEEE** — tiling for small object detection on high-resolution images; tradeoff between accuracy and compute.
 
 ### Deployment
 
