@@ -364,7 +364,7 @@ For learners following the **AI Hardware Engineer Roadmap**, here is how CMU’s
 | **Phase 4: ROS2** | 16-280 (ROS), 16-220 (Robot Building) | ROS, embedded systems, robot software |
 | **Phase 5: Robotics** | 16-220, 16-280, 16-384, 16-450, 16-474 | Full robotics stack: mechanics, control, planning |
 | **Phase 5: Autonomous Driving** | 16-663 (F1Tenth), 16-664 (Self-Driving Cars) | Perception, planning, control for autonomy |
-| **Phase 5: High Speed & Real Time Edge AI** | 07-280 (Neural Nets), 16-385 (Vision), Jetson/Holoscan | Real-time edge inference, efficient models, NVIDIA Jetson Holoscan streaming |
+| **Phase 5: Real Time Edge AI with Nvidia Jetson** | 07-280 (Neural Nets), 16-385 (Vision), Jetson/Holoscan | Real-time edge inference, efficient models, NVIDIA Jetson Holoscan streaming |
 | **Phase 5: AI Chip Design** | 07-280 (optimization, GPU/parallel), 16-211 (math) | Optimization, linear algebra, parallel compute |
 
 ### Suggested Self-Study Order (CMU-Inspired)

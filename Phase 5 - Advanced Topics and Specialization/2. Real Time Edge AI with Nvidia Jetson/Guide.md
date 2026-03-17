@@ -1,4 +1,4 @@
-**3. High Speed & Real Time Edge AI (12–18 months)**
+**2. Real Time Edge AI with Nvidia Jetson (12–18 months)**
 
 **Prerequisite:** Phases 1–2 (digital design, embedded software/Linux) and Phase 4 (Jetson, TensorRT, sensor fusion). This track deepens your ability to design, optimize, and deploy ML models on resource-constrained edge hardware — from microcontrollers to mobile SoCs to custom accelerators — with emphasis on low-latency, real-time streaming pipelines.
 

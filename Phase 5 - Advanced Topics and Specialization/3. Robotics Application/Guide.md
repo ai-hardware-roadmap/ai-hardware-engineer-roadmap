@@ -1,4 +1,4 @@
-**2. Robotics Application (12-18 months)**
+**3. Robotics Application (12-18 months)**
 
 **1. Robot Operating System (ROS/ROS 2)**
 
