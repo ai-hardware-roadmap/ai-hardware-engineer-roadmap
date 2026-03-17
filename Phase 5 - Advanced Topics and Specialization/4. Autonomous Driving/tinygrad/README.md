@@ -9,10 +9,7 @@ pip install tinygrad numpy
 python3 projects/00_intro.py
 ```
 
-Uses `../tinygrad-source/` as a git submodule. After cloning:
-```bash
-git submodule update --init
-```
+For upstream source code, clone [tinygrad](https://github.com/tinygrad/tinygrad).
 
 ## Structure
 

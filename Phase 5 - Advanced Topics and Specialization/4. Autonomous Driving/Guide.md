@@ -26,7 +26,7 @@ This phase uses **Openpilot** (comma.ai) as a reference implementation for ADASâ
 **Resources:**
 
 * **Openpilot GitHub:** https://github.com/commaai/openpilot â€” Source code, documentation, and community.
-* **tinygrad:** Openpilot uses tinygrad for neural network inference. See [tinygrad](tinygrad/) (learning materials) and [tinygrad-source](tinygrad-source/) (source code).
+* **tinygrad:** Openpilot uses tinygrad for neural network inference. See [tinygrad](tinygrad/) (learning materials). Source: [tinygrad on GitHub](https://github.com/tinygrad/tinygrad).
 * **comma.ai Blog and Videos:** Technical deep dives and development updates.
 * **"Openpilot Development Guide" (community docs):** Fork documentation and development setup.
 

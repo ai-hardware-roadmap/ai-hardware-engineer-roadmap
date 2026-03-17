@@ -1,6 +1,6 @@
-**3. Edge AI & Embedded ML Engineering (12–18 months)**
+**3. High Speed & Real Time Edge AI (12–18 months)**
 
-**Prerequisite:** Phases 1–2 (digital design, embedded software/Linux) and Phase 4 (Jetson, TensorRT, sensor fusion). This track deepens your ability to design, optimize, and deploy ML models on resource-constrained edge hardware — from microcontrollers to mobile SoCs to custom accelerators.
+**Prerequisite:** Phases 1–2 (digital design, embedded software/Linux) and Phase 4 (Jetson, TensorRT, sensor fusion). This track deepens your ability to design, optimize, and deploy ML models on resource-constrained edge hardware — from microcontrollers to mobile SoCs to custom accelerators — with emphasis on low-latency, real-time streaming pipelines.
 
 ---
 
@@ -184,3 +184,39 @@
 * Design a battery-powered wildlife monitoring camera with duty-cycled inference; target 30-day battery life.
 * Benchmark the same model across Jetson Orin Nano, Coral Edge TPU, Hailo-8, and Raspberry Pi 5 + AI HAT; compare latency, power, cost.
 * Build a heterogeneous pipeline: preprocessing on CPU, detection on GPU, classification on DLA, post-processing on CPU.
+
+---
+
+**6. NVIDIA Jetson Holoscan for Real-Time Streaming**
+
+* **Holoscan SDK Overview:**
+    * Domain-agnostic, multimodal AI sensor processing platform for **real-time streaming** at the edge or in the cloud.
+    * Combines low-latency sensor/network connectivity, optimized data-processing and AI libraries, and microservices for streaming and imaging applications on embedded, edge, and cloud.
+
+* **Core Architecture:**
+    * **Applications:** Top-level container for the pipeline.
+    * **Fragments:** Logical groupings that run independently (e.g., capture, inference, visualization).
+    * **Operators:** Individual units of work (IO, inference, visualization) that process streaming data.
+    * Enables building sensor → preprocessing → AI inference → output pipelines with predictable latency.
+
+* **Hardware & Stack:**
+    * Supported on Jetson AGX Orin (32GB/64GB), Orin NX (16GB), Orin Nano (8GB); requires JetPack 6 (L4T r36.x).
+    * **Holoscan Sensor Bridge:** High-bandwidth sensor data over Ethernet with FPGA interface support.
+    * Built-in operators: HoloInfer (TensorRT integration), HoloViz (visualization), and IO operators for streaming.
+
+* **Use Cases:**
+    * Medical imaging and surgical video workflows, endoscopy tool tracking.
+    * Industrial inspection, robotics, and any application requiring low-latency, multi-sensor AI pipelines.
+
+**Resources:**
+
+* **[NVIDIA Holoscan SDK](https://developer.nvidia.com/holoscan-sdk):** Official SDK and documentation.
+* **[Holoscan SDK User Guide](https://docs.nvidia.com/holoscan/sdk-user-guide/overview.html):** Overview, concepts, and APIs.
+* **[HoloHub](https://nvidia-holoscan.github.io/holohub/):** Reference applications, operators, tutorials, and benchmarks.
+* **[Getting Started with Holoscan Sensor Bridge](https://docs.nvidia.com/holoscan/sensor-bridge/latest/getting_started.html):** High-bandwidth sensor ingestion.
+
+**Projects:**
+
+* Run a HoloHub reference application (e.g., endoscopy tool tracking) on Jetson Orin Nano; measure end-to-end latency.
+* Build a custom Holoscan fragment: camera input → TensorRT detection → HoloViz overlay; compare latency vs a standalone GStreamer/DeepStream pipeline.
+* Integrate Holoscan Sensor Bridge with a high-bandwidth sensor (e.g., multi-camera or FPGA source) and run real-time inference.

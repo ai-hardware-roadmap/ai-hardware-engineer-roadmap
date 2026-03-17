@@ -15,7 +15,7 @@ Unlike PyTorch where the compiler and intermediate representation (IR) are hidde
 pip install tinygrad
 ```
 
-Or use the source in `../tinygrad-source/` for development.
+Or clone [tinygrad](https://github.com/tinygrad/tinygrad) for development.
 
 ## 1. Inspecting the Computation Graph
 

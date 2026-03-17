@@ -4,6 +4,8 @@
 
 **Role target:** [Step 2 — DL Inference Optimization Engineer](../../../../../README.md#the-four-career-steps) · [MTS Kernels](../../../../../README.md#the-four-career-steps)
 
+**Before this unit:** Read [Basic concepts](../../Guide.md#basic-concepts-read-this-first) in the main DL Inference Optimization guide (LLM inference, TensorRT-LLM/vLLM, distributed training, KV-cache, and why new hardware changes kernel design).
+
 ---
 
 ## Why this comes first
