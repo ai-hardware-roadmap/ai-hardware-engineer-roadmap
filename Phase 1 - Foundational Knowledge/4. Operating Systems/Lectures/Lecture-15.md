@@ -59,24 +59,27 @@ Solution B (Streaming DMA): driver explicitly invalidates cache before CPU reads
 `dma_alloc_coherent(dev, size, &dma_handle, GFP_KERNEL)`
 
 - Returns a physically contiguous CPU virtual address and a device-visible `dma_handle`
-- Memory is marked non-cacheable (or managed by hardware coherency fabric on some SoCs)
-- CPU and device always see the same data; no explicit synchronization required
-- CPU accesses are slower (uncached); use for control rings, descriptor tables, small status registers
+- The memory allocated by `dma_alloc_coherent` is non-cacheable *only for that specific DMA buffer*, to ensure CPU and device always see the same data. When the CPU accesses this buffer, its data is not cached.
+- Importantly, the CPU *can still cache data for all other normal memory regions*—the non-cacheable setting applies only to the buffer returned by the coherent DMA allocation. All other (non-DMA) memory uses normal CPU caching and is unaffected.
+- Since CPU access to the coherent DMA buffer is uncached, reads and writes are slower; use this kind of memory for things like small control rings, descriptor tables, or status blocks where correctness is more important than speed.
 
 ### Streaming (Non-Coherent) DMA
 
 CPU uses cached memory; driver explicitly synchronizes. This is more complex but allows faster CPU access to the data when the CPU is not sharing the buffer with a device:
 
 ```c
-/* CPU writes data, then hands to device */
+/* CPU writes or updates buffer contents, preparing data for device */
+/* dma_map_single flushes (writes back) any cached data covering cpu_ptr, so device sees the latest data in RAM */
 dma_addr_t dma = dma_map_single(dev, cpu_ptr, size, DMA_TO_DEVICE);
-/* submit descriptor to device hardware */
-/* ... device performs DMA transfer ... */
+/* At this point, the buffer must not be touched by the CPU until dma_unmap_single is called */
+/* submit descriptor to device hardware to start DMA */
+/* ... device performs DMA read from system RAM into its memory ... */
+/* When DMA completes, tell the kernel DMA transfer is finished and the CPU can safely reuse or modify cpu_ptr */
 dma_unmap_single(dev, dma, size, DMA_TO_DEVICE);
-/* now safe to reuse cpu_ptr */
+/* After dma_unmap_single, ownership of cpu_ptr returns to CPU and it is safe for CPU to access or modify the memory */
 ```
 
-`dma_map_single()` flushes CPU cache lines covering the buffer (DMA_TO_DEVICE) or invalidates them (DMA_FROM_DEVICE). `dma_unmap_single()` ensures CPU sees the device-written data.
+`dma_map_single()` performs the required cache maintenance for DMA in the specified direction: it flushes (writes back and invalidates) CPU cache lines covering the buffer for `DMA_TO_DEVICE` (so the device sees all CPU updates), or invalidates cache for `DMA_FROM_DEVICE` (so the CPU doesn't see stale data after device writes). `dma_unmap_single()` restores CPU ownership and, depending on direction, may invalidate the cache again so the CPU will read any data written by the device.
 
 The mapping and unmapping calls perform the cache synchronization. Between `dma_map_single()` and `dma_unmap_single()`, the buffer "belongs" to the device — the CPU must not touch it.
 
@@ -129,7 +132,7 @@ Without IOMMU: a device (or compromised driver) can issue DMA to any physical ad
 
 ### IOMMU Groups
 
-PCIe devices behind the same IOMMU translation unit form a group. For VFIO GPU passthrough, all devices in the group must be assigned together to a VM; a device cannot be isolated within a group.
+An IOMMU group is a set of PCIe devices that share the same IOMMU translation hardware, meaning their memory accesses are managed together and cannot be separated at the IOMMU level. As a result, all devices in the same group must be treated as a unit when configuring access control—for example, when assigning devices to userspace (such as for passthrough to another software component or user process). It is not possible to give access to only one device in the group while restricting the others; access is always granted to the entire group together.
 
 ### Kernel API
 
