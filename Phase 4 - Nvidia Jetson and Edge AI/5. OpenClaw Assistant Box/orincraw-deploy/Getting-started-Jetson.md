@@ -4,7 +4,7 @@ Checklist for bringing up **OrinCraw** on **Jetson Orin Nano 8GB** (dev kit firs
 
 ## 1. Base system
 
-- [ ] Flash **JetPack 5.1.2** (L4T) to **512GB NVMe** (default OrinCraw storage; boot + rootfs + models + logs/OTA) for **initial bring-up**
+- [ ] Flash **JetPack 5.1.2** (L4T) to **512GB NVMe** (OrinCraw **default** storage per Guide §3: boot + rootfs + models + logs/OTA). Plan **full-disk encryption (FDE)** and **key custody** early—**§8** treats **removable NVMe** as a **mandatory** theft scenario for production.
 - [ ] Plan upgrade to **JetPack 6.2.1** for the production-aligned stack; rebuild inference engines, ESP-Hosted host driver, and containers for the new kernel/L4T (see Guide §3 *JetPack / L4T version strategy*)
 - [ ] Track **JetPack 7.x** for when NVIDIA **officially supports** your target module/carrier; treat as a major migration with full regression
 - [ ] First boot: create user, set hostname to **`orincraw`** (or `orincraw-<room>`)

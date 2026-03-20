@@ -65,6 +65,12 @@ This guide provides a structured, in-depth treatment of operating systems concep
 
 ---
 
+## Practice
+
+- **[Final practice — 5 problems](Final-Test-Problems.md)** — custom kernel build, PREEMPT_RT, ext4, boot chain, kernel modules & DT-bound drivers; maps each item to lecture notes.
+
+---
+
 ## Resources
 
 - **Primary:** [CS124 Lecture Slides (PDF)](https://users.cms.caltech.edu/~donnie/cs124/lectures/)

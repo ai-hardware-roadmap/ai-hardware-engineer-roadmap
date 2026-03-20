@@ -4,6 +4,7 @@
 #
 # Uncomment and fill in services after you have L4T-compatible images.
 # Copy to e.g. /opt/orincraw/ on the device; bind-mount /data/* per Guide.md.
+# Storage: 512GB NVMe default—pin image digests; FDE on host per Guide §8 (stolen-drive requirements).
 #
 # Prerequisites: nvidia-container-toolkit, Docker Compose v2.
 #
