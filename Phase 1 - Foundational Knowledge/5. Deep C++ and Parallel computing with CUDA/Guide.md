@@ -2,7 +2,7 @@
 
 > **Goal:** Write **correct, efficient C++** on the CPU side and **minimal CUDA kernels** on the GPU — the same pairing used in real inference stacks (host code + kernels), HPC libraries, and later phases of this roadmap (Jetson, TensorRT, custom backends).
 
-**Placement:** Phase 1 **§5**, after **Operating Systems** (address spaces, processes/threads) and before **AI Fundamentals** (§6), so you understand *how parallel hardware executes* before you study *what neural networks compute*.
+**Placement:** Phase 1 **§5**, after **Operating Systems** (address spaces, processes/threads) and before **Phase 3 — Artificial Intelligence** (neural networks & vision), so you understand *how parallel hardware executes* before you study *what neural networks compute*.
 
 ---
 
@@ -65,9 +65,9 @@ Use a **single pinned repo or folder** with CMake or a simple `nvcc` + compiler 
 ## 5. How this connects to the rest of the roadmap
 
 * **Phase 1 §3 (Architecture & hardware):** GPU is another memory hierarchy; warps behave like SIMD + multithreading.
-* **Phase 1 §6 (AI Fundamentals):** Tensors and ops are what you will eventually run through CUDA, TensorRT, or tinygrad backends.
+* **Phase 3 (Neural networks):** Tensors and ops are what you will eventually run through CUDA, TensorRT, or tinygrad backends.
 * **Phase 4 (Jetson / TensorRT):** Same CUDA model, with unified memory and power/thermal constraints.
-* **Phase 4 (HPC / GPU specialization):** Everything here scales to multi-GPU, NCCL, and kernel optimization workflows.
+* **Phase 5 (HPC / GPU specialization):** Everything here scales to multi-GPU, NCCL, and kernel optimization workflows.
 
 ---
 
@@ -81,4 +81,4 @@ Use a **single pinned repo or folder** with CMake or a simple `nvcc` + compiler 
 
 ## Next section
 
-**[6. AI Fundamentals — Neural Networks and Edge AI](../6. AI Fundamentals - Neural Networks and Edge AI/Guide.md)** — what to compute once parallel execution is familiar.
+**[Phase 3 — Neural Networks and Edge AI](../../Phase 3 - Artificial Intelligence/Neural Networks and Edge AI/Guide.md)** — what to compute once parallel execution is familiar.
