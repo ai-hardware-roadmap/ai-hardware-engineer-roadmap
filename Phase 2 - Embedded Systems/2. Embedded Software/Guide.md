@@ -1,6 +1,6 @@
 # ARM MCU, FreeRTOS, and Communication Protocols
 
-*Builds on Phase 1 (Digital Design, Embedded Systems Basics, OS) — focuses on ARM Cortex-M microcontrollers, real-time operating systems in practice, and the hardware communication protocols that connect sensors and peripherals to embedded systems.*
+*Follows [**Phase 2 section 1 — Schematic Capture and PCB Design**](../1.%20Schematic%20Capture%20and%20PCB%20Design/Guide.md) when you are bringing up **custom hardware**; dev-kit learners can start here in parallel. Builds on Phase 1 (digital, HDL, architecture, OS) — focuses on ARM Cortex-M microcontrollers, RTOS practice, and buses (SPI/UART/I2C/CAN) that connect sensors and peripherals.*
 
 ---
 

@@ -39,7 +39,7 @@ graph LR
 
   subgraph Phases
     P1["Phase 1<br/>(Digital+HDL, arch, OS, C++/CUDA)"]
-    P2["Phase 2<br/>(Embedded)"]
+    P2["Phase 2<br/>(PCB, MCU, Linux)"]
     P3["Phase 3<br/>(AI: NN + CV)"]
     P4A["Phase 4 Track A<br/>Xilinx FPGA"]
     P4B["Phase 4 Track B<br/>Jetson / edge"]
@@ -180,7 +180,7 @@ The **[four career steps](#the-four-career-steps)** above are the **progression*
 | Phase | Typical roles | Notes |
 |:-----:|---------------|-------|
 | **[1](Phase%201%20-%20Foundational%20Knowledge)** | Software engineer with hardware literacy | Digital + HDL, architecture, OS, C++/CUDA — no dedicated NN course here |
-| **[2](Phase%202%20-%20Embedded%20Systems)** | MCU / RTOS, Embedded Linux / Yocto | Feeds Jetson products |
+| **[2](Phase%202%20-%20Embedded%20Systems)** | PCB / schematic, MCU / RTOS, Embedded Linux / Yocto | Feeds Jetson and custom carrier work |
 | **[3](Phase%203%20-%20Artificial%20Intelligence/Guide.md)** | ML engineer (graphs, CV pipelines) | NN + OpenCV before hardware mapping |
 | **[4A Xilinx](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA)** | FPGA / RTL / HLS engineer | **FPGA Engineer** |
 | **[4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** | Jetson, TensorRT, fusion, ROS2, embedded titles | **Embedded Software / Linux** often here |

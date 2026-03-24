@@ -1,6 +1,6 @@
 # Phase 3: Artificial Intelligence
 
-Standalone phase after **Phase 1** (digital + HDL, architecture, OS, C++/CUDA) and **Phase 2** (embedded): learn **what** networks compute and **how** classic vision pipelines work before you map workloads to **Phase 4 Track A** (Xilinx FPGA) or **Track B** (Jetson).
+Standalone phase after **Phase 1** (digital + HDL, architecture, OS, C++/CUDA) and **Phase 2** (PCB, MCU/RTOS, embedded Linux): learn **what** networks compute and **how** classic vision pipelines work before you map workloads to **Phase 4 Track A** (Xilinx FPGA) or **Track B** (Jetson).
 
 | Topic | Guide |
 |-------|--------|

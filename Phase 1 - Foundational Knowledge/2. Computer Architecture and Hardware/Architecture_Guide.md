@@ -811,7 +811,7 @@ Build an OoO CPU simulator (C++/Python):
 ## Next Steps
 
 **After mastering this material:**
-1. **Proceed to Phase 2 (Embedded Systems):** Real ARM/RISC-V processors, RTOSes, device drivers.
+1. **Proceed to Phase 2 (Embedded Systems):** PCB design, real ARM/RISC-V processors, RTOSes, device drivers, embedded Linux.
 2. **Specialize in FPGA design (Phase 3):** Implement custom CPUs on Xilinx.
 3. **Move to AI accelerators (roadmap Phase 4 Track B — Jetson/GPU, and optionally Track A — FPGA):** GPU architectures, tensor operations, memory optimization.
 
