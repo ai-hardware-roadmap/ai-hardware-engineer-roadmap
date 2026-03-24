@@ -151,15 +151,42 @@ graph LR
 
 ## Career Paths
 
-| Role | Primary Phases | Specialization Track |
-|------|---------------|---------------------|
-| Parallel Program Optimization Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | — |
-| **DL Inference Optimization Engineer** | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track C: HPC |
-| AI Accelerator / Chip Design Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track B: AI Chip Design |
-| Real Time Edge AI with Nvidia Jetson Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track E: Real Time Edge AI with Nvidia Jetson |
-| ADAS / Autonomous Driving Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track A: Autonomous Driving |
-| GPU / HPC Infrastructure Engineer | [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track C: HPC |
-| Robotics Engineer | [2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | Track D: Robotics |
+The **[four career steps](#the-four-career-steps)** above are the **progression** (what to optimize next). The tables below are **titles** you might hold on a job description, mapped to **where in the curriculum** that depth usually comes from. Phases are cumulative: later roles assume you can still read a schematic, reason about memory, and debug a Linux box when needed.
+
+### By career step (1–4)
+
+| Career step | Role titles (examples) | Phases you lean on most | Phase 5 track (if any) |
+|:-----------:|------------------------|-------------------------|-------------------------|
+| **1** — Parallel Program Optimization | GPU / CUDA Engineer, Compute Kernel Engineer, Performance Engineer (GPU) | [1](Phase%201%20-%20Foundational%20Knowledge) (esp. architecture + §5 C++/CUDA), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) (Jetson CUDA stack) | [C: HPC & GPU](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
+| **2** — DL Inference Optimization | Inference Optimization Engineer, TensorRT / ONNX Runtime Engineer, Compiler Backend Engineer (ML) | [1](Phase%201%20-%20Foundational%20Knowledge) §5–§6, [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) (TensorRT, Edge AI) | [C: HPC & GPU](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) (graph, ops, quantization at scale) |
+| **3** — Edge / AV / Robotics | Edge ML Engineer, Jetson Deployment Engineer, Perception Engineer, Robotics Integration Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) (Jetson, sensors, ROS2) | [A: Autonomous Driving](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/Guide.md), [D: Robotics](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Robotics%20Application/Guide.md), [E: Real-Time Edge AI](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/2.%20Real%20Time%20Edge%20AI%20with%20Nvidia%20Jetson/Guide.md) |
+| **4** — FPGA & custom silicon | FPGA ML Accelerator Engineer, RTL / Design Engineer (AI blocks), AI Silicon Architect (path to ASIC) | [1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Xilinx%20FPGA), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) (workloads, power/latency targets) | [B: AI Chip Design](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/5.%20AI%20Chip%20Design/Guide.md) |
+
+### By phase depth (foundation → specialization)
+
+| Phase | Typical roles unlocked | Notes |
+|:-----:|------------------------|-------|
+| **[1](Phase%201%20-%20Foundational%20Knowledge)** | Embedded-aware **Software Engineer**, **BSP / bring-up** adjacent (with Phase 2), **ML Engineer** who understands hardware limits | Digital + OS + C++/CUDA + NN fundamentals; everyone passes through here |
+| **[2](Phase%202%20-%20Embedded%20Systems)** | **MCU / RTOS Firmware Engineer**, **Embedded Linux / Yocto Engineer**, **IoT Platform Engineer** | Sensor buses, real-time scheduling, custom images — underpins Jetson-style products |
+| **[3](Phase%203%20-%20Xilinx%20FPGA)** | **FPGA Design Engineer**, **RTL Engineer**, **HLS / Acceleration Prototyping Engineer** | Often paired with Phase 4 for benchmarking AI kernels vs GPU |
+| **[4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI)** | **Jetson / L4T Platform Engineer**, **Edge AI / TensorRT Engineer**, **Sensor Fusion / Perception Engineer**, **ROS2 Robotics Engineer**, **Edge AI Product Engineer** (e.g. [OrinClaw](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI/5.%20OpenClaw%20Assistant%20Box/Guide.md) capstone) | Main “shipping inference on a robot or device” milestone |
+| **[5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization)** | **ADAS / AV Stack Engineer**, **GPU Cluster / ML Infra Engineer**, **Robotics Autonomy Engineer**, **AI Accelerator Architect** | Pick tracks A–E from the Phase 5 table above |
+
+### Quick lookup: role → phases & track
+
+| Role | Primary phases | Typical career step | Phase 5 track |
+|------|---------------|---------------------|---------------|
+| Parallel Program Optimization Engineer | [1](Phase%201%20-%20Foundational%20Knowledge), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | 1 | [C](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) (optional depth) |
+| DL Inference Optimization Engineer | [1](Phase%201%20-%20Foundational%20Knowledge), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | 2 | [C](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
+| Edge ML / Jetson Deployment Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | 3 | [E](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/2.%20Real%20Time%20Edge%20AI%20with%20Nvidia%20Jetson/Guide.md) |
+| MCU / RTOS Firmware Engineer | [1](Phase%201%20-%20Foundational%20Knowledge), [2](Phase%202%20-%20Embedded%20Systems) | — (supports 3) | — |
+| Embedded Linux / BSP Engineer | [1](Phase%201%20-%20Foundational%20Knowledge), [2](Phase%202%20-%20Embedded%20Systems) | — (supports 3–4) | — |
+| FPGA / RTL Engineer (incl. ML acceleration) | [1](Phase%201%20-%20Foundational%20Knowledge)–[3](Phase%203%20-%20Xilinx%20FPGA) | 4 | [B](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/5.%20AI%20Chip%20Design/Guide.md) |
+| AI Accelerator / Chip Design Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | 4 | [B](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/5.%20AI%20Chip%20Design/Guide.md) |
+| Perception / Sensor Fusion Engineer | [1](Phase%201%20-%20Foundational%20Knowledge), [3](Phase%203%20-%20Xilinx%20FPGA)–[4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) (CV + sensors) | 3 | [A](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/Guide.md) or [D](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Robotics%20Application/Guide.md) |
+| ADAS / Autonomous Driving Engineer | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | 3 | [A](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/Guide.md) |
+| Robotics Engineer (ROS2, autonomy) | [1](Phase%201%20-%20Foundational%20Knowledge), [2](Phase%202%20-%20Embedded%20Systems), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | 3 | [D](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Robotics%20Application/Guide.md) |
+| GPU / HPC / ML Infrastructure Engineer | [1](Phase%201%20-%20Foundational%20Knowledge), [4](Phase%204%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | 1–2 | [C](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
 
 ---
 
