@@ -1,4 +1,14 @@
-﻿**Phase 1: Embedded Linux Development (12-24 months)**
+## Yocto Project — dedicated course
+
+For a full **vendor-neutral** Yocto curriculum (mental model, modules 0–11, labs, capstones, glossary), use:
+
+**[Yocto / Guide.md](Yocto/Guide.md)**
+
+The outline below remains a roadmap checklist; the Yocto folder is the structured “course” version.
+
+---
+
+**Phase 1: Embedded Linux Development (12-24 months)**
 
 **1. Yocto Project (Beyond the Basics)**
 
