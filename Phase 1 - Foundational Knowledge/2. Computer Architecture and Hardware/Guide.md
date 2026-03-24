@@ -1,6 +1,6 @@
 # Computer Architecture and Hardware
 
-Phase 1, section 3 — how processors and memory systems work **in principle**, and what ships **in real machines** (client, workstation, and server). Use this as the single entry point; deeper material lives in the linked guides.
+Phase 1, section 2 — how processors and memory systems work **in principle**, and what ships **in real machines** (client, workstation, and server). Use this as the single entry point; deeper material lives in the linked guides.
 
 ---
 

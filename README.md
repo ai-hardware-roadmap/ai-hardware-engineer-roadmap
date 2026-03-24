@@ -38,7 +38,7 @@ graph LR
   R4 --> N3
 
   subgraph Phases
-    P1["Phase 1<br/>(Digital, OS, C++/CUDA)"]
+    P1["Phase 1<br/>(Digital+HDL, arch, OS, C++/CUDA)"]
     P2["Phase 2<br/>(Embedded)"]
     P3["Phase 3<br/>(AI: NN + CV)"]
     P4A["Phase 4 Track A<br/>Xilinx FPGA"]
@@ -88,11 +88,10 @@ graph LR
 
 | Topic | Key Skills | AI connection |
 |-------|------------|-----------------|
-| [**Digital Design Fundamentals**](Phase%201%20-%20Foundational%20Knowledge/1.%20Digital%20Design%20Fundamentals/Guide.md) | Number systems, Boolean algebra, combinational/sequential logic, memory (SRAM, DRAM, ROM) | *MAC units, memory bandwidth, and data types (INT8, FP16) that power AI inference start here* |
-| [**Hardware Description Languages**](Phase%201%20-%20Foundational%20Knowledge/2.%20Hardware%20Description%20Languages%20(HDLs)/Guide.md) | Verilog syntax, behavioral/dataflow/structural modeling, testbenches, synthesis | *The language you will use to design AI accelerator datapaths* |
-| [**Computer Architecture and Hardware**](Phase%201%20-%20Foundational%20Knowledge/3.%20Computer%20Architecture%20and%20Hardware/Guide.md) | ISA through microarchitecture (pipelines, caches, OoO, coherence); labs; modern CPUs/GPUs/memory/storage/I/O | *Same limits (bandwidth, latency, power) govern TinyML through data-center GPUs* |
-| [**Operating Systems**](Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Guide.md) | Processes, threads, scheduling, memory management, synchronization, drivers, filesystems | *OS underpins Linux, RTOS, and all deployment targets; 24-lecture Linux internals* |
-| [**Deep C++ and Parallel computing with CUDA**](Phase%201%20-%20Foundational%20Knowledge/5.%20Deep%20C%2B%2B%20and%20Parallel%20computing%20with%20CUDA/Guide.md) | Modern C++, CPU threading, CUDA model, streams; vector/matmul/reduction projects | *Host + kernel skills before Phase 3 NN math* |
+| [**Digital Design and Hardware Description Languages**](Phase%201%20-%20Foundational%20Knowledge/1.%20Digital%20Design%20and%20Hardware%20Description%20Languages/Guide.md) | Number systems, logic, memory basics; Verilog, testbenches, synthesis | *From gates to RTL — the vocabulary of AI accelerator datapaths* |
+| [**Computer Architecture and Hardware**](Phase%201%20-%20Foundational%20Knowledge/2.%20Computer%20Architecture%20and%20Hardware/Guide.md) | ISA through microarchitecture (pipelines, caches, OoO, coherence); labs; modern CPUs/GPUs/memory/storage/I/O | *Same limits (bandwidth, latency, power) govern TinyML through data-center GPUs* |
+| [**Operating Systems**](Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) | Processes, threads, scheduling, memory management, synchronization, drivers, filesystems | *OS underpins Linux, RTOS, and all deployment targets; 24-lecture Linux internals* |
+| [**C++ and Parallel Computing**](Phase%201%20-%20Foundational%20Knowledge/4.%20C%2B%2B%20and%20Parallel%20Computing/Guide.md) | Modern C++, CPU threading, CUDA model, streams; vector/matmul/reduction projects | *Host + kernel skills before Phase 3 NN math* |
 
 **Projects:** Calculator on breadboard, FPGA digital clock, traffic light controller, UART module, basic RISC-V core, CUDA vector/SAXPY/matmul + CPU reference checks
 
@@ -172,7 +171,7 @@ The **[four career steps](#the-four-career-steps)** above are the **progression*
 
 | Career step | Role titles (examples) | Phases you lean on most | Phase 5 specialization (if any) |
 |:-----------:|------------------------|-------------------------|----------------------------------|
-| **1** — Parallel Program Optimization | GPU / CUDA Engineer, Performance Engineer (GPU) | [1](Phase%201%20-%20Foundational%20Knowledge) (architecture + §5 CUDA), [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | [C: HPC](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
+| **1** — Parallel Program Optimization | GPU / CUDA Engineer, Performance Engineer (GPU) | [1](Phase%201%20-%20Foundational%20Knowledge) (architecture + §4 C++/CUDA), [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | [C: HPC](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
 | **2** — DL Inference Optimization | TensorRT / ORT Engineer, Compiler Backend (ML) | [1](Phase%201%20-%20Foundational%20Knowledge), [3](Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks%20and%20Edge%20AI/Guide.md), [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | [C: HPC](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
 | **3** — Edge / AV / Robotics | Edge ML, Jetson, perception, robotics; **Embedded SW**, **Embedded Linux** | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [3](Phase%203%20-%20Artificial%20Intelligence/Guide.md), [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | [A](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/Guide.md), [D](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Robotics%20Application/Guide.md), [E](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/2.%20Real%20Time%20Edge%20AI%20with%20Nvidia%20Jetson/Guide.md) |
 | **4** — FPGA & custom silicon | FPGA / RTL / AI Silicon; **FPGA Engineer** | [1](Phase%201%20-%20Foundational%20Knowledge)–[4A Xilinx](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA), optional [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson%20and%20Edge%20AI) | [B: AI Chip Design](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/5.%20AI%20Chip%20Design/Guide.md) |
@@ -181,7 +180,7 @@ The **[four career steps](#the-four-career-steps)** above are the **progression*
 
 | Phase | Typical roles | Notes |
 |:-----:|---------------|-------|
-| **[1](Phase%201%20-%20Foundational%20Knowledge)** | Software engineer with hardware literacy | Digital, OS, CUDA — no dedicated NN course here |
+| **[1](Phase%201%20-%20Foundational%20Knowledge)** | Software engineer with hardware literacy | Digital + HDL, architecture, OS, C++/CUDA — no dedicated NN course here |
 | **[2](Phase%202%20-%20Embedded%20Systems)** | MCU / RTOS, Embedded Linux / Yocto | Feeds Jetson products |
 | **[3](Phase%203%20-%20Artificial%20Intelligence/Guide.md)** | ML engineer (graphs, CV pipelines) | NN + OpenCV before hardware mapping |
 | **[4A Xilinx](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA)** | FPGA / RTL / HLS engineer | **FPGA Engineer** |

@@ -1,6 +1,6 @@
 # AGNOS: Learn with the Operating System Course
 
-**Goal:** Use the [Operating Systems](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Guide.md) course (Phase 1) to understand AGNOS—the **forked and custom-modified Linux** that runs **openpilot on the road** on comma 3X and comma four. The lectures map to both where code lives and to the **development changes** comma made in the fork for this practical use case.
+**Goal:** Use the [Operating Systems](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) course (Phase 1) to understand AGNOS—the **forked and custom-modified Linux** that runs **openpilot on the road** on comma 3X and comma four. The lectures map to both where code lives and to the **development changes** comma made in the fork for this practical use case.
 
 ---
 
@@ -22,18 +22,18 @@ The [agnos-kernel-sdm845](https://github.com/commaai/agnos-kernel-sdm845) repo w
 
 | Function / area | Typical paths | Example changes (from commit messages) | OS lecture |
 |------------------|---------------|----------------------------------------|------------|
-| **Camera (msm/camera)** | `drivers/media/platform/msm/`, `techpack/` | Expose IFE PHY_NUM_SEL, workqueues on sysfs, high-priority WQ, unset WQ_UNBOUND; mclk drive strength; ICP enable; Thundercomm camerad updates; Bantian tuning | [18](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-18.md) V4L2, [6](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-06.md) workqueue priority |
-| **MIPI / display (dsi)** | `drivers/gpu/drm/msm/dsi-staging/`, `drivers/video/` | MIPI DCS debug, TE line init, 60Hz jitter, panel init in heat; brightness sysfs; lcd3v3 regulator; Mate 10 lite / Tizi / Bantian display bringup | [18](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-18.md) character drivers |
-| **Touch** | `drivers/input/touchscreen/` | Hynitron, Samsung clones, touch count, IRQ retry, firmware flasher; Mici bringup | [18](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-18.md) interrupt-driven I/O, [3](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-03.md) IRQ |
-| **Device Tree (DTS)** | `arch/arm64/boot/dts/` | Remove comma_tici.dts, dts cleanup, move to device tree; support sdm845, sdm v2; Mici dtsi; dts merge for SDM845 MTP | [5](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-05.md), [17](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-17.md) |
-| **Boot / defconfig** | `arch/arm64/configs/`, `init/` | Slim tici_defconfig for boot time; fix XBL support; fix reboot | [5](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-05.md) |
-| **SPI (CAN-over-SPI)** | `drivers/spi/` | spidev bufsiz 8192; spi-geni-qcom delay_usecs | [18](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-18.md), openpilot CAN |
-| **Storage / block** | `drivers/scsi/`, `block/`, `fs/` | NVMe APST revert, NVMe regulator; sdcard; jbd2 upstream fixes; squashfs, cramfs | [20](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-20.md), [21](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-21.md), [22](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-22.md) |
-| **Scheduler / workqueues** | `kernel/sched/`, workqueue usage | Camera high-priority WQ, unset WQ_UNBOUND; expose WQ on sysfs | [6](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-06.md), [8](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-08.md) |
-| **Power / thermal** | `drivers/power/`, `drivers/thermal/` | Thermal probes on C4; QPNP_FG_GEN3; CPU freq governor cap; mici thermal sensors | [15](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-15.md) DMA/power |
-| **Network / WiFi** | `net/`, `drivers/net/` | WiFi log level; build wifi in main kernel; RNDIS; CONFIG_IFB, NETEM, TTL; MAC from SOC serial | [4](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-04.md) networking |
-| **Kernel config / cgroups** | `Kconfig`, `kernel/cgroup/` | enable memory control for cgroups; audio, uart, logitech modules | [5](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-05.md), [23](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-23.md) |
-| **Platform / misc drivers** | `drivers/`, `arch/arm64/` | SOM id pins driver; USB serial PID; hostname (comma/tici); nfs | [17](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-17.md), [2](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-02.md) |
+| **Camera (msm/camera)** | `drivers/media/platform/msm/`, `techpack/` | Expose IFE PHY_NUM_SEL, workqueues on sysfs, high-priority WQ, unset WQ_UNBOUND; mclk drive strength; ICP enable; Thundercomm camerad updates; Bantian tuning | [18](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md) V4L2, [6](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-06.md) workqueue priority |
+| **MIPI / display (dsi)** | `drivers/gpu/drm/msm/dsi-staging/`, `drivers/video/` | MIPI DCS debug, TE line init, 60Hz jitter, panel init in heat; brightness sysfs; lcd3v3 regulator; Mate 10 lite / Tizi / Bantian display bringup | [18](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md) character drivers |
+| **Touch** | `drivers/input/touchscreen/` | Hynitron, Samsung clones, touch count, IRQ retry, firmware flasher; Mici bringup | [18](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md) interrupt-driven I/O, [3](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-03.md) IRQ |
+| **Device Tree (DTS)** | `arch/arm64/boot/dts/` | Remove comma_tici.dts, dts cleanup, move to device tree; support sdm845, sdm v2; Mici dtsi; dts merge for SDM845 MTP | [5](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md), [17](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md) |
+| **Boot / defconfig** | `arch/arm64/configs/`, `init/` | Slim tici_defconfig for boot time; fix XBL support; fix reboot | [5](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md) |
+| **SPI (CAN-over-SPI)** | `drivers/spi/` | spidev bufsiz 8192; spi-geni-qcom delay_usecs | [18](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md), openpilot CAN |
+| **Storage / block** | `drivers/scsi/`, `block/`, `fs/` | NVMe APST revert, NVMe regulator; sdcard; jbd2 upstream fixes; squashfs, cramfs | [20](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-20.md), [21](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-21.md), [22](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-22.md) |
+| **Scheduler / workqueues** | `kernel/sched/`, workqueue usage | Camera high-priority WQ, unset WQ_UNBOUND; expose WQ on sysfs | [6](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-06.md), [8](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-08.md) |
+| **Power / thermal** | `drivers/power/`, `drivers/thermal/` | Thermal probes on C4; QPNP_FG_GEN3; CPU freq governor cap; mici thermal sensors | [15](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-15.md) DMA/power |
+| **Network / WiFi** | `net/`, `drivers/net/` | WiFi log level; build wifi in main kernel; RNDIS; CONFIG_IFB, NETEM, TTL; MAC from SOC serial | [4](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-04.md) networking |
+| **Kernel config / cgroups** | `Kconfig`, `kernel/cgroup/` | enable memory control for cgroups; audio, uart, logitech modules | [5](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md), [23](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-23.md) |
+| **Platform / misc drivers** | `drivers/`, `arch/arm64/` | SOM id pins driver; USB serial PID; hostname (comma/tici); nfs | [17](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md), [2](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-02.md) |
 | **Upstream / Qualcomm merges** | various | msm-4.9 merges, dts overlay merge, camera/mdss/ipa fixes | Base; many lectures |
 
 *To inspect history yourself: `git log --oneline -- drivers/media/` (camera), `git log --oneline -- arch/arm64/boot/dts/` (DT), etc. Repo: [agnos-kernel-sdm845](https://github.com/commaai/agnos-kernel-sdm845).*
@@ -79,32 +79,32 @@ Study the **Operating Systems** lectures first, then map each topic to AGNOS cod
 
 | # | Lecture | Kernel (agnos-kernel-sdm845) | Builder (agnos-builder) |
 |:-:|--------|-------------------------------|--------------------------|
-| 1 | [Modern OS Architecture & the Linux Kernel](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-01.md) | `arch/`, `kernel/`, `mm/`, `drivers/` — monolithic layout | — |
-| 2 | [Processes, task_struct & the Linux Process Model](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-02.md) | `kernel/fork.c`, `include/linux/sched.h` (task_struct) | `userspace/` — processes started by systemd |
-| 3 | [Interrupts, Exceptions & Bottom Halves](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-03.md) | `arch/arm64/kernel/entry.S`, `kernel/irq/`, driver IRQ handlers | — |
-| 4 | [System Calls, vDSO & eBPF](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-04.md) | `arch/arm64/kernel/syscall.c`, `arch/arm64/kernel/vdso/` | — |
-| 5 | [Kernel Modules, Boot Process & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-05.md) | `arch/arm64/boot/dts/`, `drivers/` (of_match_table), `init/` | `firmware/`, `build_kernel.sh`, `build_system.sh`, initramfs |
-| 6 | [CPU Scheduling: CFS, EEVDF & Real-Time Classes](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-06.md) | `kernel/sched/core.c`, `fair.c`, `rt.c` | Boot cmdline (isolcpus, etc.) |
-| 7 | [Real-Time Linux: PREEMPT_RT & Determinism](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-07.md) | `kernel/sched/`, `kernel/locking/`, preempt config in `Kconfig` | — |
-| 8 | [Multi-Core Scheduling, CPU Affinity & isolcpus](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-08.md) | `kernel/sched/core.c` (affinity), `arch/arm64/` (CPU topology) | Boot config for isolcpus; openpilot `set_core_affinity()` |
-| 9 | [Synchronization: Spinlocks, Mutexes, RW Locks](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-09.md) | `kernel/locking/`, `include/linux/spinlock.h`, `mutex.c` | — |
-| 10 | [Lock-Free Programming: RCU, Atomics](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-10.md) | `kernel/rcu/`, `include/linux/atomic.h` | — |
-| 11 | [Deadlock, Priority Inversion & PI Mutexes](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-11.md) | `kernel/locking/rtmutex.c`, PI in scheduler | — |
-| 12 | [Virtual Memory & the Linux Memory Model](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-12.md) | `mm/` (vm_area, page tables), `arch/arm64/mm/` | — |
-| 13 | [Page Tables, TLBs & Huge Pages](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-13.md) | `arch/arm64/mm/`, `mm/memory.c`, huge page support | — |
-| 14 | [Memory Allocation: SLUB, kmalloc & CMA](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-14.md) | `mm/slub.c`, `mm/cma.c`, `include/linux/slab.h` | — |
-| 15 | [DMA, IOMMU & GPU Memory Management](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-15.md) | `drivers/iommu/`, `drivers/base/dma-mapping.c`, GPU in `drivers/` | — |
-| 16 | [NUMA Topology & HPC Memory Optimization](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-16.md) | `arch/arm64/mm/`, NUMA if enabled; SDM845 is UMA | — |
-| 17 | [Linux Device Driver Model & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-17.md) | `drivers/base/`, `arch/arm64/boot/dts/`, platform_driver, of_* | — |
-| 18 | [Character Drivers, Interrupt-Driven I/O & V4L2](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-18.md) | `drivers/media/`, V4L2 camera pipeline for comma 3X | — |
-| 19 | [Modern I/O: io_uring, DMA-BUF & Zero-Copy](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-19.md) | `io_uring/`, DMA-BUF in `drivers/dma-buf/` | VisionIpc / zero-copy in openpilot on top |
-| 20 | [PCIe, NVMe & GPU Driver Architecture](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-20.md) | `drivers/pci/`, `drivers/nvme/`, GPU under `drivers/` (Adreno on SDM845) | — |
-| 21 | [Filesystems: ext4, btrfs, F2FS & overlayfs](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-21.md) | `fs/ext4/`, `fs/overlayfs/` (often in Android/AGNOS rootfs) | `userspace/` rootfs layout; build_system packs fs |
-| 22 | [Embedded Storage: eMMC, UFS, NVMe & OTA](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-22.md) | `drivers/scsi/`, UFS for SDM845 storage, block layer | `firmware/`, partition layout, A/B slots in builder |
-| 23 | [Containers, cgroups v2 & NVIDIA Container](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-23.md) | `kernel/cgroup/` | Optional: AGNOS userspace can use cgroups for isolation |
-| 24 | [OS for AI Systems: L4T, openpilot OS & RT Tuning](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-24.md) | Entire kernel as “openpilot OS” (Agnos); sched, drivers, RT | agnos-builder = build for “openpilot OS”; RT tuning in config |
-| 25 | [Capstone: Custom Linux Images with Yocto](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-25.md) | — (Agnos uses its own builder, not Yocto) | **agnos-builder** is the capstone: custom image build (kernel + rootfs) |
-| 26 | [eBPF: Programmable Kernel Observability](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-26.md) | `kernel/bpf/`, `net/bpf/` (if enabled in config) | Observability of openpilot on AGNOS via eBPF tools |
+| 1 | [Modern OS Architecture & the Linux Kernel](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-01.md) | `arch/`, `kernel/`, `mm/`, `drivers/` — monolithic layout | — |
+| 2 | [Processes, task_struct & the Linux Process Model](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-02.md) | `kernel/fork.c`, `include/linux/sched.h` (task_struct) | `userspace/` — processes started by systemd |
+| 3 | [Interrupts, Exceptions & Bottom Halves](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-03.md) | `arch/arm64/kernel/entry.S`, `kernel/irq/`, driver IRQ handlers | — |
+| 4 | [System Calls, vDSO & eBPF](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-04.md) | `arch/arm64/kernel/syscall.c`, `arch/arm64/kernel/vdso/` | — |
+| 5 | [Kernel Modules, Boot Process & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md) | `arch/arm64/boot/dts/`, `drivers/` (of_match_table), `init/` | `firmware/`, `build_kernel.sh`, `build_system.sh`, initramfs |
+| 6 | [CPU Scheduling: CFS, EEVDF & Real-Time Classes](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-06.md) | `kernel/sched/core.c`, `fair.c`, `rt.c` | Boot cmdline (isolcpus, etc.) |
+| 7 | [Real-Time Linux: PREEMPT_RT & Determinism](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-07.md) | `kernel/sched/`, `kernel/locking/`, preempt config in `Kconfig` | — |
+| 8 | [Multi-Core Scheduling, CPU Affinity & isolcpus](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-08.md) | `kernel/sched/core.c` (affinity), `arch/arm64/` (CPU topology) | Boot config for isolcpus; openpilot `set_core_affinity()` |
+| 9 | [Synchronization: Spinlocks, Mutexes, RW Locks](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-09.md) | `kernel/locking/`, `include/linux/spinlock.h`, `mutex.c` | — |
+| 10 | [Lock-Free Programming: RCU, Atomics](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-10.md) | `kernel/rcu/`, `include/linux/atomic.h` | — |
+| 11 | [Deadlock, Priority Inversion & PI Mutexes](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-11.md) | `kernel/locking/rtmutex.c`, PI in scheduler | — |
+| 12 | [Virtual Memory & the Linux Memory Model](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-12.md) | `mm/` (vm_area, page tables), `arch/arm64/mm/` | — |
+| 13 | [Page Tables, TLBs & Huge Pages](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-13.md) | `arch/arm64/mm/`, `mm/memory.c`, huge page support | — |
+| 14 | [Memory Allocation: SLUB, kmalloc & CMA](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-14.md) | `mm/slub.c`, `mm/cma.c`, `include/linux/slab.h` | — |
+| 15 | [DMA, IOMMU & GPU Memory Management](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-15.md) | `drivers/iommu/`, `drivers/base/dma-mapping.c`, GPU in `drivers/` | — |
+| 16 | [NUMA Topology & HPC Memory Optimization](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-16.md) | `arch/arm64/mm/`, NUMA if enabled; SDM845 is UMA | — |
+| 17 | [Linux Device Driver Model & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md) | `drivers/base/`, `arch/arm64/boot/dts/`, platform_driver, of_* | — |
+| 18 | [Character Drivers, Interrupt-Driven I/O & V4L2](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md) | `drivers/media/`, V4L2 camera pipeline for comma 3X | — |
+| 19 | [Modern I/O: io_uring, DMA-BUF & Zero-Copy](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-19.md) | `io_uring/`, DMA-BUF in `drivers/dma-buf/` | VisionIpc / zero-copy in openpilot on top |
+| 20 | [PCIe, NVMe & GPU Driver Architecture](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-20.md) | `drivers/pci/`, `drivers/nvme/`, GPU under `drivers/` (Adreno on SDM845) | — |
+| 21 | [Filesystems: ext4, btrfs, F2FS & overlayfs](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-21.md) | `fs/ext4/`, `fs/overlayfs/` (often in Android/AGNOS rootfs) | `userspace/` rootfs layout; build_system packs fs |
+| 22 | [Embedded Storage: eMMC, UFS, NVMe & OTA](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-22.md) | `drivers/scsi/`, UFS for SDM845 storage, block layer | `firmware/`, partition layout, A/B slots in builder |
+| 23 | [Containers, cgroups v2 & NVIDIA Container](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-23.md) | `kernel/cgroup/` | Optional: AGNOS userspace can use cgroups for isolation |
+| 24 | [OS for AI Systems: L4T, openpilot OS & RT Tuning](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-24.md) | Entire kernel as “openpilot OS” (Agnos); sched, drivers, RT | agnos-builder = build for “openpilot OS”; RT tuning in config |
+| 25 | [Capstone: Custom Linux Images with Yocto](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-25.md) | — (Agnos uses its own builder, not Yocto) | **agnos-builder** is the capstone: custom image build (kernel + rootfs) |
+| 26 | [eBPF: Programmable Kernel Observability](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-26.md) | `kernel/bpf/`, `net/bpf/` (if enabled in config) | Observability of openpilot on AGNOS via eBPF tools |
 
 ---
 
@@ -145,7 +145,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ## Detailed Mapping by Lecture
 
 ### Lecture 1: Modern OS Architecture & the Linux Kernel  
-**OS Lecture:** [Lecture-01](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-01.md)
+**OS Lecture:** [Lecture-01](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-01.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -156,7 +156,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 2: Processes, task_struct & the Linux Process Model  
-**OS Lecture:** [Lecture-02](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-02.md)
+**OS Lecture:** [Lecture-02](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-02.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -167,7 +167,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 3: Interrupts, Exceptions & Bottom Halves  
-**OS Lecture:** [Lecture-03](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-03.md)
+**OS Lecture:** [Lecture-03](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-03.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -178,7 +178,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 4: System Calls, vDSO & eBPF  
-**OS Lecture:** [Lecture-04](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-04.md)
+**OS Lecture:** [Lecture-04](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-04.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -189,7 +189,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 5: Kernel Modules, Boot Process & Device Tree  
-**OS Lecture:** [Lecture-05](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-05.md)
+**OS Lecture:** [Lecture-05](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -204,12 +204,12 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 6: CPU Scheduling (CFS, EEVDF, SCHED_FIFO)  
-**OS Lecture:** [Lecture-06](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-06.md)
+**OS Lecture:** [Lecture-06](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-06.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
 | **Fair scheduler (CFS/EEVDF)** | **agnos-kernel-sdm845:** `kernel/sched/core.c`, `fair.c` (CFS), `rt.c` (RT class). 4.x kernel uses CFS. |
-| **SCHED_FIFO** | Kernel implements `sched_setscheduler(SCHED_FIFO)`; openpilot’s `set_realtime_priority()` in `openpilot/common/util.cc` calls it (see [Lecture-06 Real example](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-06.md#real-example-in-openpilot-this-repo)). |
+| **SCHED_FIFO** | Kernel implements `sched_setscheduler(SCHED_FIFO)`; openpilot’s `set_realtime_priority()` in `openpilot/common/util.cc` calls it (see [Lecture-06 Real example](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-06.md#real-example-in-openpilot-this-repo)). |
 | **CPU isolation / affinity** | Boot cmdline (from builder) + openpilot `set_core_affinity()`; scheduler respects isolcpus and affinity. |
 
 **Tasks:** Inspect `kernel/sched/fair.c` (vruntime, pick-next) and `rt.c` (FIFO/RR).
@@ -217,7 +217,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 7: Real-Time Linux (PREEMPT_RT & Determinism)  
-**OS Lecture:** [Lecture-07](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-07.md)
+**OS Lecture:** [Lecture-07](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-07.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -227,7 +227,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 8: Multi-Core Scheduling, CPU Affinity & isolcpus  
-**OS Lecture:** [Lecture-08](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-08.md)
+**OS Lecture:** [Lecture-08](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-08.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -237,7 +237,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 9: Synchronization (Spinlocks, Mutexes, RW Locks)  
-**OS Lecture:** [Lecture-09](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-09.md)
+**OS Lecture:** [Lecture-09](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-09.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -247,7 +247,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 10: Lock-Free Programming (RCU, Atomics)  
-**OS Lecture:** [Lecture-10](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-10.md)
+**OS Lecture:** [Lecture-10](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-10.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -257,7 +257,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 11: Deadlock, Priority Inversion & PI Mutexes  
-**OS Lecture:** [Lecture-11](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-11.md)
+**OS Lecture:** [Lecture-11](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-11.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -267,7 +267,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 12: Virtual Memory & the Linux Memory Model  
-**OS Lecture:** [Lecture-12](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-12.md)
+**OS Lecture:** [Lecture-12](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-12.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -277,7 +277,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 13: Page Tables, TLBs & Huge Pages  
-**OS Lecture:** [Lecture-13](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-13.md)
+**OS Lecture:** [Lecture-13](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-13.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -287,7 +287,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 14: Memory Allocation (SLUB, kmalloc, CMA)  
-**OS Lecture:** [Lecture-14](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-14.md)
+**OS Lecture:** [Lecture-14](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-14.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -297,7 +297,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 15: DMA, IOMMU & GPU Memory Management  
-**OS Lecture:** [Lecture-15](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-15.md)
+**OS Lecture:** [Lecture-15](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-15.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -307,7 +307,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 16: NUMA Topology & HPC Memory Optimization  
-**OS Lecture:** [Lecture-16](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-16.md)
+**OS Lecture:** [Lecture-16](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-16.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -317,7 +317,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 17: Linux Device Driver Model & Device Tree  
-**OS Lecture:** [Lecture-17](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-17.md)
+**OS Lecture:** [Lecture-17](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -327,7 +327,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 18: Character Drivers, Interrupt-Driven I/O & V4L2  
-**OS Lecture:** [Lecture-18](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-18.md)
+**OS Lecture:** [Lecture-18](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -337,7 +337,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 19: Modern I/O (io_uring, DMA-BUF & Zero-Copy)  
-**OS Lecture:** [Lecture-19](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-19.md)
+**OS Lecture:** [Lecture-19](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-19.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -347,7 +347,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 20: PCIe, NVMe & GPU Driver Architecture  
-**OS Lecture:** [Lecture-20](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-20.md)
+**OS Lecture:** [Lecture-20](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-20.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -357,7 +357,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 21: Filesystems (ext4, btrfs, F2FS, overlayfs)  
-**OS Lecture:** [Lecture-21](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-21.md)
+**OS Lecture:** [Lecture-21](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-21.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -367,7 +367,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 22: Embedded Storage (eMMC, UFS, OTA Partitioning)  
-**OS Lecture:** [Lecture-22](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-22.md)
+**OS Lecture:** [Lecture-22](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-22.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -377,7 +377,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 23: Containers, cgroups v2  
-**OS Lecture:** [Lecture-23](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-23.md)
+**OS Lecture:** [Lecture-23](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-23.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -387,7 +387,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 24: OS for AI Systems (L4T, openpilot OS & RT Tuning)  
-**OS Lecture:** [Lecture-24](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-24.md)
+**OS Lecture:** [Lecture-24](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-24.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -398,7 +398,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 25: Capstone — Custom Linux Images (Yocto)  
-**OS Lecture:** [Lecture-25](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-25.md)
+**OS Lecture:** [Lecture-25](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-25.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -408,7 +408,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 ---
 
 ### Lecture 26: eBPF — Programmable Kernel Observability  
-**OS Lecture:** [Lecture-26](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-26.md)
+**OS Lecture:** [Lecture-26](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-26.md)
 
 | Concept | Where in AGNOS |
 |--------|-----------------|
@@ -423,7 +423,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
    Use the [All OS Lectures → AGNOS (Overview)](#all-os-lectures--agnos-overview) table above: every lecture links to the OS slide and to concrete kernel/builder paths. Start with Lectures 1–6 (architecture, processes, interrupts, syscalls, boot/DT, scheduling), then follow the rest in order or by topic.
 
 2. **Clone and open the two repos**  
-   Keep [Phase 1 — Operating Systems — Guide](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Guide.md) and lecture list handy.
+   Keep [Phase 1 — Operating Systems — Guide](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) and lecture list handy.
 
 3. **agnos-kernel-sdm845**  
    - Browse `arch/arm64/`, `kernel/sched/`, `drivers/`.  
@@ -435,7 +435,7 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
    - Trace boot artifacts: kernel image, DTB, initrd, rootfs in scripts and `firmware/`.
 
 5. **Cross-link with openpilot**  
-   openpilot runs on AGNOS. [Lecture-05](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-05.md) and [Lecture-06](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Lectures/Lecture-06.md) “Real example in openpilot” sections point to `openpilot/common/util.cc` (`set_realtime_priority`, `set_core_affinity`) — those system calls target the AGNOS kernel.
+   openpilot runs on AGNOS. [Lecture-05](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md) and [Lecture-06](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-06.md) “Real example in openpilot” sections point to `openpilot/common/util.cc` (`set_realtime_priority`, `set_core_affinity`) — those system calls target the AGNOS kernel.
 
 ---
 
@@ -458,5 +458,5 @@ The kernel in AGNOS is **forked from Linux and custom modified**. The table belo
 
 - **agnos-kernel-sdm845:** [GitHub — commaai/agnos-kernel-sdm845](https://github.com/commaai/agnos-kernel-sdm845) — “Kernel for the SDM845 modules”.  
 - **agnos-builder:** [GitHub — commaai/agnos-builder](https://github.com/commaai/agnos-builder) — “Build AGNOS, the operating system for the comma three, 3X, and four.”  
-- **OS course:** [Phase 1 — Operating Systems — Guide](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Guide.md) and [Lecture index](../../../Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Guide.md#lecture-index).  
+- **OS course:** [Phase 1 — Operating Systems — Guide](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) and [Lecture index](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md#lecture-index).  
 - **openpilot:** Runs on AGNOS; see [Autonomous Driving Guide](../Guide.md) and [flow diagram](../flow-diagram.md).

@@ -41,7 +41,7 @@ Concepts from **L3 (interrupts)** and **L5 (boot/modules)** are mentioned in com
 **Requires:** Linux (or WSL on Windows) with pthreads and `sched.h`.
 
 ```bash
-cd "Phase 1 - Foundational Knowledge/4. Operating Systems/user-plan"
+cd "Phase 1 - Foundational Knowledge/3. Operating Systems/user-plan"
 make
 ./rt_demo [options]
 ```
