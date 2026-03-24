@@ -1,4 +1,4 @@
-# Deep C++ and Parallel Computing with CUDA
+# Deep C++ and Parallel computing with CUDA
 
 > **Goal:** Write **correct, efficient C++** on the CPU side and **minimal CUDA kernels** on the GPU — the same pairing used in real inference stacks (host code + kernels), HPC libraries, and later phases of this roadmap (Jetson, TensorRT, custom backends).
 
