@@ -1,5 +1,7 @@
 # Computer Architecture Course - Complete Overview
 
+This track is **Phase 1, section 3** (*Computer Architecture and Hardware*). For the section hub (including the hardware-platforms survey), see **[Guide.md](Guide.md)**.
+
 This comprehensive computer architecture course is designed for engineers building AI accelerators, embedded systems, and custom hardware. It provides deep technical understanding of how modern CPUs work, from instruction set design through microarchitecture implementation.
 
 ---

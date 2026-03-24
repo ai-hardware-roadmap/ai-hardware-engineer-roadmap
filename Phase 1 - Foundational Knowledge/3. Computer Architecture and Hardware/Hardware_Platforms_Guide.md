@@ -1,6 +1,6 @@
-# Computer Hardware Basics
+# Hardware platforms and components
 
-A comprehensive guide to modern computer hardware — CPUs, memory, storage, GPUs, and I/O — across laptops, workstations, and servers, with coverage through CES 2026.
+A comprehensive guide to modern computer hardware — CPUs, memory, storage, GPUs, and I/O — across laptops, workstations, and servers, with coverage through CES 2026. Part of **Computer Architecture and Hardware** (Phase 1 §3); start from [Guide.md](Guide.md) for the full section map.
 
 ---
 
