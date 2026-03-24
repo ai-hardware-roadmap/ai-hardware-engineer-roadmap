@@ -1,5 +1,7 @@
 # AI Fundamentals: Neural Networks and Edge AI
 
+Phase 1 **§6** (after **[§5 — Deep C++ and Parallel computing with CUDA](../5. Deep C++ and Parallel computing with CUDA/Guide.md)**).
+
 > **Goal:** Build a 100% concrete, ground-up understanding of what AI is, what artificial neural networks are, how they learn, and how to implement everything hands-on using **tinygrad** — the minimal ML framework that exposes every fundamental operation.
 
 ---

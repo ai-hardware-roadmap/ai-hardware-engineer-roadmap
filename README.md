@@ -38,7 +38,7 @@ graph LR
   R4 --> N3
 
   subgraph Phases
-    P1["Phase 1<br/>(Digital, OS, AI Fundamentals)"]
+    P1["Phase 1<br/>(Digital, OS, C++/CUDA, AI)"]
     P2["Phase 2<br/>(Embedded Systems)"]
     P3["Phase 3<br/>(Xilinx FPGA)"]
     P4["Phase 4<br/>(Jetson, TensorRT, Sensor Fusion, ROS2)"]
@@ -88,9 +88,10 @@ graph LR
 | [**Hardware Description Languages**](Phase%201%20-%20Foundational%20Knowledge/2.%20Hardware%20Description%20Languages%20(HDLs)/Guide.md) | Verilog syntax, behavioral/dataflow/structural modeling, testbenches, synthesis | *The language you will use to design AI accelerator datapaths* |
 | [**Computer Architecture and Hardware**](Phase%201%20-%20Foundational%20Knowledge/3.%20Computer%20Architecture%20and%20Hardware/Guide.md) | ISA through microarchitecture (pipelines, caches, OoO, coherence); labs; modern CPUs/GPUs/memory/storage/I/O across form factors | *Same limits (bandwidth, latency, power) govern TinyML through data-center GPUs; know both theory and what ships* |
 | [**Operating Systems**](Phase%201%20-%20Foundational%20Knowledge/4.%20Operating%20Systems/Guide.md) | Processes, threads, scheduling (CFS/EEVDF/RT), memory management, synchronization, device drivers, filesystems | *OS underpins Linux, RTOS, and all AI deployment targets; 24-lecture curriculum covering modern Linux internals* |
-| [**AI Fundamentals**](Phase%201%20-%20Foundational%20Knowledge/5.%20AI%20Fundamentals%20-%20Neural%20Networks%20and%20Edge%20AI/Guide.md) | Neural networks, backpropagation, CNNs, tinygrad, PyTorch | *Understanding what the hardware must compute — the bridge from digital foundations to AI acceleration* |
+| [**Deep C++ and Parallel Computing with CUDA**](Phase%201%20-%20Foundational%20Knowledge/5.%20Deep%20C%2B%2B%20and%20Parallel%20computing%20with%20CUDA/Guide.md) | Modern C++ (memory, STL), CPU threading, CUDA model (grids/blocks, memory spaces), streams; vector/matmul/reduction projects | *Host + kernel skills match real inference stacks; bridges OS threads to GPU parallelism before you study NN math* |
+| [**AI Fundamentals**](Phase%201%20-%20Foundational%20Knowledge/6.%20AI%20Fundamentals%20-%20Neural%20Networks%20and%20Edge%20AI/Guide.md) | Neural networks, backpropagation, CNNs, tinygrad, PyTorch | *Understanding what the hardware must compute — the bridge from digital foundations to AI acceleration* |
 
-**Projects:** Calculator on breadboard, FPGA digital clock, traffic light controller, UART module, basic RISC-V core, micrograd implementation, CNN from scratch, tinygrad internals
+**Projects:** Calculator on breadboard, FPGA digital clock, traffic light controller, UART module, basic RISC-V core, CUDA vector/SAXPY/matmul + CPU reference checks, micrograd implementation, CNN from scratch, tinygrad internals
 
 ---
 
@@ -141,7 +142,7 @@ graph LR
 | Track | Prerequisites | Focus | Guide |
 |-------|--------------|-------|-------|
 | **A: Autonomous Driving** | Phase 3 (Computer Vision), Phase 4 (Sensor Fusion, Edge AI) | openpilot architecture (camerad, modeld, planning, control), tinygrad on-device inference, camera ISP pipelines, BEV perception | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/Guide.md) |
-| **B: AI Chip Design** | Phase 3 (HLS, Advanced FPGA), Phase 4 (AI Fundamentals) | Systolic arrays, dataflow architectures, tinygrad as hardware-software interface, FPGA prototyping, ASIC flow overview | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/5.%20AI%20Chip%20Design/Guide.md) |
+| **B: AI Chip Design** | Phase 3 (HLS, Advanced FPGA), Phase 1 §6 (AI Fundamentals) | Systolic arrays, dataflow architectures, tinygrad as hardware-software interface, FPGA prototyping, ASIC flow overview | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/5.%20AI%20Chip%20Design/Guide.md) |
 | **C: HPC & GPU Infrastructure** | Phase 4 (CUDA) | Multi-GPU NCCL, NVLink/NVSwitch, InfiniBand, RDMA, GPUDirect; includes **DL Inference Optimization** (graph/ops, kernels, compiler, quantization, runtimes) | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
 | **D: Robotics** | Phase 4 (ROS2, Sensor Fusion) | Nav2, MoveIt manipulation, motion planning, ROS-Industrial, sensor fusion for autonomous robots | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Robotics%20Application/Guide.md) |
 | **E: Real Time Edge AI with Nvidia Jetson** | Phases 1–2, Phase 4 (Jetson, TensorRT) | Efficient architectures (MobileNet, EfficientNet, YOLO), quantization, TinyML, edge inference runtimes, **NVIDIA Jetson Holoscan**, system integration | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/2.%20Real%20Time%20Edge%20AI%20with%20Nvidia%20Jetson/Guide.md) |
