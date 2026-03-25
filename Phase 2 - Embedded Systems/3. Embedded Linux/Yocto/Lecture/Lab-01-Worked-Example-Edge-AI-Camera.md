@@ -194,6 +194,255 @@ Name the image `yourproduct-image.bb` and `bitbake yourproduct-image` when the s
 
 ---
 
+## How to implement (workflow)
+
+The sections above are the **what**. This section is the **how**: a realistic order of operations from empty checkout to flashable artifact. Treat it as a **blueprint**—you will adjust branch names, layer paths, `MACHINE`, and recipe names to match **your** BSP and Yocto release.
+
+**Reality checks**
+
+- **Layer compatibility:** Poky, `meta-openembedded`, `meta-tegra` (OE4T), and `meta-rauc` each target specific Yocto branches. Use the **combination documented** by the BSP (e.g. OE4T manifest or README), not random `git checkout` tags mixed ad hoc.
+- **Jetson + RAUC + A/B:** Boot flow and partitioning on Tegra are **BSP-specific**. Expect extra integration (bootloader, signing, slot layout) beyond “add meta-rauc”.
+- **CUDA / TensorRT / Docker:** Often require vendor or community layers, license acceptance, and sometimes **not** the same image as a minimal RAUC target. Prove each package with `bitbake -e` / `bitbake <recipe>` before locking the image.
+
+**Pipeline:** host setup → clone Poky → `oe-init-build-env` → add layers → `local.conf` → product layer → image recipe → (optional) app recipe → kernel/DT tweaks → WIC/OTA wiring → `bitbake` → deploy → vendor flash tools.
+
+### 1. Host setup and get Poky
+
+**Install build dependencies** (Ubuntu is common; names differ on other distros). Cross-check the **Yocto System Requirements** page for your release.
+
+```bash
+sudo apt update
+sudo apt install -y gawk wget git diffstat unzip texinfo gcc build-essential \
+  chrpath socat cpio python3 python3-pip python3-pexpect xz-utils debianutils \
+  iputils-ping python3-git python3-jinja2 libegl1-mesa libsdl1.2-dev pylint xterm
+```
+
+**Clone Poky** at a **named branch or tag** that matches your BSP (example branch name only):
+
+```bash
+git clone git://git.yoctoproject.org/poky
+cd poky
+git checkout kirkstone   # example only — use BSP-required revision
+```
+
+**Start a build shell** (creates or uses `build/`):
+
+```bash
+source oe-init-build-env build
+```
+
+From here, paths like `../meta-tegra` assume sibling directories next to `poky/`, not inside `build/`.
+
+### 2. Add layers (example stack)
+
+Clone **dependencies your BSP documents** (versions must match). Illustrative layout:
+
+```text
+work/
+  poky/
+  meta-openembedded/
+  meta-tegra/          # OE4T — check required branch next to Poky
+  meta-rauc/
+```
+
+Register layers from inside the build directory:
+
+```bash
+bitbake-layers add-layer ../meta-tegra
+bitbake-layers add-layer ../meta-openembedded/meta-oe
+bitbake-layers add-layer ../meta-openembedded/meta-python
+bitbake-layers add-layer ../meta-rauc
+```
+
+Run `bitbake-layers show-layers` and fix **BBFILE_COLLECTIONS** / dependency errors before continuing.
+
+### 3. Configure `conf/local.conf`
+
+Edit `build/conf/local.conf`. **Replace** `MACHINE` and distro features with values from your BSP.
+
+```bash
+# Example only — confirm MACHINE with meta-tegra / board docs
+MACHINE = "jetson-orin-nano-devkit"
+
+DISTRO_FEATURES:append = " systemd"
+VIRTUAL-RUNTIME_init_manager = "systemd"
+
+PACKAGE_CLASSES ?= "package_rpm"
+
+# Optional: reclaim disk during build (tradeoff: harder debug of failed workdirs)
+INHERIT += "rm_work"
+```
+
+**Development image** (optional): adds debug affordances; do not ship blindly to production.
+
+```bash
+EXTRA_IMAGE_FEATURES += "debug-tweaks ssh-server-openssh"
+```
+
+### 4. Create the product layer
+
+```bash
+bitbake-layers create-layer ../meta-myproduct
+bitbake-layers add-layer ../meta-myproduct
+```
+
+Typical layout:
+
+```text
+meta-myproduct/
+├── conf/layer.conf
+├── recipes-core/images/
+├── recipes-app/
+├── wic/                    # if you own custom .wks
+└── recipes-kernel/linux/   # bbappends or fragments, if needed
+```
+
+### 5. Custom image recipe
+
+File: `meta-myproduct/recipes-core/images/my-edge-image.bb`
+
+```text
+SUMMARY = "Edge AI camera root filesystem (example)"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f833b3da"
+
+inherit core-image
+
+# Use :append (Kirkstone+). Only list packages that exist in your configured layers.
+IMAGE_INSTALL:append = " \
+    python3 \
+    openssh-sshd \
+"
+
+# Add opencv, gstreamer, docker, rauc, etc. only after bitbake resolves them.
+# Example placeholders (names vary by layer):
+# IMAGE_INSTALL:append = " opencv gstreamer1.0-plugins-base rauc"
+```
+
+Build:
+
+```bash
+bitbake my-edge-image
+```
+
+### 6. Ship an application with systemd (pattern)
+
+**Recipe** `meta-myproduct/recipes-app/myapp/myapp_1.0.bb`. Put `app.py` and `myapp.service` in the same directory as the `.bb` file (or under a `files/` subdirectory, following your layer’s FILESPATH convention).
+
+```text
+SUMMARY = "Example AI app service"
+LICENSE = "MIT"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f833b3da"
+
+SRC_URI = "file://app.py \
+           file://myapp.service \
+          "
+
+S = "${WORKDIR}"
+
+RDEPENDS:${PN} += "python3"
+
+do_install() {
+    install -d ${D}${bindir}
+    install -m 0755 ${WORKDIR}/app.py ${D}${bindir}/myapp.py
+
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${WORKDIR}/myapp.service ${D}${systemd_system_unitdir}
+}
+
+inherit systemd
+
+SYSTEMD_SERVICE:${PN} = "myapp.service"
+```
+
+**`files/myapp.service`**
+
+```ini
+[Unit]
+Description=Example edge AI app
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/bin/myapp.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Add `myapp` to `IMAGE_INSTALL:append` in the image recipe.
+
+### 7. Kernel and hardware
+
+- **Menuconfig (when supported):** `bitbake virtual/kernel -c menuconfig` — some BSPs prefer **only** fragments; follow vendor docs.
+- **Fragments / defconfig:** prefer `*.cfg` fragments and `bbappend` to `linux-yocto` or the BSP kernel recipe instead of hand-editing trees you cannot rebase.
+- **Device tree:** `.dts`/`.dtsi` in your layer; apply via `SRC_URI` + patch or via BSP extension mechanisms.
+
+### 8. Storage layout (WIC)
+
+Place a `.wks` under your layer (e.g. `meta-myproduct/wic/my-layout.wks`). **Do not** assume the partition stanza below works on Tegra without BSP alignment.
+
+```bash
+part /boot --source bootimg-partition --fstype=vfat --label boot --size 256M
+part / --source rootfs --fstype=ext4 --label rootfs_a
+part / --source rootfs --fstype=ext4 --label rootfs_b
+part /data --fstype=ext4 --size 1024M
+```
+
+Point the **image** at it. Put the `.wks` under `wic/` in your layer; then in the image recipe (names vary by release):
+
+```text
+WKS_FILE = "my-layout.wks"
+IMAGE_FSTYPES:append = " wic"
+```
+
+If BitBake cannot find the file, check `WKS_SEARCH_PATH` / layer `BBFILE_COLLECTIONS` and the docs for your Yocto version.
+
+A/B + RAUC usually requires matching **bootloader env**, **RAUC system.conf**, and **partition UUIDs**—follow `meta-rauc` integration for your SoC.
+
+### 9. OTA (RAUC outline)
+
+- Add RAUC **distro** / **image** features per `meta-rauc` documentation for your branch.
+- Install the RAUC client into the image (`rauc` package when available).
+- Define **slots**, **keys**, and **bundle** recipes in CI; signing is mandatory for serious deployments.
+
+Mender follows a parallel path via `meta-mender` with its own partition assumptions.
+
+### 10. Build and artifacts
+
+```bash
+bitbake my-edge-image
+```
+
+Inspect deploy (path varies by `MACHINE` and `TMPDIR`):
+
+```text
+tmp/deploy/images/<MACHINE>/
+  *.wic
+  *.ext4 / tar / other fstypes
+  kernel / dtb artifacts (BSP-dependent)
+```
+
+### 11. Flash to hardware
+
+Use **vendor tools** for the platform (for Jetson, NVIDIA’s flashing workflow / BSP docs—not a generic one-liner). OE4T and L4T document where images land and how they map to `flash.sh` or equivalent.
+
+### Traditional distro vs Yocto (engineering view)
+
+| Traditional Linux | Yocto |
+|-------------------|--------|
+| Install packages after boot | Decide image contents at build time |
+| Manual snowflake setup | Automated, reviewable metadata |
+| Hard to reproduce | Reproducible with pinned layers and cache policy |
+
+### Where to go deeper on this roadmap
+
+- **Failed builds and logs:** [Lecture 11 — Debugging builds](Lecture-11.md)
+- **Performance / sstate / CI:** [Lecture 13 — Performance, caching, and CI](Lecture-13.md)
+- **bbappend discipline:** [Lecture 7 — Layers](Lecture-07.md)
+- **Jetson Yocto production:** Phase 4 Track B — *Orin-Nano-Yocto-BSP-Production*
+
+---
+
 ## Next steps on this roadmap
 
 1. Continue [Lecture 4 — Architecture](Lecture-04.md) (layers and configs).
