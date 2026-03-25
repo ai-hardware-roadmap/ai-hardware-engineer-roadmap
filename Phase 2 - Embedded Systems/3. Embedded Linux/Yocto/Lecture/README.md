@@ -8,7 +8,7 @@ Work through these in order. Each file is one session: read it, do the lab at th
 |---------|--------|
 | [Lecture-01](Lecture-01.md) | How to use this course |
 | [Lecture-02](Lecture-02.md) | Module 0 — Prerequisites and host setup |
-| [Lecture-03](Lecture-03.md) | Module 1 — What Yocto is (and is not) |
+| [Lecture-03](Lecture-03.md) | Module 1 — What Yocto is (and is not) ([Lab 1 example](Lab-01-Worked-Example-Edge-AI-Camera.md)) |
 | [Lecture-04](Lecture-04.md) | Module 2 — Architecture in one picture |
 | [Lecture-05](Lecture-05.md) | Module 3 — First successful build |
 | [Lecture-06](Lecture-06.md) | Module 4 — Recipes: the atoms of the system |

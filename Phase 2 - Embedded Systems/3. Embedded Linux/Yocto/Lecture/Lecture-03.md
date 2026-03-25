@@ -49,6 +49,10 @@ Answer in one page:
 
 **Done when:** you can name what must be in the image vs what is nice to have.
 
+### Worked example (optional)
+
+A full one-page-style answer for an **edge AI camera on Jetson-class hardware** (hardware, connectivity, storage, OTA, userspace, must vs nice) with Yocto mappings and file sketches: **[Lab 01 — Worked example (edge AI camera)](Lab-01-Worked-Example-Edge-AI-Camera.md)**. Use it as a template; replace MACHINE names, layers, and packages with your BSP and release.
+
 ---
 
 **Previous:** [Lecture 02](Lecture-02.md) | **Next:** [Lecture 04 — Module 2](Lecture-04.md)
