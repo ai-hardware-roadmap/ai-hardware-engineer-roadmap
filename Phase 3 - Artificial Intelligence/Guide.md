@@ -11,4 +11,4 @@ Standalone phase after **Phase 1** (digital + HDL, architecture, OS, C++/CUDA) a
 
 **Suggested order:** Neural networks (theory + tinygrad) → Edge AI (deployment context) → Computer vision (or CV in parallel once tensors are familiar) → Sensor fusion (often after CV; overlaps with Phase 4 Jetson when you run stacks on hardware).
 
-**Previous:** [Phase 1 §4 — C++ and Parallel Computing](../Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/Guide.md) · **Next:** [Phase 4 Track A — Xilinx FPGA](../Phase 4 - Track A - Xilinx FPGA/1. Xilinx FPGA Development/Guide.md) or [Phase 4 Track B — Jetson](../Phase 4 - Track B - Nvidia Jetson and Edge AI/1. Nvidia Jetson Platform/Guide.md).
+**Previous:** [Phase 1 §4 — C++ and Parallel Computing](../Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/Guide.md) · **Next:** [Phase 4 Track A — Xilinx FPGA](../Phase 4 - Track A - Xilinx FPGA/1. Xilinx FPGA Development/Guide.md) or [Phase 4 Track B — Jetson](../Phase 4 - Track B - Nvidia Jetson/1. Nvidia Jetson Platform/Guide.md).

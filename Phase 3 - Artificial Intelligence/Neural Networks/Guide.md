@@ -1207,4 +1207,4 @@ tinygrad   →  you see what frameworks hide, control the scheduler
 
 ---
 
-*Next (Phase 4 Track B): [Edge AI Optimization](../../Phase 4 - Track B - Nvidia Jetson and Edge AI/2. Edge AI Optimization/Guide.md) — quantization, pruning, TensorRT, TFLite*
+*Next (Phase 4 Track B): [Edge AI Optimization](../../Phase 4 - Track B - Nvidia Jetson/3. Edge AI Optimization/Guide.md) — quantization, pruning, TensorRT, TFLite*
