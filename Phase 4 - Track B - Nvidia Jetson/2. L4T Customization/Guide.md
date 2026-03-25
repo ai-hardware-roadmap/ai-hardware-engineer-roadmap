@@ -48,6 +48,12 @@ Use the **Jetson Linux Developer Guide** for the same **major JetPack / L4T** li
 
 ---
 
+## BCT reference (in this module)
+
+- [Deployment.md](Deployment.md) — reformatted **T23x BCT** (DU-10990-001): MB1/MB2 boot configuration tables, DTS vs legacy CFG, pinmux/prod/PMIC/storage/UPHY/security. Use the preamble and table of contents to navigate; the body is still dense NVIDIA reference material.
+
+---
+
 ## Deep dives (Platform module 1)
 
 Use these Platform guides as **implementation** detail for L4T-facing production work:
