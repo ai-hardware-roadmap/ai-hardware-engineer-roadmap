@@ -9,6 +9,7 @@
 - Chapters map to **separate `.dtsi` fragments** under `hardware/nvidia/platform/t23x/<platform>/bct/` (paths in the original doc).
 - Many sections show **NEW DTS** vs **OLD CFG** so you can relate spreadsheet / legacy output to DTS.
 - Long tables and code are still dense; use your editor outline (headings below) to jump.
+- **Carrier bring-up (Orin NX / Nano)** in prose form: [Jetson-Module-Adaptation-Bring-Up-Orin-NX-Nano.md](Jetson-Module-Adaptation-Bring-Up-Orin-NX-Nano.md) (module adaptation, pinmux, DT, PCIe, USB, UPHY, flash). Use this file together with the BCT reference below.
 
 ## Quick map: which BCT, who consumes it
 
