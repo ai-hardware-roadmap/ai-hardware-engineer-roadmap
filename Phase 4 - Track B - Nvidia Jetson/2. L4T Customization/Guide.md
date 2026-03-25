@@ -52,6 +52,7 @@ Use the **Jetson Linux Developer Guide** for the same **major JetPack / L4T** li
 
 - [T23x-Deployment.md](T23x-Deployment.md) — reformatted **T23x BCT** (DU-10990-001): MB1/MB2 boot configuration tables, DTS vs legacy CFG, pinmux/prod/PMIC/storage/UPHY/security. Use the preamble and table of contents to navigate; the body is still dense NVIDIA reference material.
 - [Jetson-Module-Adaptation-Bring-Up-Orin-NX-Nano.md](Jetson-Module-Adaptation-Bring-Up-Orin-NX-Nano.md) — **Jetson Orin NX / Nano** module adaptation and bring-up (paired with `T23x-Deployment.md` for BCT): board naming, rootfs, MB1 pinmux/GPIO, DT porting, PCIe, USB, UPHY, `l4t_initrd_flash.sh`, env overrides.
+- [ODMDATA-and-GPIO-Jetson-Linux.md](ODMDATA-and-GPIO-Jetson-Linux.md) — **ODM data / `ODMDATA`**, **UPHY** relationship, and **pinmux vs `devmem` vs sysfs vs `libgpiod`** (JetPack 6–oriented mental model).
 
 ---
 

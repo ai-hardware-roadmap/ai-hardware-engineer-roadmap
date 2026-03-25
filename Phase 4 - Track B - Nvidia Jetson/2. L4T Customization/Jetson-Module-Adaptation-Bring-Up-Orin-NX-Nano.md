@@ -128,6 +128,8 @@ Point your **board `.conf`** at these files (see [Flashing the build image](#fla
 
 ### Changing the Pinmux
 
+For a **conceptual map** of **ODM data**, **UPHY**, and how **`devmem`**, **sysfs**, and **`libgpiod`** relate to **MB1 BCT pinmux**, read **[ODMDATA-and-GPIO-Jetson-Linux.md](ODMDATA-and-GPIO-Jetson-Linux.md)** first—the steps below are the **NVIDIA procedure** for **TRM + `devmem`** debug.
+
 Starting with JetPack 6, you can change the pinmux in the following ways:
 
 Update the MB1 pinmux BCT as mentioned in Generating the Pinmux dtsi Files.
