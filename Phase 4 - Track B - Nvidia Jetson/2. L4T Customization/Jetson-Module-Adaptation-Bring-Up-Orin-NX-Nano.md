@@ -2,13 +2,28 @@
 
 **Source:** NVIDIA *Jetson Linux Developer Guide* — *Jetson Module Adaptation and Bring-Up* → **Jetson Orin NX and Nano Series** (scraped snapshot, last updated Feb 2025 in upstream). This file is reformatted for the roadmap. Confirm details against the [Jetson documentation](https://docs.nvidia.com/jetson/) for your **JetPack / L4T** version.
 
-**Paired reference:** **[Deployment.md](Deployment.md)** — T23x **BCT** (MB1/MB2 boot configuration tables, pinmux/prod/pad voltage/PMIC in DTS). Use it when this guide points at **BCT**, **MB1**, **`tegrabct_v2`**, or **`bootloader/generic/BCT`**.
+**Paired reference:** **[T23x-Deployment.md](T23x-Deployment.md)** — T23x **BCT** (MB1/MB2 boot configuration tables, pinmux/prod/pad voltage/PMIC in DTS). Use it when this guide points at **BCT**, **MB1**, **`tegrabct_v2`**, or **`bootloader/generic/BCT`**.
 
 **Reading tips**
 
 - Section titles below are markdown headings; use your editor outline to jump.
 - Lists and tables recovered from HTML may still have gaps—verify critical numbers against NVIDIA’s PDF/HTML.
 - Commands shown as shell lines starting with `$` are for the **host** or **Jetson** as in the original doc.
+
+**How to use this as a course**
+
+1. **Context** — [Board configuration](#board-configuration) and [Naming the board](#naming-the-board): what the dev kit is vs your carrier.
+2. **Contracts** — [Placeholders](#placeholders-in-the-porting-instructions) and [Root filesystem configuration](#root-filesystem-configuration): what `<board>` means and what NVIDIA expects in rootfs.
+3. **Early boot (MB1)** — [MB1 configuration changes](#mb1-configuration-changes): pinmux spreadsheet → `.dtsi`, GPIO numbering, optional I2C/DP-AUX; pair with **[T23x-Deployment.md](T23x-Deployment.md)** for BCT layout.
+4. **Carrier-specific** — [EEPROM modifications](#eeprom-modifications) if you have no carrier EEPROM.
+5. **Linux DT** — [Porting the Linux kernel device tree](#porting-the-linux-kernel-device-tree): `nv-public` vs `nv-platform`, DTB deploy, overlays.
+6. **High-speed I/O** — [PCIe](#configuring-the-pcie-controller), [USB](#porting-universal-serial-bus), [UPHY / ODMDATA](#uphy-lane-configuration).
+7. **Ship** — [Flashing the build image](#flashing-the-build-image), [optional flash env vars](#setting-optional-environmental-variables), [HDMI](#hdmi-support) if applicable.
+
+**Code in this document**
+
+- Fenced **`dts`** / **`bash`** / **`diff`** blocks are added where it helps; long excerpts still follow the NVIDIA guide’s line breaks.
+- A **`diff`** may have been split across pages in the source—verify hunks against your real `Linux_for_Tegra` tree.
 
 ## Table of contents
 
@@ -28,9 +43,9 @@
 
 ---
 
-This guide describes how to port and bring up custom platforms using the NVIDIA® Jetson™ Orin™ NX and Nano modules using the NVIDIA Jetson Linux Driver Package.
+This guide explains how to **adapt** NVIDIA **Jetson Orin NX** and **Orin Nano** modules to a **custom carrier** using the **Jetson Linux** (L4T) driver package: board naming, MB1/MB2-related configuration, device tree, PCIe/USB/UPHY, and flashing.
 
-The examples in this document include code for the Jetson Orin NX and Nano modules connected to the Jetson Orin™ Nano carrier board. For **BCT** file layout and DTS fields, use the paired reference **[Deployment.md](Deployment.md)** (NVIDIA T23x BCT deployment guide, DU-10990-001).
+Examples target the **Orin Nano Developer Kit** stack (P3767 SOM + P3768 carrier) as a reference; your filenames and `.conf` entries change with **`<board>`** and carrier design. For **MB1 BCT** structure (pinmux/prod/pmic as `.dtsi`), use **[T23x-Deployment.md](T23x-Deployment.md)** (DU-10990-001).
 
 ## Board Configuration
 
@@ -40,109 +55,76 @@ Before you use the SOM with a carrier board other than the P3768, you must first
 
 ## Naming the Board
 
-To support a SOM with your carrier board, you must assign the module/carrier board combination with a lowercase alphanumeric name. The name can include hyphens (-) and underscores (_) but not spaces. Some examples of valid names are:
+Pick a **lowercase alphanumeric** name for the **SOM + carrier** pair. Hyphens (`-`) and underscores (`_`) are allowed; **spaces are not**.
 
-p3768-0000-devkit
+Examples:
 
-devboard
+- `p3768-0000-devkit`
+- `devboard`
 
-The name you select appears in:
+That string shows up in **file paths**, **device tree names**, and some **`/proc`**-visible strings. In this topic, **`<board>`** means the name you chose.
 
-Filenames and pathnames
-
-User-visible device tree filenames
-
-This name is also exposed to the user through various Linux kernel proc files.
-
-In this section, <board> represents your board name.
-
-You must also select a similarly constructed vendor name, and the same character set rules apply. Here is an example:
-
-nvidia
-
-In this section, <vendor> represents your vendor name.
+Pick a **`<vendor>`** string the same way (e.g. `nvidia`).
 
 ## Placeholders in the Porting Instructions
 
-Placeholders are used throughout this topic, and when executing commands, substitute an appropriate value for each placeholder.
+When you see placeholders in paths or snippets, substitute your real values.
 
-<function> is a functional module name, which might be power-tree, pinmux, sdmmc-drv, keys, comm (Wi-Fi/Bluetooth®), camera, and so on.
-
-<board> is the name you selected to represent your platform.
-
-For example, p3678 is the name of the carrier board from the Jetson Orin Nano Developer Kit. The NVIDIA <board> names use lower case letters.
-
-<version> is a board version number, such as a00.
-
-Files for NVIDIA reference boards include a version number, and files for customer platforms are not required to include a version number.
-
-<vendor> is the name of your organization or the name of the vendor for your board.
+| Placeholder | Meaning |
+|-------------|---------|
+| **`<function>`** | Functional area: e.g. power-tree, pinmux, sdmmc-drv, keys, comm (Wi-Fi/Bluetooth®), camera, … |
+| **`<board>`** | Your platform name (lowercase; see [Naming the board](#naming-the-board)). Reference carriers use names like the P3768-side naming in the dev kit. |
+| **`<version>`** | Board version string (e.g. `a00`). NVIDIA reference trees often include it; custom boards may omit it. |
+| **`<vendor>`** | Your org or vendor tag for file naming. |
 
 ## Root Filesystem Configuration
 
-Jetson Linux can use any standard or customized Linux root filesystem (rootfs) that is appropriate for its targeted embedded applications. However, some settings must be configured in the rootfs’s boot-up framework to set the default configuration after the boot or some of the core functionalities will not run as expected.
+Jetson Linux can use a **standard or custom** rootfs, but NVIDIA expects certain **boot-time integration** pieces. If those are missing, graphics, clocks, or power profiles may not behave as on the reference kit.
 
-For example:
+Typically you need alignment for:
 
-The nv.sh and nvfb.sh boot-up scripts complete some platform-specific configurations in the kernel.
+- Scripts such as **`nv.sh`** / **`nvfb.sh`** (platform setup in the kernel path).
+- **Xorg** / X stack if you use a desktop (headless designs may drop this).
+- **`nvpmodel`** clock and frequency policy for the target.
 
-The Xorg and X libraries must be correctly configured for the target device.
+Reference **rootfs hooks** live under:
 
-The nvpmodel clock and frequency must be configured for the target device.
+`Linux_for_Tegra/nv_tegra/` (and subdirectories)
 
-In this driver package, these rootfs configurations and customizations are provided in the Linux_for_Tegra/nv_tegra/ directory and its subdirectories.
-
-You must incorporate the relevant customization for your target rootfs from this location.
-
-For the sample Ubuntu root filesystem provided by NVIDIA, this customization is applied using the Linux_for_Tegra/apply_binaries.sh script.
+Merge the pieces that apply into **your** rootfs. For NVIDIA’s sample Ubuntu rootfs, run **`Linux_for_Tegra/apply_binaries.sh`** after unpacking the sample filesystem so GPU drivers and NVIDIA files land in the tree.
 
 ## MB1 Configuration Changes
 
-Starting in version T234, multiple .dts/dtsi files define the boot time configuration of the hardware, and these files are applied by Bootloader. The MB1 boot configuration tables are available at <l4t_top>/bootloader/generic/BCT
+On **T234**, **MB1** reads multiple **`.dts` / `.dtsi`** fragments (pinmux, pad voltage, PMIC, storage, UPHY, …) compiled into **BCT** binaries. Those sources normally live under:
 
-For **MB1 BCT** details, see **[Deployment.md](Deployment.md)** (T23x BCT).
+`<l4t_top>/bootloader/generic/BCT/`
+
+For **field-level BCT** reference (what each fragment can contain), use **[T23x-Deployment.md](T23x-Deployment.md)** (DU-10990-001).
 
 ### Generating the Pinmux dtsi Files
 
-To define your board’s pinmux configuration, download the Jetson Orin NX Series and Jetson Orin Nano Series Pinmux table from the Jetson Download Center. The table is a spreadsheet that provides the following information:
+Use NVIDIA’s **Orin NX / Orin Nano pinmux** spreadsheet (from [Jetson / embedded downloads](https://developer.nvidia.com/embedded/downloads)) to define **SFIO vs GPIO**, pulls, and related options. The sheet documents **ball locations** and the **device tree** view of each pin.
 
-The locations and default pinmux settings.
+**Spreadsheet checklist**
 
-The pinmux settings definitions in the source code or device tree.
+1. Enable **macros** when prompted.
+2. Keep **Pin Direction** consistent with the function (e.g. **I2C** clock/data are **bidirectional**).
+3. Match **Req Initial State** to that direction (e.g. **Drive 0/1** only where output or bidirectional applies).
+4. Use **3.3V Tolerance** only where the sheet allows; enabling it makes the pin **open-drain** where applicable.
+5. After editing, use **Generate DT File** in the spreadsheet.
 
-To access the spreadsheet:
+Typical outputs (exact names depend on your spreadsheet inputs):
 
-Go to https://developer.nvidia.com/embedded/downloads.
+- `pinmux.dtsi`
+- `gpio.dtsi`
+- `padvoltage.dtsi`
 
-Search for pinmux and download the spreadsheet for Orin NX and Nano Series.
+**Install paths**
 
-Before you open the spreadsheet, ensure that macros are enabled.
+- Copy **`pinmux.dtsi`** and **`padvoltage.dtsi`** → `<l4t_top>/bootloader/generic/BCT/`
+- Copy **`gpio.dtsi`** → `<l4t_top>/bootloader/`
 
-Ensure the Pin Direction column is consistent with the selected peripheral function.
-
-For example, I2C pins (clock and data) are both bidirectional signals.
-
-The Req Initial State should be consistent with the direction.
-
-For example, the Drive 1 and Drive 0 options are applicable only to the output and bidirectional modes.
-
-The 3.3V Tolerance option is available only for certain pins.
-
-When you enable this option, that pin will function as open-drain.
-
-Customize the spreadsheet to configure your board and click Generate DT File to generate the following files:
-
-The names of the generated files depend on the input you provided during Generate DT File.
-
-pinmux.dtsi
-
-gpio.dtsi
-
-padvoltage.dtsi
-
-Copy the padvoltage.dtsi and pinmux.dtsi files to the <l4t_top>/bootloader/generic/BCT/ directory and copy the gpio.dtsi file to the <l4t_top>/bootloader/ directory.
-
-After copying the files, ensure that you point these files to the new board.conf file that you created for your board. Refer to Flashing the Build Image for more information.
+Point your **board `.conf`** at these files (see [Flashing the build image](#flashing-the-build-image)).
 
 ### Changing the Pinmux
 
@@ -248,10 +230,9 @@ To set the direction of the GPIO controller between the input and the output, us
 
 ### Identifying the GPIO Number
 
-If you designed your own carrier board, to translate from the SOM connector pins to actual GPIO numbers, you must understand the following GPIO mapping formula. The translated GPIO numbers can be controlled by the driver.
+On a **custom carrier**, you map **SOM ball / spreadsheet name** → **Linux GPIO number** using the controller **base** from the running kernel plus **port** and **pin** offsets from the pinmux doc.
 
-The Jetson module dynamically registers GPIOs, so search the kernel messages to check the GPIO allocation ranges for each GPIO group. The command and resulting output are similar to the following output:
-
+**1. Read bases from the kernel** (example):
 
 ```text
 root@jetson:/home/ubuntu# dmesg | grep gpiochip
@@ -260,17 +241,9 @@ root@jetson:/home/ubuntu# dmesg | grep gpiochip
 root@jetson:/home/ubuntu#
 ```
 
-In the output, there are two Jetson GPIO ports with different base indices:
+Typical split: **main** `tegra234-gpio` (e.g. base **348**) vs **always-on** `tegra234-gpio-aon` (e.g. base **316**)—**always trust your `dmesg`**.
 
-tegra234-gpio, at base index 348
-
-tegra234-gpio-aon, at base index 316
-
-You can check the GPIO number in one of the following ways:
-
-Using a calculation.
-
-Before you get started, determine how you plan to configure the offset at each available port.
+**2. Use the port/offset table** (with the pinmux spreadsheet) for **port_offset** and **pin_offset**:
 
 Here is the list of the tegra234 GPIO ports and offset mapping:
 
@@ -316,43 +289,31 @@ For example SOC_GPIO08 is GPIO3_PB.00.
 
 Identify the port as B and the Pin_offset as 0.
 
-Calculate the pin number with the following formula:
+**Formula**
 
-base + port_offset + pin_offset
-
-Verify the following values:
-
-The base is 348.
-
-This value comes from the kernel boot log, it is already noted tegra234-gpio, at base index 348.
-
-port_offset of port B = 8
-
-This value comes from the tegra234 GPIO port and the offset mapping above.
-
-pin_offset = 0
-
-Pin number = 348 + 8 + 0 = 356
-
-Using Kernel debugfs.
-
-Search for the GPIO pin in the Jetson Orin NX Series and Jetson Orin Nano Series Pinmux table (refer to Generating the Pinmux dtsi Files).
-
-For example, SOC_GPIO08, which is GPIO3_PB.00.
-
-Follow the gpio debugfs look up that use the port and offset.
-
-cat /sys/kernel/debug/gpio | grep PB.00
-
-The GPIO number is mentioned in the first column as gpio-356.
-
-
-```bash
-root@jetson:/home/ubuntu# cat /sys/kernel/debug/gpio | grep PB.00
+```text
+gpio_number = base + port_offset + pin_offset
 ```
 
+**Worked example (SOC_GPIO08 → GPIO3_PB.00)**
 
-gpio-356 (PB.00
+- From `dmesg`, **main GPIO** controller **`tegra234-gpio`** often has **base 348** (your log is authoritative).
+- From the pinmux table and the port mapping table: **port B**, **pin offset 0** → **port_offset = 8**.
+- So: `348 + 8 + 0 =` **356**.
+
+**Using debugfs**
+
+On the target, after the pin is exported in debugfs:
+
+```bash
+cat /sys/kernel/debug/gpio | grep PB.00
+```
+
+Example line (numbers vary by kernel):
+
+```text
+gpio-356 (PB.00 ...
+```
 
 To use a pin as the GPIO, ensure that the E_IO_HV field is disabled in the corresponding pinmux register of the GPIO pin. You can disable the 3.3V Tolerance Enable field in the pinmux spreadsheet.
 
@@ -360,51 +321,50 @@ Also, make sure Pin Direction is set to Bidirectional so that the userspace fram
 
 ### Configuring the pinmux Setting of I2C and DP1_AUX
 
-Use the following configuration in the device tree to configure pinmux between I2C and DP1_AUX, as they cannot be configured using the pinmux spreadsheet.
+**I2C vs DP-AUX** sharing cannot be expressed from the pinmux spreadsheet alone; add a **device tree** fragment like:
 
+```dts
 miscreg-dpaux@00100000 {
-
-        compatible = "nvidia,tegra194-misc-dpaux-padctl";
-        reg = <0x0 0x00100000 0x0 0xf000>;
-        dpaux_default: pinmux@0 {
-
-                dpaux0_pins {
-                        pins = "dpaux-0";
-                        function = "i2c";
-                };
-        };
+	compatible = "nvidia,tegra194-misc-dpaux-padctl";
+	reg = <0x0 0x00100000 0x0 0xf000>;
+	dpaux_default: pinmux@0 {
+		dpaux0_pins {
+			pins = "dpaux-0";
+			function = "i2c";
+		};
+	};
 };
 
 i2c@31b0000 {
-        pinctrl-names = "default";
-        pinctrl-0 = <&dpaux_default>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&dpaux_default>;
 };
+```
 
 ### Changing the GPIO Pins
 
-If the pin meets the following conditions, users can dynamically change the pin settings by using the GPIO tools:
+You can change certain pins at runtime with **GPIO tools** (JetPack 6+ moves away from legacy GPIO sysfs) only if **all** of the following hold:
 
-The pin is part of the 40-pin header.
-
-To confirm whether the pin is one of the 40-pin headers, check the Jetson Orin NX Series and Jetson Orin Nano Series Pinmux spreadsheet.
-
-The pin is not configured as an SFIO pin by the MB1 BCT.
-
-The pin is configured to be bidirectional by the MB1 BCT.
+- The pin is on the **40-pin** header (confirm in the pinmux spreadsheet).
+- MB1 BCT does **not** assign the pin as a fixed **SFIO** function you still need.
+- MB1 BCT sets the pin **bidirectional** as required for userspace toggling.
 
 ## EEPROM Modifications
 
-EEPROM is an optional component for a customized carrier board. If the carrier board is designed without an EEPROM, the following modifications will be needed on the MB2 BCT file:
+On a **custom carrier without** a carrier ID EEPROM, adjust **MB2 BCT** so MB2 does not expect CVB EEPROM reads. NVIDIA’s example file:
 
-Linux_for_Tegra/bootloader/generic/BCT/tegra234-mb2-bct-misc-p3767-0000.dts
+`Linux_for_Tegra/bootloader/generic/BCT/tegra234-mb2-bct-misc-p3767-0000.dts`
 
+```dts
 - cvb_eeprom_read_size = <0x100>
 + cvb_eeprom_read_size = <0x0>
+```
+
 ## Porting the Linux Kernel Device Tree
 
 ### Overview of T23x Device Tree Structure
 
-Refer to Kernel Customization for more information about downloading and building the device tree files.
+For downloading and building DT sources, follow **Kernel customization** in the [Jetson Linux Developer Guide](https://docs.nvidia.com/jetson/) for your JetPack line.
 
 After you complete the steps from the link above, the device tree files will be in the following location:
 
@@ -420,19 +380,15 @@ The top layer comes from the nv-platform directory.
 
 The main dts file for each platform is named to coincide with the upstream dts file. However, instead of <board>.dts it is <board>-nv.dts. For example, the nv-public/nv-platform/tegra234-p3768-0000+p3767-0005-nv.dts file includes the upstream dts file and also adds content and updates.
 
-There are variations of each dtb file for each supported module SKU. The Orin Nano Developer Kit can be used with P3767 modules SKU 0, 1, 3, 4, 5. Correspondingly these are the top-level dtb files:
+There are variations of each DTB for each **P3767 module SKU** supported on the Orin Nano Developer Kit (SKUs **0, 1, 3, 4, 5**). Top-level **`nv`** DTB examples:
 
-tegra234-p3768-0000+p3767-0000-nv.dtb
+- `tegra234-p3768-0000+p3767-0000-nv.dtb`
+- `tegra234-p3768-0000+p3767-0001-nv.dtb`
+- `tegra234-p3768-0000+p3767-0003-nv.dtb`
+- `tegra234-p3768-0000+p3767-0004-nv.dtb`
+- `tegra234-p3768-0000+p3767-0005-nv.dtb`
 
-tegra234-p3768-0000+p3767-0001-nv.dtb
-
-tegra234-p3768-0000+p3767-0003-nv.dtb
-
-tegra234-p3768-0000+p3767-0004-nv.dtb
-
-tegra234-p3768-0000+p3767-0005-nv.dtb
-
-Each of these files has a corresponding dts file in the nv-platform directory.
+Each has a matching **`.dts`** under **`nv-platform/`**.
 
 ### Updating DTB Files
 
@@ -442,9 +398,12 @@ By default, UEFI is configured for extlinux boot, so it looks for an FDT entry i
 
 Use fdtdump to verify whether your changes have taken effect as expected.
 
-For example, to help you quickly search the output (vim-style search), fdtdump can be used with less.
+For example, to page and search the output:
 
+```bash
 fdtdump tegra234-p3768-0000+p3767-0005-nv.dtb | less
+```
+
 ### Device Tree Overlays
 
 Overlay files that are part of the OVERLAY_DTB_FILE variable in the flash configuration will be flashed into the UEFI partition (A/B-cpu_bootloader). These overlays are applied for both UEFI and kernel. Optionally, the extlinux.conf file can be used to specify additional overlay files using the OVERLAYS keyword, but the overlays specified in extlinux.conf are applied only to the kernel dtb.
@@ -707,6 +666,9 @@ Add the role-switch-default-mode property for USB Ports (optional).
 
 The role-switch-default-mode property is optional and may be used for USB OTG and peripheral ports to explicitly define the default USB role when no Type-C connector is present.
 
+**Example `git`-style diff** (trim Type-C / FUSB301 and set default role—verify against your tree):
+
+```diff
 diff --git a/nv-platform/tegra234-p3768-0000+p3767-xxxx-nv-common.dtsi b/nv-platform/tegra234-p3768-0000+p3767-xxxx-nv-common.dtsi
 index 4ac4ff0629fb..00f90ffffd2c 100644
 --- a/nv-platform/tegra234-p3768-0000+p3767-xxxx-nv-common.dtsi
@@ -760,11 +722,13 @@ index 19340d13f789..9d935400baa0 100644
                                 };
 
                                 /* hub */
+```
+
 ## UPHY Lane Configuration
 
-The Jetson Orin NX/Nano SOM supports the following UPHY configurations:
+**UPHY** lanes are shared between **USB3**, **PCIe**, **Ethernet (GBE)**, and other controllers. You pick a **supported mux preset** using **`ODMDATA`** in your board **`.conf`** (usually **append** after sourcing `p3767.conf.common`—do not edit the common file in place). The blocks below are **verbatim** from NVIDIA’s guide; in this HTML export, table cells often appear **one value per line**—use the PDF or developer guide for a proper grid.
 
-UPHY0 (HSIO) Configuration Options
+**UPHY0 (HSIO) configuration options** (excerpt; see full topic for lanes 5–7):
 
 Lane
 
@@ -1052,25 +1016,28 @@ PCIE C10 Only
 
 When flashing the build image, use your specific board name. The flashing script uses the configuration in the <board>.conf file during the flashing process.
 
-Here is an example of a flash configuration script:
-
-source "${LDK_DIR}/p3767.conf.common";
-
-PINMUX_CONFIG="tegra234-mb1-bct-pinmux-p3767-dp-a03.dtsi";
-PMC_CONFIG="tegra234-mb1-bct-padvoltage-p3767-dp-a03.dtsi";
-BPFDTB_FILE="tegra234-bpmp-3767-0000-a02-3509-a02.dtb";
-DTB_FILE="tegra234-p3767-0000-p3768-0000-a0.dtb";
-TBCDTB_FILE="${DTB_FILE}";
-EMMC_CFG="flash_t234_qspi_sd.xml";
-To be reflected in the flashed image, the parameters must be specified after sourcing the <xxx>.conf.common file .
-
-For example, you can flash to NVMe like this:
-
+Example **board** snippet (values are dev-kit style; yours live in **`<board>.conf`** after sourcing the common fragment):
 
 ```bash
-$ sudo ./tools/kernel_flash/l4t_initrd_flash.sh --external-device nvme0n1p1 \
--c tools/kernel_flash//flash_l4t_t234_nvme.xml -p "-c bootloader/generic/cfg/flash_t234_qspi.xml" \
---showlogs --network usb0 <board> internal
+source "${LDK_DIR}/p3767.conf.common"
+
+PINMUX_CONFIG="tegra234-mb1-bct-pinmux-p3767-dp-a03.dtsi"
+PMC_CONFIG="tegra234-mb1-bct-padvoltage-p3767-dp-a03.dtsi"
+BPFDTB_FILE="tegra234-bpmp-3767-0000-a02-3509-a02.dtb"
+DTB_FILE="tegra234-p3767-0000-p3768-0000-a0.dtb"
+TBCDTB_FILE="${DTB_FILE}"
+EMMC_CFG="flash_t234_qspi_sd.xml"
+```
+
+Overrides like `PINMUX_CONFIG` must appear **after** `source ...conf.common` so they replace defaults.
+
+**NVMe example** (replace **`<board>`** with your board name):
+
+```bash
+sudo ./tools/kernel_flash/l4t_initrd_flash.sh --external-device nvme0n1p1 \
+  -c tools/kernel_flash/flash_l4t_t234_nvme.xml \
+  -p "-c bootloader/generic/cfg/flash_t234_qspi.xml" \
+  --showlogs --network usb0 <board> internal
 ```
 
 For more flashing support and options, refer to Flashing Support.
@@ -1079,8 +1046,11 @@ UEFI picks the kernel image and dtb from the rootfs path that is mentioned in /b
 
 ## Setting Optional Environmental Variables
 
-The flash.sh script updates the following environment variables based on board EEPROM and other parameters that were passed. To provide specific values to these variables, define them in the board-specific file board.conf file to override the default values.
+`flash.sh` / initrd flash helpers derive many settings from **EEPROM** and CLI args. To **force** values (e.g. missing EEPROM on a custom carrier), set variables in your **board** `.conf` as documented in the Jetson Linux **Flashing support** topic.
 
+Excerpt of optional symbols (see NVIDIA guide for full semantics):
+
+```text
 # Optional Environment Variables:
 # BCTFILE ---------------- Boot control table configuration file to be used.
 # BOARDID ---------------- Pass boardid to override EEPROM value
@@ -1113,9 +1083,11 @@ The flash.sh script updates the following environment variables based on board E
 # FAB -------------------- Target board's FAB ID.
 # TEGRABOOT -------------- lowerlayer bootloader such as nvtboot.bin.
 # WB0BOOT ---------------- Warmboot code such as nvtbootwb0.bin
+```
+
 ## HDMI Support
 
-Jetson Orin NX and Nano modules support HDMI in addition to DP. Refer to HDMI support for more information about HDMI capabilities. You can either customize the carrier baseboard to HDMI or plug Orin NX or Nano modules to Xavier NX carrier board that comes with HDMI port. You need to use p3509-a02-p3767-0000.conf config file to flash the board.
+Orin **NX** and **Nano** modules can drive **HDMI** as well as **DP**; see the **HDMI** section in the [Jetson Linux Developer Guide](https://docs.nvidia.com/jetson/) for your release. You can either design **HDMI** on your carrier or use a carrier such as the **Xavier NX** kit that exposes HDMI. NVIDIA’s example flash config for that pairing is **`p3509-a02-p3767-0000.conf`**.
 
 For example, flash the device with HDMI support:
 
