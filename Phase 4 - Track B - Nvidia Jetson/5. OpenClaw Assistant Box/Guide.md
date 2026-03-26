@@ -14,6 +14,10 @@ The target is **better usability than Alexa Pro-style assistants** by being:
 - More reliable (no cloud dependency, robust OTA + rollback)
 - More capable for power users (local skills/plugins, scripting, device control)
 
+If you pursue a **community-funded** launch, **[Crowd Supply](https://www.crowdsupply.com/)** is a strong fit on paper: their program favors **original**, **useful**, **respectful** hardware and publishes a **[Proclamation of User Rights](https://www.crowdsupply.com/about#user-rights)** that aligns with OrinClaw’s **offline-first**, **no forced subscription**, and **hackable appliance** posture. Map promises to campaign copy and creator obligations in **§2.5**; treat fulfillment and regulatory reality as seriously as the tech (**§8**, **§11**).
+
+**Speaking / interview notes (intro + vision dialogue, no debug focus):** [Introduction-and-Vision-Dialogue.md](Introduction-and-Vision-Dialogue.md)
+
 ---
 
 ## 1) Product identity and naming
@@ -169,6 +173,43 @@ OrinClaw ships **offline-first**: core voice and automation work **without inter
 - [ ] Soak ≥24 h with WAN down: no unbounded memory growth / OOM in the voice pipeline
 - [ ] WAN drops mid-session: recover within one user turn (retry or explicit prompt)
 - [ ] Factory reset: returns to **offline-first** defaults; cloud keys and connectors **wiped**
+
+### 2.5) Crowd Supply alignment (optional launch channel)
+
+**Crowd Supply**’s stated mission is to help creators ship **original, useful, respectful** hardware with hands-on support so **backers receive products**—they emphasize **delivery** and creator good faith. Official context: [Crowd Supply](https://www.crowdsupply.com/), [The Crowd Supply Guide](https://www.crowdsupply.com/guide), and the **[Proclamation of User Rights](https://www.crowdsupply.com/about#user-rights)** (full text lives on their site; paraphrase here is for roadmap planning only—not legal advice).
+
+#### How OrinClaw maps to “Original / Useful / Respectful”
+
+| Crowd Supply asks | OrinClaw story (draft for a campaign page) |
+|-------------------|----------------------------------------------|
+| **Original** | Not a generic Android speaker clone: **Jetson Orin Nano–class** appliance, **OpenClaw** orchestration, **ESP32-C6** + **ESP-Hosted** + **Matter-prefer** smart-home path, **custom carrier** endgame—clear delta vs. closed cloud assistants and vs. “stock dev kit in a box.” |
+| **Useful** | Addresses a **real** need: **always-on**, **LAN-first** voice + automation with **offline-first** core behavior, **hardware mute**, optional **BYOK** cloud only when the user opts in—fewer forced cloud dependencies than mass-market assistants. |
+| **Respectful** | Defaults that support **privacy**, **longevity**, **independence**, and **security** (see table below); document **upstream** licenses (**OpenClaw**, **NVIDIA JetPack/L4T**, models) so backers know what is **open**, what is **binary-only**, and what they may **modify**. |
+
+#### Proclamation of User Rights → OrinClaw product commitments
+
+Crowd Supply asks creators to uphold user rights in **good faith**. Below: **how OrinClaw’s existing spec** (this guide) supports each theme, and **what you must still decide** before promising them in a campaign.
+
+| Right (summary) | OrinClaw alignment in this guide | Gaps / decisions before you promise on CS |
+|-----------------|----------------------------------|-------------------------------------------|
+| **Curiosity** — explore, hack, reverse-engineer | **OpenClaw** and much of the stack are **open source**; publish **schematics** (post–custom PCB), **mechanical** constraints, **UART/recovery** paths; allow **root** or **developer mode** policy if compatible with **§8** threat model. | **Jetson** and **NVIDIA** stacks include **proprietary** blobs; you **cannot** promise “fully open silicon.” State clearly what is **user-modifiable** vs. **NVIDIA-licensed**. |
+| **Independence** — no required subscription for core utility | **§2**: **offline-first** core; **§4** optional **BYOK** only; device must work without paying **you** recurring fees. | If you offer a **hosted** sync or model service, it must remain **optional** for core local voice + LAN UI. |
+| **Association** — use with other products / services | **MQTT / Home Assistant**, **Matter-prefer**, **skills**, **LAN APIs**, **Tailscale** as **user-chosen** remote access—**§2**, **§3**, **§7**. | Document **stable LAN contracts** (ports, auth) and avoid **API** terms that block **interop**. |
+| **Longevity** — no planned obsolescence; no remote bricking the device | **§8** **OTA** with **rollback**; **JetPack** strategy in **§3**; no design for **remote kill** of local assistant. | **OTA** may **stop** for ancient images—commit to **N-year** update window or **open** last-known-good image + docs. |
+| **Transfer** — user can resell / give away hardware | **No** leasing model in spec; **FDE** + **factory reset** (**§8**) should let a new owner **sanitize** and onboard. | Publish **reset** + **key wipe** procedure; clarify **BYOK** keys cleared on transfer. |
+| **Discourse** — public discussion, benchmarks, criticism | Encourage **community** forums, **GitHub** issues, published **latency** methodology (**§5**, **§10**). | Do not NDAs on **public** perf claims; respond to **security** reports per **Security** row. |
+| **Privacy** — opt-in collection; no silent exfiltration | **§2**, **§8**: mic/audio and transcripts **stay local** unless **cloud connector** enabled; diagnostics **opt-in**. | Cookie/analytics on **marketing** site ≠ device; keep **device** policy **separate** and **minimal**. |
+| **Security** — disclose flaws responsibly | **§8** vulnerability response, signed OTA, **FDE**; disclose **CVE**-class issues to users with **time to patch**. | Name a **security contact** and **disclosure** timeline before campaign. |
+
+#### Delivery (Crowd Supply’s success metric)
+
+Crowd Supply highlights **fulfillment to backers**. OrinClaw is **high complexity** (custom PCB, **RF**, **certification**, **JetPack** migrations). Before launch:
+
+- Align **milestone 9** (**§11**)—custom carrier + production—with **realistic** ship dates; pad for **CM**, **EMC**, and **first-article** bring-up.
+- Prefer **under-promise** on date, **over-deliver** on **update cadence** during the campaign.
+- Use **[Working with Manufacturers](https://www.crowdsupply.com/guide/working-with-manufacturers)** and **[Fulfillment & Logistics](https://www.crowdsupply.com/guide/fulfillment-and-logistics)** from their guide as checklists alongside **§12** and your BOM quotes.
+
+**Disclaimer:** This subsection is **curriculum + product planning** only. A live campaign requires **legal review**, **regional compliance** (CE/FCC/etc.), and **exact** copy aligned with Crowd Supply’s current creator agreement and handbook.
 
 ---
 
@@ -1243,6 +1284,8 @@ Run on **final** or representative hardware (dev kit or custom PCB), JetPack ver
 ## 12) Product, market, and business planning
 
 For **IDEA**, market sizing, business/program risk, investment phasing, GTM, revenue and margin *structure*, supply chain, and team roles—see **[OrinClaw-Product-Business-Plan.md](OrinClaw-Product-Business-Plan.md)**. It complements this technical guide; replace illustrative numbers with your own BOM, quotes, and channel economics before funding or pricing decisions.
+
+**Community funding:** If you target **[Crowd Supply](https://www.crowdsupply.com/)**, fold **§2.5** into the **pitch** (original / useful / respectful + user rights + **delivery** plan) and keep campaign claims **consistent** with **§8** (security, OTA) and **§11** (milestones).
 
 For **two × 7-day narrative user scenarios** (smart home + homelab / custom skills) aligned with V1 scope and [.kiro/specs/orinclaw/requirements.md](.kiro/specs/orinclaw/requirements.md), see **[OrinClaw-User-Scenario-Jasmin-7-Days.md](OrinClaw-User-Scenario-Jasmin-7-Days.md)** (Jasmin + Marcus, OpenClaw on OrinClaw).
 
