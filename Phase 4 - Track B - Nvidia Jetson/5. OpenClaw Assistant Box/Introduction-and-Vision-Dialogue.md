@@ -104,7 +104,7 @@ Use this as a **rehearsal script** for investors, partners, or cross-functional 
 | Radio | ESP32-C6, ESP-Hosted-NG, Matter-prefer |
 | Storage | 512GB NVMe, models + logs + OTA staging |
 | SKU discipline | Single **Core OrinClaw** first; display / battery / satellite later |
-| Crowd Supply pitch | **Original / useful / respectful** hardware; **[Proclamation of User Rights](https://www.crowdsupply.com/about#user-rights)** ↔ offline-first, no forced cloud, hackable scope—details in [Guide.md](Guide.md) **§2.5** |
+| Crowd Supply pitch | **Original / useful / respectful** + **full-service** ops (orders, fulfillment via **Mouser**, **~12%** campaign fee, **no equity**, optional **matching PO**); **[Proclamation of User Rights](https://www.crowdsupply.com/about#user-rights)** ↔ offline-first, no forced cloud, hackable scope—details in [Guide.md](Guide.md) **§2.5** |
 
 ---
 

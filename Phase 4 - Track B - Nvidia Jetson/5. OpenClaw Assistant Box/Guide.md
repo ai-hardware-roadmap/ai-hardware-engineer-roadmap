@@ -178,6 +178,34 @@ OrinClaw ships **offline-first**: core voice and automation work **without inter
 
 **Crowd Supply**’s stated mission is to help creators ship **original, useful, respectful** hardware with hands-on support so **backers receive products**—they emphasize **delivery** and creator good faith. Official context: [Crowd Supply](https://www.crowdsupply.com/), [The Crowd Supply Guide](https://www.crowdsupply.com/guide), and the **[Proclamation of User Rights](https://www.crowdsupply.com/about#user-rights)** (full text lives on their site; paraphrase here is for roadmap planning only—not legal advice).
 
+#### Partner model & services (why creators use the platform)
+
+Crowd Supply positions itself as a **curated, full-service** crowdfunding and **incubation** channel for **hardware**—not only a pledge page. **Verify** fee structures, statistics, and policies on **[crowdsupply.com](https://www.crowdsupply.com/)** before you sign; numbers below are **their public story** and can change.
+
+| Theme | What they emphasize (summary) |
+|-------|-------------------------------|
+| **Full-service ops** | Launch support, **order intake**, marketing, **customer support**, payments, **accounting**, **shipping**, partner distribution, **inventory**—so small teams spend less time on back-office. |
+| **Economics** | Compensation is typically a **percentage of product sales during the campaign** (often cited around **12%**); **no equity** in your company. |
+| **Matching funds** | They describe placing their **own purchase order** sized on the order of **50%–100%** of **backer-raised** volume to **bootstrap demand** and manufacturing stability. |
+| **After the campaign** | **Ongoing** sales and distribution (**non-exclusive**): once **original backers** are served, you may also sell **direct**, through other channels, or both—confirm exact terms in your agreement. |
+| **Fulfillment & logistics** | **Parent: Mouser Electronics**—global fulfillment, import/export paperwork, warehousing, packing, postage, **sales tax / VAT**, returns; you ship **bulk** product **to them**, they handle **last-mile** complexity (tariffs and rules evolve—plan margin and legal review). |
+| **Expertise** | Media, copy, sourcing, **risk** mitigation, press, fulfillment playbook, support—positioned as an **experienced open-hardware** team. |
+| **Community reach** | Large **registered user** base and **newsletter** audience (six-figure scale per their marketing); **[Teardown](https://www.crowdsupply.com/teardown)** and other events for **in-person** community. |
+| **Trust / curation** | **Vetting**: they report turning away a **large fraction** of applications and emphasize **no scams** among launched projects; **>90%** funding-success rate cited for projects that **do** launch—use this as **signal**, not a guarantee for **your** schedule. |
+
+> *“Working with Crowd Supply to launch Novena surpassed our greatest expectations — they were a true partner and made the process surprisingly painless.”*  
+> — **Andrew “bunnie” Huang** & **Sean “xobs” Cross**, co-creators of **Novena**
+
+> *“There are many crowdfunding platforms we could have chosen, but only Crowd Supply truly values open source hardware and principles…”*  
+> — **Leon Anavi**, ANAVI Technology
+
+#### OrinClaw-specific planning notes (economics + MOQ)
+
+- **Fee line item:** Model **~12%** (or whatever is in **your** contract) into **BOM → retail price** and **margin** in **§12** / your spreadsheet—do not treat it as an afterthought.
+- **Matching order:** Treat their **additional PO** as help hitting **CM MOQ** and **factory confidence**; it does **not** remove your obligation to **engineer** and **certify** OrinClaw (**§3**, **§11** milestone 9).
+- **Complex product:** Jetson-based appliances with **custom PCB**, **RF**, and **FDE** are **harder** than a simple sensor board—use their **manufacturing** and **fulfillment** guides early, and align **ship dates** with **EMC/thermal** validation, not wishful thinking.
+- **Open vs NVIDIA:** Your **open-hardware** story (schematics, hackability) must stay **honest** about **JetPack/CUDA** binaries—see **Proclamation** table below.
+
 #### How OrinClaw maps to “Original / Useful / Respectful”
 
 | Crowd Supply asks | OrinClaw story (draft for a campaign page) |
