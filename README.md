@@ -161,6 +161,7 @@ Pick **Track A (Xilinx)**, **Track B (Jetson)**, or both (typical for accelerato
 | **C: HPC & GPU Infrastructure** | Phase 4 Track B — Jetson (CUDA stack) | NCCL, NVLink, IB, GPUDirect, DL inference optimization | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
 | **D: Robotics** | Phase 3 (**Sensor Fusion**), Phase 4 Track B — Jetson (**ROS2**) | Nav2, MoveIt, planning | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Robotics%20Application/Guide.md) |
 | **E: Real Time Edge AI (Jetson)** | Phases 1–2, Phase 4 Track B — Jetson | Efficient nets, quantization, Holoscan | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/2.%20Real%20Time%20Edge%20AI%20with%20Nvidia%20Jetson/Guide.md) |
+| **F: Lauterbach TRACE32® debug** | Phases 1–2 (OS + embedded); optional with **A** (automotive ECU) | In-circuit debug, on-chip trace, multicore ECU bring-up, validation | [Guide →](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/6.%20Lauterbach%20TRACE32%20Debug/Guide.md) |
 
 ---
 
@@ -186,7 +187,7 @@ The **[four career steps](#the-four-career-steps)** above are the **progression*
 | **[3](Phase%203%20-%20Artificial%20Intelligence/Guide.md)** | ML engineer (graphs, CV, fusion) | Neural networks, edge context, OpenCV, sensor fusion before hardware mapping |
 | **[4A Xilinx](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA)** | FPGA / RTL / HLS engineer | **FPGA Engineer** |
 | **[4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson)** | Jetson, TensorRT, ROS2, embedded titles | **Embedded Software / Linux** often here |
-| **[5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization)** | ADAS, HPC infra, robotics depth, accelerator architect | Tracks A–E above |
+| **[5](Phase%205%20-%20Advanced%20Topics%20and%20Specialization)** | ADAS, HPC infra, robotics depth, accelerator architect, embedded trace/debug | Tracks A–F above |
 
 ### Quick lookup: role → phases
 
