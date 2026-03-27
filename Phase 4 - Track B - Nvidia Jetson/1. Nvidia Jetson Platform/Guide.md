@@ -1,7 +1,12 @@
-# Nvidia Jetson Platform — Practical Complete Guide
+# Nvidia Jetson Platform
 
+**Phase 4 — Track B — Nvidia Jetson** · Module 1 of 6
+
+> **Focus:** Go from unboxed **Jetson Orin Nano 8GB** hardware to a production-quality AI pipeline with ROS 2 integration, sensor fusion, optimized inference, OTA updates, and hardened security.
+>
 > **Primary hardware:** Jetson Orin Nano 8GB Developer Kit
-> **Goal:** Go from unboxed hardware to a production-quality AI pipeline with ROS2 integration, sensor fusion, optimized inference, OTA updates, and hardened security.
+
+**Next:** [2. L4T Customization](../2.%20L4T%20Customization/Guide.md)
 
 ---
 

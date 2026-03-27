@@ -1,5 +1,9 @@
 # OrinClaw — Hardware→Inference→UX Capstone (OpenClaw-based)
 
+**Phase 4 — Track B — Nvidia Jetson** · Module 5 of 6
+
+**Previous:** [4. ROS2](../4.%20ROS2/Guide.md) · **Next:** [6. FSP (Firmware Support Package) Customization](../6.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md)
+
 **OrinClaw** is the **project and product name** for this Phase 4 capstone: an always-on **local AI assistant box** built on **Jetson Orin Nano 8GB**, orchestrated by [**OpenClaw**](https://github.com/openclaw/openclaw), with **ClawBox-inspired** goals (offline-first voice, smart home, optional BYOK cloud). The roadmap folder is still named `5. OpenClaw Assistant Box` for repository structure; use **OrinClaw** in hostname, UI, OTA channel, and documentation.
 
 Build OrinClaw end-to-end, optimized across:

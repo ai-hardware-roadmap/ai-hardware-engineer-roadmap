@@ -1,6 +1,10 @@
-# Edge AI Optimization — Concrete Guide
+# Edge AI Optimization
+
+**Phase 4 — Track B — Nvidia Jetson** · Module 3 of 6
 
 > **Focus:** Understand optimization from first principles using **tinygrad**, then apply the full porting pipeline to **Jetson Orin Nano 8GB** with TensorRT. Every concept has working code.
+
+**Previous:** [2. L4T Customization](../2.%20L4T%20Customization/Guide.md) · **Next:** [4. ROS2](../4.%20ROS2/Guide.md)
 
 ---
 
