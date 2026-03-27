@@ -143,11 +143,13 @@ Pick **Track A (Xilinx)**, **Track B (Jetson)**, or both (typical for accelerato
 | Topic | Key Skills | Projects |
 |-------|------------|----------|
 | [**Nvidia Jetson Platform**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/1.%20Nvidia%20Jetson%20Platform/Guide.md) | Orin Nano, JetPack, L4T, CUDA | Detection, deployment, robot |
-| [**L4T customization**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/2.%20L4T%20Customization/Guide.md) | Rootfs, kernel/DT, OTA vs Yocto | Fleet images, BSP hardening |
-| [**Edge AI optimization**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/3.%20Edge%20AI%20Optimization/Guide.md) | Quantization, TensorRT, CUDA | Orin pipeline, analytics |
-| [**ROS2**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/4.%20ROS2/Guide.md) | DDS, nodes, topics | Multi-robot, edge |
-| [**OrinClaw**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/5.%20OpenClaw%20Assistant%20Box/Guide.md) | Product-style edge AI, OTA, privacy | Orin Nano assistant capstone |
-| [**FSP / SPE firmware**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/6.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) | FreeRTOS on SPE/AON, peripherals, `spe-fw` flash | Wake, low-level I/O next to L4T |
+| [**Custom carrier board**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/2.%20Custom%20Carrier%20Board%20Design%20and%20Bring-Up/Guide.md) | P3768 reference, schematic, PCB, thermal, bring-up | Carrier board for OrinClaw |
+| [**L4T customization**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/3.%20L4T%20Customization/Guide.md) | Rootfs, kernel/DT, OTA vs Yocto | Fleet images, BSP hardening |
+| [**FSP / SPE firmware**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/4.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) | FreeRTOS on SPE/AON, peripherals, `spe-fw` flash | Wake, low-level I/O next to L4T |
+| [**Application Development**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/5.%20Application%20Development/Guide.md) | Peripherals, networking, GUI, multimedia, ML/AI, ROS 2 | Sensor dashboard, camera pipeline, inference, robot |
+| [**Security and OTA**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/6.%20Security%20and%20OTA/Guide.md) | Secure boot, OP-TEE, encryption, A/B OTA | Hardened OTA with rollback |
+| [**Compliance and manufacturing**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/7.%20Compliance%20and%20Manufacturing/Guide.md) | FCC/CE, DFM, production flash, supply chain | Production flash station, factory test |
+| [**OrinClaw**](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/8.%20OrinClaw%20Capstone/Guide.md) | Product-style edge AI, OTA, privacy | Orin Nano assistant capstone |
 
 ---
 

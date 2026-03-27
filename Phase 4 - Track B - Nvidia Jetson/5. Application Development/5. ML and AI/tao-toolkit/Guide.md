@@ -1026,5 +1026,5 @@ TAO models:
 
 ---
 
-*Previous: [3. Edge AI Optimization](../Guide.md)*
-*See also: [Edge AI Optimization main guide](../Guide.md) for quantization theory, TensorRT manual pipeline, and DLA usage*
+*Previous: [5.5 ML and AI](../Guide.md)*
+*See also: [ML and AI main guide](../Guide.md) for quantization theory, TensorRT manual pipeline, and DLA usage*

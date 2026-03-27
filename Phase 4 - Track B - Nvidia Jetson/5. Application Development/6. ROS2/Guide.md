@@ -1,10 +1,23 @@
 # ROS 2
 
-**Phase 4 — Track B — Nvidia Jetson** · Module 4 of 6
+**Phase 4 — Track B — Module 5.6** · Application Development
 
 > **Focus:** Master **ROS 2** from fundamentals through advanced navigation, real-time safety, and **Jetson Orin Nano** edge deployment—so your robot software is production-grade, deterministic, and GPU-accelerated.
 
-**Previous:** [3. Edge AI Optimization](../3.%20Edge%20AI%20Optimization/Guide.md) · **Next:** [5. OpenClaw Assistant Box (OrinClaw capstone)](../5.%20OpenClaw%20Assistant%20Box/Guide.md)
+**Hub:** [5. Application Development](../Guide.md)
+
+---
+
+## Table of Contents
+
+1. [ROS 2 Fundamentals](#1-ros-2-fundamentals)
+2. [Robot Navigation and Control](#2-robot-navigation-and-control)
+3. [Edge Deployment on Jetson](#3-edge-deployment-on-jetson)
+4. [Advanced ROS 2 Development](#4-advanced-ros-2-development)
+5. [Advanced Navigation, Planning, and Behavior](#5-advanced-navigation-planning-and-behavior)
+6. [Real-Time and Safety-Critical ROS 2](#6-real-time-and-safety-critical-ros-2)
+7. [Projects](#7-projects)
+8. [Resources](#8-resources)
 
 ---
 
@@ -54,22 +67,6 @@
 
 ---
 
-## Resources
-
-- **ROS 2 Documentation:** https://docs.ros.org/ — Official tutorials and API references.
-- **Nav2 Documentation:** https://navigation.ros.org/ — Navigation stack guide.
-- **NVIDIA Jetson and ROS 2:** NVIDIA guides for running ROS 2 on Jetson platforms.
-
----
-
-## Projects
-
-- **Robot Navigation with Nav2:** Build an autonomous mobile robot that navigates in a known environment using Nav2, with costmaps and path planning.
-- **Multi-Robot System:** Create a system with multiple robots (real or simulated) that coordinate via ROS 2 topics and services.
-- **Edge AI Robot:** Deploy a ROS 2-based robot on Jetson Orin Nano with TensorRT-accelerated perception and Nav2 for navigation.
-
----
-
 ## 4. Advanced ROS 2 development
 
 ### Custom interfaces and middleware
@@ -89,22 +86,6 @@
 - **Composable Nodes:** Refactor ROS 2 nodes as composable components that can run in a shared process (component container) for lower overhead and intra-process communication.
 - **Managed Lifecycle Nodes:** Implement lifecycle nodes (`rclcpp_lifecycle`) for production-grade state management—configure, activate, deactivate, and cleanup transitions for deterministic startup and shutdown.
 - **Plugin-Based Architecture:** Use `pluginlib` to define plugin interfaces (e.g., for planners, controllers, filters) and dynamically load implementations at runtime without recompilation.
-
----
-
-## Resources (advanced)
-
-- **ROS 2 Design Documentation:** https://design.ros2.org/ — Architecture decisions, DDS integration, and QoS rationale.
-- **"A Systematic Approach to Real-Time ROS 2" (Apex.AI):** Comprehensive guide to deterministic ROS 2 on real-time systems.
-- **Fast DDS Documentation:** Configuration reference for eProsima FastDDS, the default ROS 2 middleware.
-
----
-
-## Projects (advanced)
-
-- **Composable Node Pipeline:** Refactor a multi-node perception pipeline (camera driver → preprocessing → detector → tracker) into composable nodes in a single container with intra-process communication.
-- **Real-Time Executor:** Implement a priority-based custom executor for a control loop node and measure callback jitter with and without real-time scheduling.
-- **QoS Benchmark:** Compare latency and packet loss for RELIABLE vs. BEST_EFFORT QoS on a high-frequency sensor topic under CPU load.
 
 ---
 
@@ -130,22 +111,6 @@
 
 ---
 
-## Resources (navigation and planning)
-
-- **Nav2 Concepts and Tutorials:** https://navigation.ros.org/ — Architecture, plugin API, and behavior tree guide.
-- **"Behavior Trees in Robotics and AI" by Michele Colledanchise and Petter Ögren:** Comprehensive BT theory and implementation.
-- **"Probabilistic Robotics" by Thrun, Burgard, and Fox:** Mathematical foundations for SLAM, localization, and navigation.
-
----
-
-## Projects (navigation and planning)
-
-- **Custom Nav2 Controller Plugin:** Implement an MPPI controller as a Nav2 controller plugin. Benchmark trajectory quality and obstacle avoidance against DWB.
-- **3D LiDAR SLAM:** Run LIO-SAM or LOAM on a Jetson Orin Nano with a 3D LiDAR, building a 3D map of an indoor environment with loop closure.
-- **Multi-Robot Task Allocation:** Implement a centralized task allocator for 3 simulated robots in Gazebo, assigning navigation goals via ROS 2 action clients and tracking completion.
-
----
-
 ## 6. Real-time and safety-critical ROS 2
 
 ### Real-time Linux with ROS 2
@@ -168,16 +133,44 @@
 
 ---
 
-## Resources (real-time and safety)
+## 7. Projects
 
-- **Apex.AI Real-Time ROS 2 Guides:** Practical guides for configuring PREEMPT_RT and real-time ROS 2 nodes.
-- **"Safe Robotics: A Practical Introduction to ROS 2 Safety" (community resources):** Patterns for watchdog design and fault-tolerant ROS 2 systems.
-- **ros_testing Documentation:** Official ROS 2 testing framework for node unit and integration tests.
+### Fundamentals
 
----
+- **Robot Navigation with Nav2:** Build an autonomous mobile robot that navigates in a known environment using Nav2, with costmaps and path planning.
+- **Multi-Robot System:** Create a system with multiple robots (real or simulated) that coordinate via ROS 2 topics and services.
+- **Edge AI Robot:** Deploy a ROS 2-based robot on Jetson Orin Nano with TensorRT-accelerated perception and Nav2 for navigation.
 
-## Projects (real-time and safety)
+### Advanced
+
+- **Composable Node Pipeline:** Refactor a multi-node perception pipeline (camera driver → preprocessing → detector → tracker) into composable nodes in a single container with intra-process communication.
+- **Real-Time Executor:** Implement a priority-based custom executor for a control loop node and measure callback jitter with and without real-time scheduling.
+- **QoS Benchmark:** Compare latency and packet loss for RELIABLE vs. BEST_EFFORT QoS on a high-frequency sensor topic under CPU load.
+
+### Navigation and planning
+
+- **Custom Nav2 Controller Plugin:** Implement an MPPI controller as a Nav2 controller plugin. Benchmark trajectory quality and obstacle avoidance against DWB.
+- **3D LiDAR SLAM:** Run LIO-SAM or LOAM on a Jetson Orin Nano with a 3D LiDAR, building a 3D map of an indoor environment with loop closure.
+- **Multi-Robot Task Allocation:** Implement a centralized task allocator for 3 simulated robots in Gazebo, assigning navigation goals via ROS 2 action clients and tracking completion.
+
+### Real-time and safety
 
 - **Real-Time Control Loop:** Implement a 1 kHz control loop in a ROS 2 node on a PREEMPT_RT kernel. Measure and document jitter with and without CPU isolation.
 - **Fault-Tolerant Robot System:** Build a ROS 2 system with a watchdog node that detects sensor node failures and transitions the robot to a safe stop behavior.
 - **Full CI/CD Pipeline:** Set up a GitHub Actions pipeline for a ROS 2 package with colcon build, unit tests, and integration tests running in a Docker container.
+
+---
+
+## 8. Resources
+
+| Topic | Resource |
+|-------|----------|
+| **Official docs** | [ROS 2 Documentation](https://docs.ros.org/) — tutorials and API references |
+| **Nav2** | [Navigation 2](https://navigation.ros.org/) — navigation stack guide |
+| **NVIDIA + ROS 2** | NVIDIA guides for running ROS 2 on Jetson platforms |
+| **ROS 2 design** | [ROS 2 Design](https://design.ros2.org/) — architecture decisions, DDS integration, QoS rationale |
+| **Real-time ROS 2** | "A Systematic Approach to Real-Time ROS 2" (Apex.AI) — deterministic ROS 2 on RT systems |
+| **FastDDS** | eProsima FastDDS configuration reference (default ROS 2 middleware) |
+| **Nav2 theory** | *Behavior Trees in Robotics and AI* — Colledanchise and Ögren |
+| **SLAM theory** | *Probabilistic Robotics* — Thrun, Burgard, and Fox |
+| **Testing** | `ros_testing` — official ROS 2 testing framework for node unit and integration tests |

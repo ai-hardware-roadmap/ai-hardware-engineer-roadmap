@@ -49,7 +49,7 @@ Board `.conf` files usually `source "${LDK_DIR}/p3767.conf.common"` and set `PIN
 
 - [ODMDATA-and-GPIO-Jetson-Linux.md](ODMDATA-and-GPIO-Jetson-Linux.md) — UPHY, pinmux vs userspace GPIO  
 - [Orin-Nano-8GB-Custom-Board-L4T-Engineering-Flow.md](Orin-Nano-8GB-Custom-Board-L4T-Engineering-Flow.md) — custom carrier flow  
-- [FSP / SPE firmware](../6.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) — SPE demos that touch `p3767` BCT  
+- [FSP / SPE firmware](../4.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) — SPE demos that touch `p3767` BCT
 
 ## Where files live (generic + upstream)
 

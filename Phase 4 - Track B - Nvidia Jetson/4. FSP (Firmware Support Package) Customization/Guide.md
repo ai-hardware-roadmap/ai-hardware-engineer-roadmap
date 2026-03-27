@@ -1,12 +1,12 @@
 # FSP (Firmware Support Package) and SPE firmware
 
-**Phase 4 — Track B — Nvidia Jetson** · Module 6 of 6
+**Phase 4 — Track B — Nvidia Jetson** · Module 4 of 8
 
 > **Focus:** Customize firmware that runs on the Jetson **Sensor Processing Engine (SPE)**—the **Cortex-R5** in the **always-on (AON)** domain—using NVIDIA’s **Firmware Support Package (FSP)** on **FreeRTOS**. This is the path for **low-level I/O**, **wake** scenarios, and **time-critical** tasks that should not live on the main Linux **CCPLEX**.
 >
 > **Scope:** The **step-by-step demo sections** below target **Jetson Orin Nano (T234)** using **r35.6** SPE guide paths (**p3767** MB1 BCT, **p3768** kernel DTS where NVIDIA names them). Other Jetson models use different files—see the same SPE guide for **AGX Xavier** / **AGX Orin** variants.
 
-**Previous:** [5. OpenClaw Assistant Box (OrinClaw capstone)](../5.%20OpenClaw%20Assistant%20Box/Guide.md) · **Next (curriculum):** [Phase 5 — Real Time Edge AI with Nvidia Jetson](../../../Phase%205%20-%20Advanced%20Topics%20and%20Specialization/2.%20Real%20Time%20Edge%20AI%20with%20Nvidia%20Jetson/Guide.md) · **Companion:** [2. L4T customization](../2.%20L4T%20Customization/Guide.md) (flash layout, `Linux_for_Tegra`, BCT/pinmux)
+**Previous:** [3. L4T Customization](../3.%20L4T%20Customization/Guide.md) · **Next:** [5. Application Development](../5.%20Application%20Development/Guide.md) · **Companion:** [3. L4T customization](../3.%20L4T%20Customization/Guide.md) (flash layout, `Linux_for_Tegra`, BCT/pinmux)
 
 ---
 

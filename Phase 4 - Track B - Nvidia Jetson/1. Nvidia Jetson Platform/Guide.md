@@ -1,12 +1,12 @@
 # Nvidia Jetson Platform
 
-**Phase 4 — Track B — Nvidia Jetson** · Module 1 of 6
+**Phase 4 — Track B — Nvidia Jetson** · Module 1 of 8
 
 > **Focus:** Go from unboxed **Jetson Orin Nano 8GB** hardware to a production-quality AI pipeline with ROS 2 integration, sensor fusion, optimized inference, OTA updates, and hardened security.
 >
 > **Primary hardware:** Jetson Orin Nano 8GB Developer Kit
 
-**Next:** [2. L4T Customization](../2.%20L4T%20Customization/Guide.md)
+**Next:** [2. Custom Carrier Board Design](../2.%20Custom%20Carrier%20Board%20Design%20and%20Bring-Up/Guide.md)
 
 ---
 
@@ -2199,7 +2199,7 @@ Start from a fresh Jetson install. Apply all items in the Security Audit Checkli
 ### Project 8: OrinClaw — End-to-End Product Capstone (OpenClaw-based)
 Design **OrinClaw**, a custom “AI assistant box” optimized from **hardware level → inference level → UX**, with offline-first privacy, streaming voice, robust OTA, and Home Assistant/browser automation integration (OpenClaw gateway + local inference).
 
-**Guide:** [OrinClaw (OpenClaw Assistant Box folder) →](../5. OpenClaw Assistant Box/Guide.md)
+**Guide:** [OrinClaw Capstone →](../8.%20OrinClaw%20Capstone/Guide.md)
 
 ---
 
@@ -2365,4 +2365,4 @@ docker compose pull && docker compose up -d
 
 ---
 
-*Next: [2. L4T Customization](../2. L4T Customization/Guide.md) → [3. Edge AI Optimization](../3. Edge AI Optimization/Guide.md)*
+*Next: [2. Custom Carrier Board](../2.%20Custom%20Carrier%20Board%20Design%20and%20Bring-Up/Guide.md) → [3. L4T Customization](../3.%20L4T%20Customization/Guide.md) → [4. FSP Customization](../4.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) → [5. Application Development](../5.%20Application%20Development/Guide.md)*

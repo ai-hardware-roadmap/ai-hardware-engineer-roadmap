@@ -1,10 +1,10 @@
 # L4T customization (production)
 
-**Phase 4 — Track B — Nvidia Jetson** · Module 2 of 6
+**Phase 4 — Track B — Nvidia Jetson** · Module 3 of 8
 
 > **Focus:** Master **Linux for Tegra (L4T)** with **JetPack** as a **production** stack: reproducible images, a minimal root filesystem, kernel and device-tree integration, reliable boot and updates, and hardening—so you ship products instead of fighting the platform.
 
-**Previous:** [1. Nvidia Jetson Platform](../1.%20Nvidia%20Jetson%20Platform/Guide.md) · **Next:** [3. Edge AI Optimization](../3.%20Edge%20AI%20Optimization/Guide.md)
+**Previous:** [2. Custom Carrier Board Design](../2.%20Custom%20Carrier%20Board%20Design%20and%20Bring-Up/Guide.md) · **Next:** [4. FSP Customization](../4.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md)
 
 ---
 
@@ -54,7 +54,7 @@ Use the **Jetson Linux Developer Guide** for the same **major JetPack / L4T** li
 - [Jetson-Module-Adaptation-Bring-Up-Orin-NX-Nano.md](Jetson-Module-Adaptation-Bring-Up-Orin-NX-Nano.md) — **Jetson Orin NX / Nano** module adaptation and bring-up (paired with `T23x-Deployment.md` for BCT): board naming, rootfs, MB1 pinmux/GPIO, DT porting, PCIe, USB, UPHY, `l4t_initrd_flash.sh`, env overrides.
 - [ODMDATA-and-GPIO-Jetson-Linux.md](ODMDATA-and-GPIO-Jetson-Linux.md) — **ODM data / `ODMDATA`**, **UPHY** relationship, and **pinmux vs `devmem` vs sysfs vs `libgpiod`** (JetPack 6–oriented mental model).
 - [Orin-Nano-8GB-Custom-Board-L4T-Engineering-Flow.md](Orin-Nano-8GB-Custom-Board-L4T-Engineering-Flow.md) — **End-to-end engineering flowchart**: host prep, BSP + sources, DTB, kernel, rootfs, flash, bring-up tests, versioning (with **JP6 / custom carrier** caveats).
-- [FSP / SPE customization](../6.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) — **Sensor Processing Engine (AON Cortex-R5)** firmware: NVIDIA **FSP** on **FreeRTOS**, build/flash **`spe_t194.bin` / `spe_t234.bin`**, pinmux/SCR/BPMP interaction (companion to BCT and `flash.sh` workflows).
+- [FSP / SPE customization](../4.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) — **Sensor Processing Engine (AON Cortex-R5)** firmware: NVIDIA **FSP** on **FreeRTOS**, build/flash **`spe_t194.bin` / `spe_t234.bin`**, pinmux/SCR/BPMP interaction (companion to BCT and `flash.sh` workflows).
 
 ---
 
@@ -84,6 +84,6 @@ Use these Platform guides as **implementation** detail for L4T-facing production
 
 ---
 
-## Relationship to Edge AI (module 3)
+## Relationship to Edge AI (module 5)
 
 **L4T customization** defines **what runs on the OS** (kernel, drivers, rootfs, CUDA install path, services). **Edge AI Optimization** assumes that foundation and focuses on **models** (TensorRT, quantization, DeepStream). Finish or parallel the platform deep dives above before treating inference as the main bottleneck.
