@@ -2,22 +2,34 @@
 
 # AI Hardware Engineer Roadmap
 
-**From Kernel-Level Parallel Programming to Custom AI Inference Accelerator Design — powered by NVIDIA GPUs, Jetson, and tinygrad** <a href="https://github.com/ai-hpc/ai-hardware-engineer-roadmap/stargazers"><img src="https://img.shields.io/github/stars/ai-hpc/ai-hardware-engineer-roadmap" style="vertical-align: middle"/></a>
+**Want to become an NVIDIA GPU expert? Master Jetson edge deployment and Xilinx FPGAs? Ultimately design your own AI chip?** <a href="https://github.com/ai-hpc/ai-hardware-engineer-roadmap/stargazers"><img src="https://img.shields.io/github/stars/ai-hpc/ai-hardware-engineer-roadmap" style="vertical-align: middle"/></a>
+
+**You found the right place.**
 
 ![AI Hardware Engineer Roadmap](ai-hardware-engineer.png)
 
 </div>
 
-## The Four Career Steps
+This roadmap takes you from digital logic and C++/CUDA all the way to custom inference accelerators. You will write GPU kernels, deploy models on Jetson and FPGA, build embedded Linux BSPs, design custom carrier boards, and prototype AI silicon — all through real projects ([tinygrad](https://github.com/tinygrad/tinygrad), [openpilot](https://github.com/commaai/openpilot), OrinClaw).
 
-Each step is a **concrete role target** built on the **5-phase** curriculum below. **Phase 4** runs two parallel hardware tracks: **Track A — Xilinx FPGA** and **Track B — Nvidia Jetson**.
+**Who is this for?** EE/ECE students, software ML engineers, embedded engineers, and career changers targeting AI accelerators, edge AI, or autonomous systems. No prior ML course required — Phase 3 teaches what you need.
 
-| Step | Role target | Common titles (same step) | Focus | Outcome |
-|:----:|-------------|----------------------------|-------|---------|
-| **1** | **Parallel Program Optimization Engineer** | — | CUDA/OpenCL kernels, memory hierarchy, warp/SM behavior, tinygrad backends | Read kernel traces, identify memory vs compute bottlenecks, optimize parallel programs on GPU/SoC |
-| **2** | **DL Inference Optimization Engineer** | — | Model/operator optimization, TensorRT, tinygrad compiler (IR, scheduling, BEAM), quantization | Take a model from graph to optimized deployment with measurable latency/throughput improvement |
-| **3** | **DL Inference for Edge / AV / Robotics** | **Embedded Software Engineer**, **Embedded Linux Engineer** | Power/latency-constrained deployment, sensor→actuation pipeline, openpilot/Jetson/DRIVE; schematic/PCB for custom boards; MCU/RTOS + Linux BSP next to the ML stack | Own inference optimization for edge/AV/robotics; hit latency and power targets on real SoCs |
-| **4** | **FPGA & Custom Chip for DL Inference** | **FPGA Engineer** (RTL/HLS/prototyping) | Mapping inference to hardware, HLS/RTL, accelerator architecture (systolic, dataflow), ASIC path | Design and implement FPGA accelerators for DL workloads; understand the custom-chip design path |
+**Prerequisites:** Algebra/calculus · C or Python · Linux or WSL · FPGA board recommended for Phase 4 Track A (Xilinx)
+
+**Estimated timeline:** ~2.5–5 years part-time (~10–15 hrs/week). Full-time learners move faster.
+
+---
+
+## Your Path: Four Career Steps
+
+Each step is a **concrete role target** you can land as a job. The **5-phase curriculum** below builds the skills for each step. **Phase 4** splits into two parallel hardware tracks: **Track A — Xilinx FPGA** and **Track B — NVIDIA Jetson**.
+
+| Step | You become | Also known as | What you can do | What you master |
+|:----:|------------|---------------|-----------------|-----------------|
+| **1** | **Parallel Program Optimization Engineer** | GPU / CUDA Engineer | Read kernel traces, find bottlenecks, optimize parallel programs on GPU/SoC | CUDA/OpenCL kernels, memory hierarchy, warp/SM behavior, tinygrad backends |
+| **2** | **DL Inference Optimization Engineer** | TensorRT / Compiler Backend Engineer | Take a model from graph to optimized deployment with measurable speedup | Model/operator optimization, TensorRT, tinygrad compiler (IR, scheduling, BEAM), quantization |
+| **3** | **DL Inference for Edge / AV / Robotics** | **Embedded Software Engineer**, **Embedded Linux Engineer** | Own inference on edge/AV/robotics; hit latency and power targets on real SoCs | Power/latency-constrained deployment, sensor→actuation pipeline, openpilot/Jetson/DRIVE; schematic/PCB; MCU/RTOS + Linux BSP |
+| **4** | **FPGA & Custom Chip for DL Inference** | **FPGA Engineer** (RTL/HLS/prototyping) | Design FPGA accelerators for DL; understand the custom-chip path | Mapping inference to hardware, HLS/RTL, accelerator architecture (systolic, dataflow), ASIC path |
 
 ```mermaid
 graph LR
@@ -86,59 +98,71 @@ graph LR
 
 ### Phase 1: Digital Foundations (6–12 months)
 
-| Topic | Key Skills | AI connection |
-|-------|------------|-----------------|
-| [**Digital Design and Hardware Description Languages**](Phase%201%20-%20Foundational%20Knowledge/1.%20Digital%20Design%20and%20Hardware%20Description%20Languages/Guide.md) | Number systems, logic, memory basics; Verilog, testbenches, synthesis | *From gates to RTL — the vocabulary of AI accelerator datapaths* |
-| [**Computer Architecture and Hardware**](Phase%201%20-%20Foundational%20Knowledge/2.%20Computer%20Architecture%20and%20Hardware/Guide.md) | ISA through microarchitecture (pipelines, caches, OoO, coherence); labs; modern CPUs/GPUs/memory/storage/I/O | *Same limits (bandwidth, latency, power) govern TinyML through data-center GPUs* |
-| [**Operating Systems**](Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) | Processes, threads, scheduling, memory management, synchronization, drivers, filesystems | *OS underpins Linux, RTOS, and all deployment targets; 24-lecture Linux internals* |
-| [**C++ and Parallel Computing**](Phase%201%20-%20Foundational%20Knowledge/4.%20C%2B%2B%20and%20Parallel%20Computing/Guide.md) | Four sub-tracks: **C++ & SIMD**, **OpenMP & OneTBB**, **CUDA & SIMT**, **OpenCL** (see hub) | *CPU vectors through portable kernels before Phase 3 NN math* |
+> *The language of hardware — from gates and Verilog to CUDA kernels.*
 
-**Projects:** Calculator on breadboard, FPGA digital clock, traffic light controller, UART module, basic RISC-V core; SIMD/OpenMP exercises; CUDA vector/SAXPY/matmul + CPU goldens; optional OpenCL vector add
+| Topic | Key Skills | Why it matters for AI hardware |
+|-------|------------|-------------------------------|
+| [**Digital Design and HDL**](Phase%201%20-%20Foundational%20Knowledge/1.%20Digital%20Design%20and%20Hardware%20Description%20Languages/Guide.md) | Number systems, logic, memory; Verilog, testbenches, synthesis | From gates to RTL — the vocabulary of accelerator datapaths |
+| [**Computer Architecture**](Phase%201%20-%20Foundational%20Knowledge/2.%20Computer%20Architecture%20and%20Hardware/Guide.md) | ISA through microarchitecture (pipelines, caches, OoO, coherence); modern CPUs/GPUs/memory/I/O | Same limits (bandwidth, latency, power) govern TinyML through data-center GPUs |
+| [**Operating Systems**](Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) | Processes, threads, scheduling, memory management, synchronization, drivers | Underpins Linux, RTOS, and every deployment target |
+| [**C++ and Parallel Computing**](Phase%201%20-%20Foundational%20Knowledge/4.%20C%2B%2B%20and%20Parallel%20Computing/Guide.md) | Four sub-tracks: **C++ & SIMD**, **OpenMP & OneTBB**, **CUDA & SIMT**, **OpenCL** | CPU vectors through GPU kernels — your first hands-on with parallelism |
+
+**Build:** Calculator on breadboard, FPGA digital clock, traffic light controller, UART module, basic RISC-V core; SIMD/OpenMP exercises; CUDA vector/SAXPY/matmul + CPU goldens; optional OpenCL vector add
 
 ---
 
 ### Phase 2: Embedded Systems (6–12 months)
 
-| Topic | Key Skills | AI connection |
-|-------|------------|-----------------|
-| [**Embedded Software**](Phase%202%20-%20Embedded%20Systems/1.%20Embedded%20Software/Guide.md) | ARM Cortex-M, FreeRTOS, SPI/UART/I2C/CAN, power, OTA | *Sensor buses and real-time tasks next to inference* |
-| [**Embedded Linux**](Phase%202%20-%20Embedded%20Systems/2.%20Embedded%20Linux/Guide.md) | Yocto, PetaLinux, kernel, rootfs | *Jetson and edge products ship on embedded Linux* |
+> *The boards and buses that sit next to inference — MCUs, RTOS, and embedded Linux.*
 
-**Projects:** FreeRTOS sensor pipeline, DMA UART, SPI IMU, CAN network, MCUboot, Yocto image
+| Topic | Key Skills | Why it matters for AI hardware |
+|-------|------------|-------------------------------|
+| [**Embedded Software**](Phase%202%20-%20Embedded%20Systems/1.%20Embedded%20Software/Guide.md) | ARM Cortex-M, FreeRTOS, SPI/UART/I2C/CAN, power, OTA | Sensor buses and real-time tasks next to inference |
+| [**Embedded Linux**](Phase%202%20-%20Embedded%20Systems/2.%20Embedded%20Linux/Guide.md) | Yocto, PetaLinux, kernel, rootfs | Jetson and edge products ship on embedded Linux |
+
+**Build:** FreeRTOS sensor pipeline, DMA UART, SPI IMU, CAN network, MCUboot, Yocto image
 
 ---
 
 ### Phase 3: Artificial Intelligence (6–12 months)
 
+> *The workloads your hardware must run — neural networks, edge deployment, vision, and sensor fusion.*
+>
 > *Hub:* [**Phase 3 — Artificial Intelligence**](Phase%203%20-%20Artificial%20Intelligence/Guide.md)
 
-| Topic | Key Skills | AI connection |
-|-------|------------|-----------------|
-| [**Neural Networks**](Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/Guide.md) | MLPs, CNNs, training, tinygrad, PyTorch; [pytorch-and-micrograd](Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/pytorch-and-micrograd/Guide.md) | *What accelerators must implement — tensors, ops, autodiff* |
-| [**Edge AI**](Phase%203%20-%20Artificial%20Intelligence/Edge%20AI/Guide.md) | On-device tiers, latency/privacy, train → optimize → deploy | *Context before Phase 4 Jetson / FPGA mapping* |
-| [**Computer Vision**](Phase%203%20-%20Artificial%20Intelligence/Computer%20Vision/Guide.md) | Image processing, detection, OpenCV | *Perception stack before Phase 4 Track A (FPGA) or Track B (Jetson)* |
-| [**Sensor Fusion**](Phase%203%20-%20Artificial%20Intelligence/Sensor%20Fusion/Guide.md) | Camera, LiDAR, IMU, Kalman, BEVFusion, MOT | *Multi-sensor math before/alongside Phase 4 Jetson + ROS2* |
+| Topic | Key Skills | Why it matters for AI hardware |
+|-------|------------|-------------------------------|
+| [**Neural Networks**](Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/Guide.md) | MLPs, CNNs, training, tinygrad, PyTorch; [pytorch-and-micrograd](Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/pytorch-and-micrograd/Guide.md) | What accelerators must implement — tensors, ops, autodiff |
+| [**Edge AI**](Phase%203%20-%20Artificial%20Intelligence/Edge%20AI/Guide.md) | On-device tiers, latency/privacy, train → optimize → deploy | Context before Phase 4 Jetson / FPGA mapping |
+| [**Computer Vision**](Phase%203%20-%20Artificial%20Intelligence/Computer%20Vision/Guide.md) | Image processing, detection, OpenCV | Perception stack before FPGA or Jetson deployment |
+| [**Sensor Fusion**](Phase%203%20-%20Artificial%20Intelligence/Sensor%20Fusion/Guide.md) | Camera, LiDAR, IMU, Kalman, BEVFusion, MOT | Multi-sensor math before/alongside Jetson + ROS2 |
 
-**Projects:** micrograd, CNN from scratch, tinygrad tutorials, OpenCV / detection exercises, calibration / tracking labs (often on Jetson in Phase 4)
+**Build:** micrograd, CNN from scratch, tinygrad tutorials, OpenCV / detection exercises, calibration / tracking labs (often on Jetson in Phase 4)
 
 ---
 
-### Phase 4: Hardware deployment (6–12 months each track)
+### Phase 4: Hardware Deployment (6–12 months each track)
 
-Pick **Track A (Xilinx)**, **Track B (Jetson)**, or both (typical for accelerator + edge roles).
+> *Where it all comes together — deploy AI on real silicon.*
 
-#### Phase 4 Track A — Xilinx FPGA
+Pick **Track A (Xilinx FPGA)**, **Track B (NVIDIA Jetson)**, or both (typical for accelerator + edge roles).
 
-| Topic | Key Skills | AI connection |
-|-------|------------|-----------------|
-| [**Xilinx FPGA Development**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/1.%20Xilinx%20FPGA%20Development/Guide.md) | Vivado, IP, timing, ILA/VIO | *AI accelerator prototyping (FINN, Vitis AI)* |
-| [**Zynq UltraScale+ MPSoC**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/2.%20Zynq%20UltraScale%2B%20MPSoC/Guide.md) | PS/PL, Linux on Zynq | *CPU + accelerator SoC template* |
-| [**Advanced FPGA Design**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/3.%20Advanced%20FPGA%20Design/Guide.md) | CDC, floorplanning, power, PR | *Production FPGA AI* |
-| [**HLS**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/4.%20High-Level%20Synthesis%20%28HLS%29/Guide.md) | C→RTL, dataflow, pipelining | *Conv/matmul accelerators* |
+#### Track A — Xilinx FPGA
 
-**Projects:** Matmul/conv accelerators, image pipeline, NN on FPGA; *OpenCL (portable kernels) lives in [Phase 1 — C++ and Parallel Computing / OpenCL](Phase%201%20-%20Foundational%20Knowledge/4.%20C%2B%2B%20and%20Parallel%20Computing/OpenCL/Guide.md)*
+> *Prototype your own accelerator: Vivado, Zynq, HLS, and production FPGA design.*
 
-#### Phase 4 Track B — Nvidia Jetson
+| Topic | Key Skills | Why it matters for AI hardware |
+|-------|------------|-------------------------------|
+| [**Xilinx FPGA Development**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/1.%20Xilinx%20FPGA%20Development/Guide.md) | Vivado, IP, timing, ILA/VIO | AI accelerator prototyping (FINN, Vitis AI) |
+| [**Zynq UltraScale+ MPSoC**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/2.%20Zynq%20UltraScale%2B%20MPSoC/Guide.md) | PS/PL, Linux on Zynq | CPU + accelerator SoC template |
+| [**Advanced FPGA Design**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/3.%20Advanced%20FPGA%20Design/Guide.md) | CDC, floorplanning, power, PR | Production FPGA AI |
+| [**HLS**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/4.%20High-Level%20Synthesis%20%28HLS%29/Guide.md) | C→RTL, dataflow, pipelining | Conv/matmul accelerators |
+
+**Build:** Matmul/conv accelerators, image pipeline, NN on FPGA; *OpenCL (portable kernels) lives in [Phase 1 — C++ and Parallel Computing / OpenCL](Phase%201%20-%20Foundational%20Knowledge/4.%20C%2B%2B%20and%20Parallel%20Computing/OpenCL/Guide.md)*
+
+#### Track B — NVIDIA Jetson
+
+> *Master the Jetson edge platform end-to-end: from JetPack and custom carrier boards to secure OTA and production manufacturing.*
 
 | Topic | Key Skills | Projects |
 |-------|------------|----------|
@@ -153,8 +177,10 @@ Pick **Track A (Xilinx)**, **Track B (Jetson)**, or both (typical for accelerato
 
 ---
 
-### Phase 5: Specialization tracks (ongoing)
+### Phase 5: Specialization Tracks (ongoing)
 
+> *Go deep in the direction that matches your career goal.*
+>
 > *Prerequisites:* **Phases 1–2**, **Phase 3** as needed for ML literacy, and the **Phase 4 Track A / Track B** modules noted per row.
 
 | Track | Prerequisites | Focus | Guide |
@@ -170,7 +196,9 @@ Pick **Track A (Xilinx)**, **Track B (Jetson)**, or both (typical for accelerato
 
 ## Career Paths
 
-The **[four career steps](#the-four-career-steps)** above are the **progression**. The tables below map **job titles** to **curriculum depth**.
+> *Where this roadmap can take you — mapped to real job titles.*
+
+The **[four career steps](#your-path-four-career-steps)** above are the **progression**. The tables below map **job titles** to **curriculum depth**.
 
 ### By career step (1–4)
 
@@ -205,16 +233,6 @@ The **[four career steps](#the-four-career-steps)** above are the **progression*
 | Perception / Sensor Fusion | [3 CV](Phase%203%20-%20Artificial%20Intelligence/Computer%20Vision/Guide.md), [3 fusion](Phase%203%20-%20Artificial%20Intelligence/Sensor%20Fusion/Guide.md), [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson) | 3 | [A](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/Guide.md) or [D](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/3.%20Robotics%20Application/Guide.md) |
 | ADAS / Autonomous Driving | [1](Phase%201%20-%20Foundational%20Knowledge)–[2](Phase%202%20-%20Embedded%20Systems), [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson) | 3 | [A](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/Guide.md) |
 | GPU / HPC / ML Infra | [1](Phase%201%20-%20Foundational%20Knowledge), [4B Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson) | 1–2 | [C](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/1.%20HPC%20and%20DL%20with%20Nvidia%20GPU/Guide.md) |
-
----
-
-## About
-
-**Who is this for?** EE/ECE students, software ML engineers, embedded engineers, and career changers targeting AI accelerators, edge AI, or autonomous systems. **Phase 3** assumes Phase 1 (through CUDA); prior ML course not required.
-
-**Prerequisites:** Algebra/calculus · C or Python · Linux or WSL · FPGA board recommended for **Phase 4 Track A (Xilinx)**
-
-**Estimated timeline:** ~2.5–5 years part-time (~10–15 hrs/week). Full-time learners move faster.
 
 ---
 
