@@ -1,14 +1,14 @@
-# 6. Lauterbach TRACE32® debug (Phase 5 — advanced)
+# Lauterbach TRACE32® Debug (Autonomous Driving — advanced tooling)
 
-**Phase 5 — Advanced Topics and Specialization** · Optional professional depth
+**Parent:** [Phase 5 — Autonomous Driving](../Guide.md) · Optional professional depth
 
-**Prerequisites:** [Phase 1 — Operating Systems](../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) (boot, JTAG concepts), [Phase 2 — Embedded Linux](../../Phase%202%20-%20Embedded%20Systems/3.%20Embedded%20Linux/Guide.md) and [Phase 2 — Embedded Software](../../Phase%202%20-%20Embedded%20Systems/2.%20Embedded%20Software/Guide.md) (MCU, RTOS, bring-up). Strong overlap with **automotive ECU**, **functional safety**, and **silicon validation** roles.
+**Prerequisites:** [Phase 1 — Operating Systems](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Guide.md) (boot, JTAG concepts), [Phase 2 — Embedded Linux](../../../Phase%202%20-%20Embedded%20Systems/3.%20Embedded%20Linux/Guide.md) and [Phase 2 — Embedded Software](../../../Phase%202%20-%20Embedded%20Systems/2.%20Embedded%20Software/Guide.md) (MCU, RTOS, bring-up). Strong overlap with **automotive ECU**, **functional safety**, and **silicon validation** roles.
 
 **TRACE32®** is a registered trademark of **Lauterbach GmbH**. This roadmap page is **educational**; feature names and training follow **vendor documentation**.
 
 ---
 
-## Why this belongs in Phase 5
+## Why this belongs in Autonomous Driving
 
 **TRACE32** is not a replacement for **GDB** on a healthy Linux app—it is a **class of in-circuit debug and trace** used when:
 

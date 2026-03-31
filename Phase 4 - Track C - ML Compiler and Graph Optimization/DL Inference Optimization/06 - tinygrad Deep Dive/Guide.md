@@ -2,7 +2,7 @@
 
 **Order:** Sixth, optional. Hands-on compiler/kernel interface after you've seen graph, kernels, compiler, quantization, and deployment.
 
-**Role target:** [DL Inference Optimization Engineer](../../../../../README.md#the-four-career-steps) · **MTS Kernels** (compiler–kernel interface, custom backends).
+**Role target:** [DL Inference Optimization Engineer](../../../../README.md#the-four-career-steps) · **MTS Kernels** (compiler–kernel interface, custom backends).
 
 ---
 
@@ -43,7 +43,7 @@ tinygrad is a minimal stack that exposes IR, scheduling, and backends in one cod
 
 ## Resources
 
-* [Phase 5 — Autonomous Driving / tinygrad](../../../4.%20Autonomous%20Driving/tinygrad/) — Hands-on tinygrad material in this repo.
+* [Phase 5 — Autonomous Driving / tinygrad](../../../Phase%205%20-%20Advanced%20Topics%20and%20Specialization/4.%20Autonomous%20Driving/tinygrad/) — Hands-on tinygrad material in this repo.
 * [tinygrad GitHub](https://github.com/tinygrad/tinygrad) — Codebase for study and contribution.
 
 ---

@@ -1,10 +1,12 @@
-# DL Inference Optimization (inside HPC and DL with Nvidia GPU)
+# DL Inference Optimization (Part 2 of Phase 4 Track C)
 
-**Role target:** [Step 2 — DL Inference Optimization Engineer](../../../../README.md#the-four-career-steps)
+**Role target:** [Step 2 — DL Inference Optimization Engineer](../../../README.md#your-path-four-career-steps)
 
 **Also aligns with:** Kernel-focused roles such as **Member of Technical Staff, Kernels** (e.g. AGI/LLM companies): designing and implementing high-performance kernels for training and inference, long-context optimization, and production deployment on NVIDIA GPUs and alternative accelerators (TPU, etc.).
 
-**Prerequisite:** Phases 1–2, Phase 4 Track B (Jetson, TensorRT, Edge AI Optimization).
+**Prerequisite:** Track C Part 1 (at least §1–§2 and §5), Phase 4 Track B (Jetson, TensorRT, CUDA).
+
+**Parent guide:** [Phase 4 Track C — ML Compiler & Graph Optimization](../Guide.md)
 
 ---
 
