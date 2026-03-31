@@ -45,8 +45,8 @@ You don't need to master all 8 layers. But you need enough depth in each to coll
 |:------------:|:------------:|:---------------------:|------------|
 | **L1** Application | Track B + Track C Part 2 | Edge Computing or HPC | ML Inference Optimization Engineer · Edge AI Deployment Engineer |
 | **L2** Compiler | **Track C** | HPC or AI Chip Design | AI Compiler Engineer · DL Graph Optimization Engineer · ML Compiler Backend Engineer |
-| **L3** Runtime | Track A §5 or Track B §8 | HPC | GPU/Accelerator Runtime Engineer · Inference Platform Engineer |
-| **L4** Firmware | **Track B** (FSP, L4T) | Autonomous Driving | Firmware Engineer (AI/Edge SoC) · Embedded Systems Software Engineer |
+| **L3** Runtime | Track A §5 or Track B §8 | HPC | GPU/Accelerator Runtime Engineer · Inference Platform Engineer · Linux Kernel Engineer |
+| **L4** Firmware | **Track B** (FSP, L4T) | Autonomous Driving | Firmware Engineer (AI/Edge SoC) · Embedded Software Engineer · Embedded Linux Engineer · IoT Engineer |
 | **L5** Architecture | Track A + Track C | **AI Chip Design** | AI Accelerator Architect · SoC Platform Engineer |
 | **L6** RTL | **Track A** (full) | **AI Chip Design** | RTL Design Engineer · FPGA Design Engineer · Design Verification Engineer |
 | **L7–L8** Physical/Fab | Track A (background) | AI Chip Design (theory) | *Foundational lectures — not a mastery target in this curriculum* |
@@ -56,19 +56,20 @@ You don't need to master all 8 layers. But you need enough depth in each to coll
 ## How Phases Map to Layers
 
 ```
-                L1    L2    L3    L4    L5    L6    L7    L8
-              App   Comp  Runt  FW/OS HW    RTL   Phys  Fab
-             ─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────
-Phase 1       ░░░ │     │ ░░░ │ ░░░ │ ███ │ ███ │     │
-Phase 2       │   │     │ ░░░ │ ███ │     │     │     │ ░
-Phase 3       ███ │     │     │     │     │     │     │
-Phase 4A      │   │     │ ███ │     │ ██░ │ ███ │     │
-Phase 4B      │   │     │ ███ │ ██░ │ ░░░ │     │     │ ░
-Phase 4C      ░░░ │ ███ │ ░░░ │     │     │     │     │
-Phase 5       ░░░ │ ░░░ │ ░░░ │     │ ███ │ ██░ │ ██░ │ ░░░
-             ─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────
+               L1          L2          L3          L4          L5          L6          L7          L8
+            Application  Compiler   Runtime &   Firmware    Hardware      RTL &      Physical     Fab &
+            & Framework  & Graph     Driver      & OS      Architecture   Logic      Implement.  Packaging
+            ───────────┬───────────┬───────────┬───────────┬───────────┬───────────┬───────────┬───────────
+Phase 1        ░░░     │           │    ░░░    │    ░░░    │    ███    │    ███    │           │
+Phase 2                │           │    ░░░    │    ███    │           │           │           │     ░
+Phase 3        ███     │           │           │           │           │           │           │
+Phase 4A               │           │    ███    │           │    ██░    │    ███    │           │
+Phase 4B               │           │    ███    │    ██░    │    ░░░    │           │           │     ░
+Phase 4C       ░░░     │    ███    │    ░░░    │           │           │           │           │
+Phase 5        ░░░     │    ░░░    │    ░░░    │           │    ███    │    ██░    │    ██░    │    ░░░
+            ───────────┴───────────┴───────────┴───────────┴───────────┴───────────┴───────────┴───────────
 
-███ = primary    ░░░ = supporting    (blank) = minimal
+███ = primary coverage    ██░ = strong supporting    ░░░ = background    (blank) = minimal
 ```
 
 ---
@@ -206,8 +207,8 @@ Pick **Track A (Xilinx FPGA)**, **Track B (NVIDIA Jetson)**, **Track C (ML Compi
 |:-----:|--------------------------|---------------|
 | **L1** Application | ML Inference Optimization Engineer · Edge AI Deployment Engineer | Phase 3, Phase 4B+C |
 | **L2** Compiler | AI Compiler Engineer · DL Graph Optimization Engineer · ML Compiler Backend Engineer | Phase 4C |
-| **L3** Runtime | GPU/Accelerator Runtime Engineer · Inference Platform Engineer · Embedded Linux BSP Engineer | Phase 4A§5, Phase 4B§8 |
-| **L4** Firmware | Firmware Engineer (AI/Edge SoC) · Embedded Systems Software Engineer | Phase 2, Phase 4B§4 |
+| **L3** Runtime | GPU/Accelerator Runtime Engineer · Inference Platform Engineer · Linux Kernel Engineer · Embedded Linux BSP Engineer | Phase 4A§5, Phase 4B§8 |
+| **L4** Firmware | Firmware Engineer (AI/Edge SoC) · Embedded Software Engineer · Embedded Linux Engineer · IoT Engineer | Phase 2, Phase 4B§4 |
 | **L5** Architecture | AI Accelerator Architect · SoC Platform Engineer | Phase 1§2, Phase 4A, Phase 5B |
 | **L6** RTL | RTL Design Engineer · FPGA Design Engineer · Design Verification Engineer | Phase 1§1, Phase 4A |
 | **L7** Physical | *Theory: OpenROAD, GDS flow* | Phase 5B (AI Chip Design) |
