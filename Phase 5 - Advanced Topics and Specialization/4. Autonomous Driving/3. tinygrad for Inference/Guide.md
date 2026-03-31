@@ -1,4 +1,6 @@
-# Tinygrad Learning Guide
+# Module 3 — tinygrad for Inference
+
+**Parent:** [Phase 5 — Autonomous Driving](../Guide.md)
 
 **A structured, hands-on path from first tensor to custom backend**
 
