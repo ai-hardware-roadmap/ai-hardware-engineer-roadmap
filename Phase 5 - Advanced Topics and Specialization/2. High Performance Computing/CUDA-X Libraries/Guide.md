@@ -94,15 +94,17 @@ The libraries that **directly implement neural network inference and training**.
 | Library | What it does | Layer | Key concepts |
 |---------|-------------|:-----:|-------------|
 | **cuDNN** | Neural network primitives: conv, attention, normalization, pooling, activation | L1/L2 | `cudnnConvolutionForward`, `cudnnMultiHeadAttnForward`, graph API for fusion; auto-tuning selects fastest algorithm per hardware |
-| **TensorRT / TensorRT-LLM** | Inference optimizer + runtime: graph optimization, layer fusion, precision calibration, engine serialization | L2/L3 | Build phase (optimize graph) → serialize → deploy phase (execute). INT8/FP8 calibration, dynamic shapes, DLA offload |
+| **TensorRT** | Inference optimizer + runtime: graph optimization, layer fusion, precision calibration, engine serialization | L2/L3 | Build phase (optimize graph) → serialize → deploy phase (execute). INT8/FP8 calibration, dynamic shapes, DLA offload |
+| **[TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM)** | LLM-specific inference engine: in-flight batching, paged KV-cache, tensor/pipeline parallelism, speculative decoding, FP8/INT4 | L2/L3 | Compiles LLMs to optimized TRT engines with custom Hopper/Blackwell kernels. Python API for build + deploy. Integrates with Triton for production serving. See [Phase 4C Part 2 Unit 05](../../../Phase%204%20-%20Track%20C%20-%20ML%20Compiler%20and%20Graph%20Optimization/DL%20Inference%20Optimization/05%20-%20Inference%20Runtimes%20and%20Deployment/Guide.md) for deep dive |
 | **CUTLASS** | C++ template library for custom GEMM, conv, and attention kernels targeting Tensor Cores | L2/L3 | CuTe layout DSL, tile-based programming, epilogue fusion, warp-level MMA. The reference for how production GEMM kernels are structured |
 | **FlashInfer** | Optimized attention and MoE kernels for LLM inference via Python API | L2 | Paged KV-cache attention, variable-length sequences, speculative decoding support |
 
 ### What to study first
 
 1. **cuDNN** — understand what primitives exist and how frameworks (PyTorch, TensorRT) call them
-2. **TensorRT** — end-to-end inference optimization (covered in Phase 4 Track C Part 2 and Track B §8)
-3. **CUTLASS** — when you need to write or modify GEMM/attention kernels (covered in Phase 4 Track C Part 2, unit 02)
+2. **TensorRT** — end-to-end inference optimization for vision/small models (covered in Phase 4 Track C Part 2 and Track B §8)
+3. **TensorRT-LLM** — LLM-specific inference: in-flight batching, paged KV-cache, multi-GPU serving (covered in Phase 4 Track C Part 2 Unit 05)
+4. **CUTLASS** — when you need to write or modify GEMM/attention kernels (covered in Phase 4 Track C Part 2, unit 02)
 
 ### Projects
 
