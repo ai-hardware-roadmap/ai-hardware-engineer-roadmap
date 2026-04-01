@@ -141,8 +141,9 @@ Pick **Track A (Xilinx FPGA)**, **Track B (NVIDIA Jetson)**, **Track C (ML Compi
 | [**Advanced FPGA Design**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/3.%20Advanced%20FPGA%20Design/Guide.md) | CDC, floorplanning, power, PR | L6 |
 | [**HLS**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/4.%20High-Level%20Synthesis%20%28HLS%29/Guide.md) | C→RTL, dataflow, pipelining | L5/L6 |
 | [**Runtime & Driver Development**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/5.%20Runtime%20and%20Driver%20Development/Guide.md) | XRT, DMA, kernel drivers, user-space runtime, Vitis AI/FINN | L3 |
+| [**Projects**](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/6.%20Projects/Wireless-Video-FPGA.md) | 1080p SDR PoC → 4K wireless video on Zynq UltraScale+ (VCU, MIPI, openwifi PHY, TDMA, ASIC path) | L3–L6 |
 
-**Build:** Matmul/conv accelerators, NN on FPGA, XRT host app, DMA benchmark, platform driver, C++/Python runtime library
+**Build:** Matmul/conv accelerators, NN on FPGA, XRT host app, DMA benchmark, platform driver, C++/Python runtime library, [1080p→4K wireless video link](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/6.%20Projects/Wireless-Video-FPGA.md)
 
 #### Track B — NVIDIA Jetson → L3 Runtime + L4 Firmware + L1 Application
 
