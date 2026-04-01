@@ -448,82 +448,529 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 
 ---
 
-## Plan 2: Integrated 4K Wireless Chip Prototype
+## Plan 2: Integrated 4K Wireless Chip Prototype — Detailed Execution Plan
 
-**Timeline:** 3.5 months (14 weeks)
+**Timeline:** 14 weeks (3.5 months)
 
-**Goal:** Build a fully integrated 4Kp60 wireless transmitter/receiver on Zynq UltraScale+ EV (ZCU106) with bare-metal control and low-latency custom PHY.
+**Goal:** Build a fully integrated 4Kp60 wireless transmitter/receiver on Zynq UltraScale+ EV (ZCU106) with hardened VCU, MIPI CSI/DSI interfaces, custom low-latency wireless PHY/MAC, and ASIC transition plan.
 
-### Accelerated Approach
+---
 
-| Original step | Accelerated method |
-|---------------|--------------------|
-| Set up Vivado, VCU bare-metal | Use Xilinx Vitis pre-built examples for VCU on ZCU106. Start with Linux to validate VCU, then port to bare-metal. |
-| MIPI I/O IP development | Use **Xilinx MIPI D-PHY RX/TX IP** (available in Vivado). No custom PHY development. |
-| Wireless PHY design | Start from **openwifi PHY** already ported to Zynq UltraScale+. Modify only MAC for TDMA. |
-| RF front-end integration | Use **FMCOMMS5** with AD9361 — existing Linux drivers and bare-metal examples exist. |
-| Bare-metal scheduling | Use **FreeRTOS** as stepping stone — faster than bare-metal scheduler from scratch. |
+### 2.1 Bill of Materials
 
-### Hardware
+| Component | Qty | Part Number | Est. Cost | Lead Time |
+|-----------|-----|-------------|-----------|-----------|
+| ZCU106 Evaluation Kit (ZU7EV) | 2 | Xilinx EK-U1-ZCU106-G | $3,500 each | 3–5 days |
+| FMCOMMS5 (AD9361 2x2 MIMO) | 2 | Analog Devices FMCOMMS5 | $1,500 each | 5–7 days |
+| MIPI CSI-2 Camera Module | 2 | LI-IMX274MIPI-FMC | $400 each | 5–7 days |
+| MIPI DSI Display Panel | 1 | AUO B101UAN01.7 or similar | $200 | 5–7 days |
+| HDMI Monitor (4K60) | 1 | Any 4K60 HDMI | $300 | Local |
+| FMC-to-MIPI Adapter | 2 | Digilent or custom | $150 each | 7–10 days |
+| Antennas (5.8 GHz SMA) | 4 | 5 dBi dual-band | $20 each | 2–3 days |
+| MicroSD Cards (32GB) | 4 | SanDisk Ultra | $12 each | Local |
 
-- ZCU106 evaluation kit (includes ZU7EV)
-- FMCOMMS5 (or ADRV-CRR) FMC card
-- MIPI DSI camera module with FMC adapter
-- HDMI display (via ZCU106 onboard HDMI TX)
+**Total hardware cost: ~$12,000–13,000** (two complete TX/RX sets)
 
-### Phase 1 — Platform & VCU Validation (4 weeks, parallel)
+### 2.2 Hardware Architecture
 
-| Team | Work |
-|------|------|
-| **A** | Set up Vivado/Vitis; build Linux image with VCU (use Xilinx VCU TRD). Validate 4Kp60 encode/decode with sample file. |
-| **B** | Set up openwifi on ZCU106 + FMCOMMS5 (use pre-built openwifi for ZCU106). Verify link with iperf. |
-| **C** | Develop bare-metal hello world on ZCU106; bring up UART, DDR, clocks. |
+```
+┌───────────────────────────────────────────────────────────────────┐
+│                 TRANSMITTER — ZCU106 + FMCOMMS5                   │
+│                                                                   │
+│  ┌────────────┐   ┌─────────────────────────────────────────┐    │
+│  │ MIPI CSI-2 │   │         Zynq UltraScale+ EV (ZU7EV)    │    │
+│  │ Camera     │   │                                         │    │
+│  │ (IMX274)   │   │  PS: Cortex-A53 (4x) + DDR4            │    │
+│  └─────┬──────┘   │  ┌─────────────────────────────────┐   │    │
+│        │ D-PHY    │  │     Programmable Logic (PL)      │   │    │
+│        ▼          │  │                                   │   │    │
+│  ┌──────────┐     │  │  MIPI CSI-2 RX → Demosaic       │   │    │
+│  │ MIPI RX  │────▶│  │       ↓                          │   │    │
+│  │ Subsystem│     │  │  VCU Encoder (Hardened, 4K60)    │   │    │
+│  └──────────┘     │  │       ↓                          │   │    │
+│                   │  │  Custom Packetizer                │   │    │
+│                   │  │       ↓                          │   │    │
+│                   │  │  Wireless PHY (OFDM TX)          │   │    │
+│                   │  │       ↓                          │   │    │
+│                   │  │  TDMA MAC Controller              │   │    │
+│                   │  └──────────┬────────────────────────┘   │    │
+│                   └─────────────┼────────────────────────────┘    │
+│                                 │ FMC                             │
+│                   ┌─────────────▼──────────────────┐             │
+│                   │  FMCOMMS5 (AD9361)             │             │
+│                   │  2x2 MIMO · 5.8 GHz · 40 MHz  │──▶ Antenna │
+│                   └────────────────────────────────┘             │
+└───────────────────────────────────────────────────────────────────┘
 
-### Phase 2 — MIPI & Wireless Integration (4 weeks, parallel)
+Receiver: Antenna → AD9361 → PHY RX → Depacketizer → VCU Decode → Display
+```
 
-| Team | Work |
-|------|------|
-| **A** | Integrate MIPI D-PHY RX IP in PL, connect to VCU input. Capture live camera video under Linux, verify VCU encodes it. |
-| **B** | Modify openwifi PHY for TDMA (remove CSMA/CA). Implement simple TDMA controller in PL/PS. Test with two boards. |
-| **C** | Port VCU driver to FreeRTOS (using Xilinx VCU library). Get simple encode/decode loop running without Linux. |
+### 2.3 Development Tools & Licenses
 
-### Phase 3 — System Integration & Bare-Metal (4 weeks)
+| Tool | Version | License | Purpose |
+|------|---------|---------|---------|
+| Vivado Design Suite | 2020.2+ | **Enterprise** (for ZU7EV) | FPGA design, synthesis, implementation |
+| Vitis (SDK) | 2020.2+ | Included | Bare-metal/FreeRTOS firmware |
+| PetaLinux | 2020.2+ | Included | Linux BSP (initial validation only) |
+| MIPI CSI-2 RX Subsystem | v4.0+ | **Eval (60 day)** or purchased | Camera input |
+| MIPI DSI TX Subsystem | v4.0+ | **Eval (60 day)** or purchased | Display output |
 
-- Merge all components into single design: MIPI → VCU → wireless packetizer → PHY → RF.
-- Use FreeRTOS to manage data flow; implement TDMA slot scheduling.
-- Validate full 4Kp60 wireless link between two ZCU106 boards (one TX, one RX).
-- Measure latency (use GPIO toggles).
-- Transition from FreeRTOS to minimal bare-metal (optional — FreeRTOS is acceptable for ASIC firmware).
+**License cost estimate:** ~$5,000–8,000 for permanent, or use 60-day eval for prototype.
 
-### Phase 4 — Documentation & ASIC Roadmap (2 weeks)
+### 2.4 Software Architecture
 
-- Document all IP blocks, interfaces, and firmware.
-- Identify components to be hardened for custom ASIC.
+```
+┌───────────────────────────────────────────────────────────────┐
+│  APPLICATION — Custom Bare-Metal / FreeRTOS                   │
+│  Video pipeline control · TDMA scheduling · System init       │
+├───────────────────────────────────────────────────────────────┤
+│  MIDDLEWARE — Xilinx VCS Libraries (VCU Control)              │
+│  Encoder/decoder config · Buffer management · DMA sharing     │
+├───────────┬──────────────┬──────────────┬─────────────────────┤
+│ VCU Driver│ MIPI CSI-2   │ Wireless PHY │ AD9361 SPI Driver   │
+│           │ Driver       │ Driver       │                     │
+├───────────┼──────────────┼──────────────┼─────────────────────┤
+│ VCU (HW)  │ MIPI D-PHY   │ Wireless PHY │ AD9361 RF           │
+│ Enc/Dec   │ CSI/DSI      │ (PL)         │ Front-end           │
+└───────────┴──────────────┴──────────────┴─────────────────────┘
+```
 
-### Timeline Summary
+---
 
-| Phase | Duration | Key deliverables |
-|-------|----------|------------------|
-| 1 — Platform & VCU | 4 weeks | Linux with VCU working, openwifi link, bare-metal base |
-| 2 — MIPI & Wireless | 4 weeks | Live camera → VCU encode, TDMA PHY tested |
-| 3 — Integration | 4 weeks | Full 4K wireless link, latency measured |
-| 4 — Documentation | 2 weeks | Final report, ASIC plan |
+### 2.5 Phase 1 — Platform & VCU Validation (Weeks 1–4)
 
-### Risk & Mitigation
+#### Week 1–2: Development Environment & Base Platform
 
-| Risk | Mitigation |
-|------|------------|
-| VCU bare-metal support missing | Use FreeRTOS as target; acceptable for ASIC firmware and faster to develop |
-| MIPI I/O not working | Use Xilinx MIPI IP (validated). Include loopback test early |
-| Wireless PHY complexity | Start with openwifi (already works on ZCU106); only modify MAC |
-| TDMA synchronization | Use simple beacon-based synchronization; start with one-way video only |
+**Day 1–2: Install tools**
+```bash
+source /tools/Xilinx/Vivado/2020.2/settings64.sh
+source /tools/Xilinx/Vitis/2020.2/settings64.sh
+```
 
-### Path to ASIC
+**Day 3–4: Create base hardware design**
+```tcl
+create_project zcu106_vcu_base ./zcu106_vcu_base -part xczu7ev-ffvc1156-2-e
+create_bd_design "base_design"
 
-- The prototype produces synthesizable Verilog for MIPI I/O, wireless PHY/MAC, and packetizer.
-- VCU will be replaced with a licensed H.265 IP or custom design.
-- Firmware (FreeRTOS or bare-metal) ports to the ASIC's embedded processor.
-- RF front-end integration follows the same interface as AD9361 (or direct RF if using integrated RF ASIC).
+# Add Zynq UltraScale+ MPSoC with ZCU106 board preset
+create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.3 zynq_ultra_ps_e_0
+apply_board_preset -board xilinx.com:zcu106:part0:1.1 [get_bd_cells zynq_ultra_ps_e_0]
+
+# Add VCU encoder and decoder IPs
+create_bd_cell -type ip -vlnv xilinx.com:ip:vcuenc:1.0 vcuenc_0
+create_bd_cell -type ip -vlnv xilinx.com:ip:vcudec:1.0 vcudec_0
+# Connect VCU to PS via AXI, configure for 4K60
+```
+
+**Day 5: Generate bitstream**
+```bash
+make_wrapper -files [get_files .../base_design.bd] -top
+launch_runs impl_1 -to_step write_bitstream -jobs 4
+wait_on_run impl_1
+write_hw_platform -include_bit -force -file ./zcu106_vcu_base.xsa
+```
+
+**Day 6–7: Bare-metal VCU test**
+```c
+// main.c — Minimal VCU initialization test
+#include "xvcuenc.h"
+#include "xvcudec.h"
+
+int main() {
+    XVcuenc encoder;
+    XVcuenc_Config *enc_cfg = XVcuenc_LookupConfig(XPAR_XVCUENC_0_DEVICE_ID);
+    XVcuenc_CfgInitialize(&encoder, enc_cfg, enc_cfg->BaseAddress);
+    xil_printf("VCU Encoder initialized\r\n");
+
+    // Configure for 4K60 H.265
+    XVcuenc_EncConfig enc_config = {
+        .width = 3840, .height = 2160, .frame_rate = 60,
+        .bitrate = 40000000,  // 40 Mbps
+        .codec_type = XVCUENC_CODEC_TYPE_HEVC,
+        .gop_length = 60
+    };
+    XVcuenc_Configure(&encoder, &enc_config);
+    xil_printf("VCU configured for 4K60 H.265\r\n");
+    return 0;
+}
+```
+
+#### Week 2–3: VCU Encoding/Decoding Validation
+
+**Add test pattern generator to PL:**
+```tcl
+create_bd_cell -type ip -vlnv xilinx.com:ip:v_tpg:1.0 v_tpg_0
+set_property -dict [list CONFIG.C_MAX_COLS {3840} CONFIG.C_MAX_ROWS {2160}] [get_bd_cells v_tpg_0]
+# Connect TPG → VCU encoder input via AXI4-Stream
+```
+
+**Validate with GStreamer on Linux (before bare-metal port):**
+```bash
+# Encode test pattern
+gst-launch-1.0 videotestsrc ! video/x-raw,width=3840,height=2160,framerate=60/1 ! \
+    omxh265enc target-bitrate=40000000 ! filesink location=test_4k60.h265
+
+# Decode and display
+gst-launch-1.0 filesrc location=test_4k60.h265 ! h265parse ! omxh265dec ! kmssink
+```
+
+**VCU performance targets:**
+
+| Metric | Target |
+|--------|--------|
+| 4K60 H.265 encode latency | < 10 ms |
+| 4K60 H.265 decode latency | < 8 ms |
+| Simultaneous encode + decode | Yes |
+| Bitrate range | 20–100 Mbps |
+
+#### Week 3–4: MIPI Camera Input
+
+**MIPI D-PHY pin constraints (ZCU106 HP I/O bank):**
+```tcl
+set_property PACKAGE_PIN AK30 [get_ports {mipi_clk_p}]
+set_property IOSTANDARD LVDS [get_ports {mipi_clk_p}]
+set_property PACKAGE_PIN AL30 [get_ports {mipi_clk_n}]
+set_property IOSTANDARD LVDS [get_ports {mipi_clk_n}]
+# Data lanes similar — UltraScale+ supports MIPI D-PHY natively on HP I/O
+set_property DIFF_TERM FALSE [get_ports {mipi_*_p}]  # External 100 ohm termination
+```
+
+**Add MIPI CSI-2 RX Subsystem:**
+```tcl
+create_bd_cell -type ip -vlnv xilinx.com:ip:mipi_csi2_rx_subsystem:4.0 mipi_csi2_rx_0
+set_property -dict [list CONFIG.C_NUM_LANES {4} CONFIG.C_LANE_RATE {1440} \
+    CONFIG.C_DATA_TYPE {RAW10}] [get_bd_cells mipi_csi2_rx_0]
+# Connect MIPI RX → demosaic → VCU encoder
+```
+
+**I2C sensor configuration (IMX274):**
+```c
+XIicPs i2c;
+XIicPs_Config *cfg = XIicPs_LookupConfig(XPAR_XIICPS_0_DEVICE_ID);
+XIicPs_CfgInitialize(&i2c, cfg, cfg->BaseAddress);
+// Initialize IMX274 for 4K60 mode via I2C register writes
+```
+
+**Phase 1 deliverables:**
+- [ ] Vivado project with VCU + MIPI CSI-2 RX + test pattern generator
+- [ ] Bare-metal VCU init and test passing
+- [ ] 4K60 encode/decode loopback (Linux validation)
+- [ ] MIPI camera capture at 4K60
+- [ ] Performance metrics documented
+
+---
+
+### 2.6 Phase 2 — MIPI & Wireless Integration (Weeks 5–8)
+
+#### Week 5–6: Wireless PHY (openwifi port + TDMA)
+
+**Port openwifi to ZCU106:**
+```bash
+git clone https://github.com/open-sdr/openwifi-hw.git
+cd openwifi-hw
+# Key modifications for UltraScale+:
+#   - Update clocking (MMCM → PLL)
+#   - Adjust AXI interface widths
+#   - Update address maps for ZCU106
+```
+
+**Replace CSMA/CA with TDMA controller:**
+```verilog
+module tdma_controller (
+    input  wire        clk,
+    input  wire        rst,
+    input  wire [31:0] slot_duration,   // microseconds
+    input  wire [7:0]  my_slot_id,
+    input  wire [7:0]  total_slots,
+    output reg         tx_enable,
+    output reg         rx_enable
+);
+    reg [31:0] slot_timer;
+    reg [7:0]  current_slot;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            slot_timer   <= 0;
+            current_slot <= 0;
+            tx_enable    <= 0;
+            rx_enable    <= 0;
+        end else begin
+            if (slot_timer >= slot_duration) begin
+                slot_timer   <= 0;
+                current_slot <= (current_slot + 1) % total_slots;
+            end else begin
+                slot_timer <= slot_timer + 1;
+            end
+            tx_enable <= (current_slot == my_slot_id);
+            rx_enable <= (current_slot != my_slot_id);
+        end
+    end
+endmodule
+```
+
+**TDMA synchronization (beacon-based):**
+```c
+typedef struct {
+    uint64_t master_time;
+    int64_t  offset;
+} sync_state_t;
+
+void sync_receive_beacon(uint64_t master_timestamp) {
+    uint64_t local = get_timer_64();
+    int64_t new_offset = (int64_t)master_timestamp - (int64_t)local;
+    sync.offset = (sync.offset * 7 + new_offset) / 8;  // Low-pass filter
+    adjust_timer(sync.offset);
+}
+```
+
+#### Week 6–7: AD9361 RF Front-End
+
+**Bare-metal AD9361 driver via SPI:**
+```c
+int ad9361_init(void) {
+    XSPi_Config *spi_cfg = XSpi_LookupConfig(XPAR_XSPI_0_DEVICE_ID);
+    XSpi_CfgInitialize(&spi, spi_cfg, spi_cfg->BaseAddress);
+    XSpi_SetOptions(&spi, XSP_MASTER_OPTION);
+
+    ad9361_soft_reset();
+    ad9361_set_frequency(5800);       // 5.8 GHz
+    ad9361_set_bandwidth(40000000);   // 40 MHz
+    ad9361_set_tx_gain(10);           // 10 dB
+    ad9361_set_rx_gain(20);           // 20 dB
+    ad9361_enable();
+    return XST_SUCCESS;
+}
+```
+
+**AD9361 key parameters:**
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Frequency | 5.8 GHz | ISM band, less interference |
+| Bandwidth | 40 MHz | Supports compressed 4K bitrate |
+| Sample Rate | 61.44 MSPS | AD9361 standard |
+| TX Gain | 5–15 dB | Adjust for range |
+| RX Gain | 15–25 dB | Auto or manual |
+
+#### Week 7–8: Video + Wireless Integration
+
+**Custom packetizer (video frames → wireless packets):**
+```verilog
+module video_packetizer (
+    input  wire         clk, rst,
+    // Video input from VCU (AXI4-Stream)
+    input  wire [255:0] video_tdata,
+    input  wire         video_tvalid, video_tlast,
+    output wire         video_tready,
+    // Packet output to wireless PHY
+    output reg  [31:0]  pkt_tdata,
+    output reg          pkt_tvalid, pkt_tlast,
+    input  wire         pkt_tready
+);
+    // Fragment video NALUs into 1500-byte wireless packets
+    // Add sequence number + timestamp + frame type header
+    // ...
+endmodule
+```
+
+**End-to-end test between two ZCU106 boards:**
+1. Power on TX board (camera + encode + packetize + PHY TX)
+2. Power on RX board (PHY RX + depacketize + decode + display)
+3. Configure TX as TDMA master (slot 0), RX as slave (slot 1)
+4. Monitor display for 4K video output
+5. Measure latency with GPIO toggles on oscilloscope
+
+**Phase 2 deliverables:**
+- [ ] openwifi PHY ported to ZCU106
+- [ ] TDMA MAC implemented and tested
+- [ ] AD9361 bare-metal driver working
+- [ ] Packetizer/depacketizer integrated
+- [ ] 4K60 wireless video at 10+ meters
+- [ ] Latency < 50 ms, throughput > 80 Mbps
+
+---
+
+### 2.7 Phase 3 — System Integration & Bare-Metal (Weeks 9–12)
+
+#### Week 9–10: FreeRTOS Integration
+
+```c
+// FreeRTOS task allocation across quad-core A53
+// Core 0: System control + TDMA scheduling
+void vSystemControlTask(void *p) {
+    for (;;) { tdma_schedule(); vTaskDelay(pdMS_TO_TICKS(1)); }
+}
+
+// Core 1: Video capture + encoding
+void vVideoTxTask(void *p) {
+    for (;;) { capture_frame(); vcu_encode(); packetize_and_send(); vTaskDelay(pdMS_TO_TICKS(16)); }
+}
+
+// Core 2: Wireless receive + decoding
+void vVideoRxTask(void *p) {
+    for (;;) { receive_packet(); depacketize(); vcu_decode(); display_frame(); }
+}
+
+// Core 3: RF control + monitoring
+void vRFControlTask(void *p) {
+    for (;;) { monitor_rssi(); adjust_gain_if_needed(); vTaskDelay(pdMS_TO_TICKS(100)); }
+}
+```
+
+#### Week 10–11: Latency Optimization
+
+**VCU low-latency encoder settings:**
+```c
+enc_config.gop_mode     = XVCUENC_GOP_MODE_LOW_DELAY_P;  // IPPPPP...
+enc_config.gop_length   = 1;      // Intra-refresh, no periodic I-frames
+enc_config.slice_size   = 8;      // More slices for better parallelism
+enc_config.low_latency  = 1;
+enc_config.rc_mode      = XVCUENC_RC_MODE_HW;
+enc_config.qp_mode      = XVCUENC_QP_MODE_AUTO;
+```
+
+**Latency budget:**
+
+| Stage | Target | Method |
+|-------|--------|--------|
+| Camera capture | < 5 ms | Minimal buffering |
+| VCU encode | < 8 ms | Low-delay RC, intra-refresh |
+| Packetization | < 2 ms | DMA direct to PHY |
+| Wireless PHY | < 5 ms | TDMA fixed slots |
+| VCU decode | < 6 ms | Low-latency decode mode |
+| Display output | < 2 ms | Direct memory to DP |
+| **Total** | **< 30 ms** | |
+
+**GPIO-based latency measurement:**
+```c
+#define LATENCY_GPIO 0xA0000000
+Xil_Out32(LATENCY_GPIO, 0x1);  // High at capture start
+// ... pipeline ...
+Xil_Out32(LATENCY_GPIO, 0x0);  // Low at display output
+// Measure with oscilloscope between TX and RX GPIO pins
+```
+
+#### Week 11–12: Bare-Metal Transition (Optional)
+
+**Replace FreeRTOS with minimal cooperative scheduler:**
+```c
+typedef struct { void (*func)(void); uint32_t period_ms; uint32_t last_run; } task_t;
+
+task_t tasks[] = {
+    { tdma_schedule,     1,   0 },
+    { video_encode_task, 16,  0 },
+    { video_decode_task, 16,  0 },
+    { rf_monitor_task,   100, 0 }
+};
+
+void main_loop(void) {
+    while (1) {
+        uint32_t now = get_timer_ms();
+        for (int i = 0; i < ARRAY_SIZE(tasks); i++) {
+            if ((now - tasks[i].last_run) >= tasks[i].period_ms) {
+                tasks[i].func();
+                tasks[i].last_run = now;
+            }
+        }
+        __asm__("wfi");  // Wait for interrupt — save power
+    }
+}
+```
+
+**Interrupt-driven pipeline:**
+```c
+void vcu_encode_irq(void)    { XVcuenc_InterruptClear(&enc); packetizer_start_dma(); }
+void pkt_dma_irq(void)       { wireless_tx_start(); }
+void wireless_rx_irq(void)   { depacketizer_start(); }
+void vcu_decode_irq(void)    { display_update(); }
+```
+
+**Phase 3 deliverables:**
+- [ ] FreeRTOS running on quad-core A53
+- [ ] Latency optimized to < 30 ms
+- [ ] Bare-metal scheduler implemented
+- [ ] Interrupt-driven pipeline working
+- [ ] Stable 4K60 streaming over 10+ meters
+
+---
+
+### 2.8 Phase 4 — Documentation & ASIC Roadmap (Weeks 13–14)
+
+#### IP Block Inventory
+
+| IP Block | Source | ASIC Ready | Notes |
+|----------|--------|:----------:|-------|
+| VCU (H.265) | Xilinx hardened | No | Replace with CEVA/Chips&Media licensed IP |
+| MIPI D-PHY | Xilinx PL | No | License from MIPI Alliance member |
+| CSI-2 RX Controller | Xilinx IP | Yes | RTL available, port to ASIC process |
+| Wireless PHY (OFDM) | Custom | Yes | Synthesizable Verilog |
+| TDMA MAC | Custom | Yes | Synthesizable Verilog |
+| Packetizer | Custom | Yes | Synthesizable Verilog |
+| AD9361 Interface | Custom | Yes | Adapt to ASIC RF interface |
+
+#### ASIC Target Specifications
+
+| Parameter | Target |
+|-----------|--------|
+| Process node | 12nm or 16nm |
+| Die size | < 50 mm² |
+| Power | < 5W |
+| Package | FCBGA |
+| MIPI interface | D-PHY 2.5 Gbps |
+| RF | External RFIC or integrated |
+
+#### ASIC Integration Plan
+
+| Quarter | Milestone |
+|---------|-----------|
+| Q1 | Select IP vendors (H.265 codec, MIPI PHY) |
+| Q2 | Chip architecture, floorplan |
+| Q3 | RTL integration, simulation |
+| Q4 | Synthesis, place & route |
+| Y2 Q1 | Tape-out, prototype bring-up |
+
+**Phase 4 deliverables:**
+- [ ] Complete design documentation (block diagrams, data flow, timing, register maps)
+- [ ] IP inventory with ASIC readiness assessment
+- [ ] ASIC roadmap with timeline and cost estimates
+- [ ] Demonstration video of working prototype
+
+---
+
+### 2.9 Troubleshooting Guide
+
+**VCU:**
+
+| Symptom | Cause | Solution |
+|---------|-------|---------|
+| Encoder not starting | Missing clock | Check VCU clock config in PS |
+| Frame drops | Bandwidth insufficient | Reduce bitrate or increase buffer |
+| High latency | Large GOP | Set gop_mode to low-delay-P |
+| Corrupted output | Wrong format | Verify input is NV12 |
+
+**MIPI:**
+
+| Symptom | Cause | Solution |
+|---------|-------|---------|
+| No camera detection | Termination | Verify external 100 ohm resistors |
+| CRC errors | Lane rate too high | Reduce lane rate, check SI |
+| I2C fails | Missing pull-ups | Add 4.7k ohm on I2C lines |
+
+**Wireless:**
+
+| Symptom | Cause | Solution |
+|---------|-------|---------|
+| No RF output | AD9361 not init | Check SPI communication |
+| Low throughput | Interference | Change channel, use directional antennas |
+| No sync | Timing offset | Verify TDMA beacon reception |
+
+**Bare-metal:**
+
+| Symptom | Cause | Solution |
+|---------|-------|---------|
+| Watchdog reset | Task starvation | Add yield points, increase stack |
+| Cache coherency | Uncached DMA bufs | Mark buffers non-cacheable |
+| Interrupt lost | Priority issues | Configure interrupt priorities |
 
 ---
 
