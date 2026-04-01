@@ -121,7 +121,7 @@ CPUs are optimized for **latency** — do one thing fast (branch prediction, out
 
 ---
 
-## Part 2 — The Four Sub-Tracks
+## Part 2 — The Five Sub-Tracks
 
 Study these **in order**. Each builds on the previous, and each maps to a layer of the chip stack.
 
@@ -129,8 +129,9 @@ Study these **in order**. Each builds on the previous, and each maps to a layer 
 |:-----:|-----------|---------------|:-----:|-------|
 | 1 | **C++ and SIMD** | Data-level parallelism inside a single core | L1 | [Guide →](C%2B%2B%20and%20SIMD/Guide.md) |
 | 2 | **OpenMP and oneTBB** | Thread-level parallelism across CPU cores | L1/L3 | [Guide →](OpenMP%20and%20OneTBB/Guide.md) |
-| 3 | **CUDA and SIMT** | Massive parallelism on GPU (the main focus) | L1/L3 | [Guide →](CUDA%20and%20SIMT/Guide.md) |
-| 4 | **OpenCL** | Portable GPU/FPGA/CPU compute (optional) | L1/L3 | [Guide →](OpenCL/Guide.md) |
+| 3 | **CUDA and SIMT** | Massive parallelism on NVIDIA GPU (the main focus) | L1/L3 | [Guide →](CUDA%20and%20SIMT/Guide.md) |
+| 4 | **ROCm and HIP** | AMD GPU programming — portable CUDA-like API | L1/L3 | [Guide →](ROCm%20and%20HIP/Guide.md) |
+| 5 | **OpenCL and SYCL** | Portable compute across GPU/FPGA/CPU, modern C++ abstraction | L1/L3 | [Guide →](OpenCL%20and%20SYCL/Guide.md) |
 
 ---
 
@@ -416,42 +417,196 @@ __global__ void matmul_tiled(float* A, float* B, float* C, int N) {
 
 ---
 
-### Sub-Track 4: OpenCL (Optional)
+### Sub-Track 4: ROCm and HIP
 
-> *Write once, run on CPU, GPU, or FPGA — the portable compute API.*
+> *AMD's answer to CUDA — write GPU code that runs on both NVIDIA and AMD hardware.*
 
-**What OpenCL is:** An open standard for parallel programming across heterogeneous devices. Unlike CUDA (NVIDIA only), OpenCL runs on NVIDIA, AMD, Intel, ARM, and FPGAs.
+**What ROCm is:** AMD's open-source GPU compute platform (Radeon Open Compute). It includes the HIP programming language, kernel driver (`amdgpu`), runtime, math libraries (rocBLAS, MIOpen), and profiling tools.
 
-**When to use OpenCL over CUDA:**
-- Targeting non-NVIDIA hardware (AMD GPUs, Intel GPUs, Xilinx FPGAs)
-- Portability is more important than peak performance
-- Phase 4 Track A: Xilinx Vitis uses OpenCL as the host API for FPGA kernels
+**What HIP is:** Heterogeneous-computing Interface for Portability — a C++ API almost identical to CUDA. HIP code compiles to both AMD GPUs (via ROCm) and NVIDIA GPUs (via CUDA backend). This means you can write one kernel and run it on both vendors.
 
-**Minimal example:**
+**Why learn this now (not just in Phase 5A):**
+- AMD Instinct GPUs (MI300X, MI350) are deployed at scale by Microsoft Azure, Meta, Oracle
+- Understanding both ecosystems makes you more valuable for any GPU role
+- HIP is the fastest path from CUDA to portable GPU code
+- Phase 5A (GPU Infrastructure) goes deeper; this sub-track gives you the programming foundation
+
+#### CUDA vs HIP — Almost Identical
+
+| CUDA | HIP | Notes |
+|------|-----|-------|
+| `cudaMalloc()` | `hipMalloc()` | Same signature |
+| `cudaMemcpy()` | `hipMemcpy()` | Same signature |
+| `cudaStream_t` | `hipStream_t` | Same concept |
+| `__shared__` | `__shared__` | Identical |
+| `__syncthreads()` | `__syncthreads()` | Identical |
+| `threadIdx.x` | `threadIdx.x` | Identical |
+| `cudaDeviceSynchronize()` | `hipDeviceSynchronize()` | Same |
+| Warp size: 32 | **Wavefront size: 64** | Key difference |
+
+**HIP kernel example:**
 ```cpp
-// OpenCL kernel (string or .cl file)
-const char* kernel_src = R"(
-    __kernel void vector_add(__global float* a, __global float* b, __global float* c) {
-        int i = get_global_id(0);
+#include <hip/hip_runtime.h>
+
+__global__ void vector_add(float* a, float* b, float* c, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
         c[i] = a[i] + b[i];
     }
-)";
+}
+
+int main() {
+    float *d_a, *d_b, *d_c;
+    hipMalloc(&d_a, n * sizeof(float));
+    hipMalloc(&d_b, n * sizeof(float));
+    hipMalloc(&d_c, n * sizeof(float));
+
+    hipMemcpy(d_a, h_a, n * sizeof(float), hipMemcpyHostToDevice);
+    hipMemcpy(d_b, h_b, n * sizeof(float), hipMemcpyHostToDevice);
+
+    vector_add<<<(n+255)/256, 256>>>(d_a, d_b, d_c, n);
+
+    hipMemcpy(h_c, d_c, n * sizeof(float), hipMemcpyDeviceToHost);
+    hipFree(d_a); hipFree(d_b); hipFree(d_c);
+}
 ```
 
-**CUDA vs OpenCL comparison:**
+If you know CUDA, you already know 95% of HIP. The main differences:
+- **Wavefront = 64 threads** (vs CUDA warp = 32). Affects reduction, ballot, shuffle operations.
+- **Shared memory banks:** 64 (vs 32 on NVIDIA). Different bank conflict patterns.
+- **No tensor cores** — AMD uses **Matrix Cores** via `rocWMMA` or Composable Kernel (CK).
 
-| Concept | CUDA | OpenCL |
-|---------|------|--------|
-| Kernel qualifier | `__global__` | `__kernel` |
-| Thread ID | `threadIdx.x + blockIdx.x * blockDim.x` | `get_global_id(0)` |
-| Shared memory | `__shared__` | `__local` |
-| Global memory | `__device__` | `__global` |
-| Launch syntax | `kernel<<<grid, block>>>()` | `clEnqueueNDRangeKernel()` |
-| Vendor | NVIDIA only | Multi-vendor |
-| Performance | Best on NVIDIA | ~80-90% of CUDA on NVIDIA |
+#### HIPIFY — Automatic CUDA → HIP Conversion
+
+```bash
+# Convert CUDA source to HIP (automated)
+hipify-clang my_kernel.cu -o my_kernel.hip.cpp
+
+# Or use perl-based converter (simpler, less accurate)
+hipify-perl my_kernel.cu > my_kernel.hip.cpp
+```
+
+HIPIFY handles ~90% of conversions automatically. Manual work is needed for:
+- Inline PTX assembly
+- CUDA-specific intrinsics (`__ballot_sync` with warp size assumptions)
+- Vendor-specific libraries (cuBLAS → rocBLAS API differences)
+
+#### AMD GPU Architecture (Brief)
+
+| Component | AMD (CDNA) | NVIDIA (Ampere/Hopper) |
+|-----------|-----------|----------------------|
+| Compute unit | CU (Compute Unit) | SM (Streaming Multiprocessor) |
+| Thread group | Wavefront (64 threads) | Warp (32 threads) |
+| Shared memory | LDS (Local Data Share) | Shared memory |
+| Vector ALU | SIMD unit (64-wide) | CUDA cores |
+| Matrix unit | Matrix Cores | Tensor Cores |
+| Interconnect | Infinity Fabric | NVLink |
 
 **Projects:**
-- Port your CUDA vector add to OpenCL. Run on CPU and GPU. Compare performance.
+1. **HIPIFY your CUDA kernel** — Take your CUDA vector add and matmul from Sub-Track 3. Convert to HIP using `hipify-clang`. Run on AMD GPU (or ROCm Docker on NVIDIA). Verify identical output.
+2. **Wavefront vs warp** — Write a reduction kernel. Run on both AMD (wavefront=64) and NVIDIA (warp=32). Measure how the size difference affects performance.
+3. **Profile with rocProf** — Profile your HIP matmul with `rocprof`. Compare the output format with NVIDIA's `nsys`.
+
+---
+
+### Sub-Track 5: OpenCL and SYCL
+
+> *Write once, run anywhere — portable compute across GPU, FPGA, and CPU.*
+
+#### OpenCL — The Multi-Vendor Standard
+
+**What OpenCL is:** An open standard for parallel programming across heterogeneous devices. Unlike CUDA (NVIDIA only) or HIP (AMD+NVIDIA), OpenCL runs on NVIDIA, AMD, Intel, ARM, and FPGAs.
+
+**When to use OpenCL:**
+- Targeting non-NVIDIA/non-AMD hardware (Intel GPUs, ARM Mali, Xilinx FPGAs)
+- Phase 4 Track A: Xilinx Vitis uses OpenCL as the host API for FPGA kernels
+- Embedded/mobile GPUs that only support OpenCL
+
+**OpenCL kernel:**
+```c
+__kernel void vector_add(__global float* a, __global float* b, __global float* c) {
+    int i = get_global_id(0);
+    c[i] = a[i] + b[i];
+}
+```
+
+**CUDA vs HIP vs OpenCL comparison:**
+
+| Concept | CUDA | HIP | OpenCL |
+|---------|------|-----|--------|
+| Kernel qualifier | `__global__` | `__global__` | `__kernel` |
+| Thread ID | `threadIdx.x + blockIdx.x * blockDim.x` | Same | `get_global_id(0)` |
+| Shared memory | `__shared__` | `__shared__` | `__local` |
+| Launch | `kernel<<<grid, block>>>()` | Same | `clEnqueueNDRangeKernel()` |
+| Vendor | NVIDIA | AMD + NVIDIA | All vendors |
+| Performance | Best on NVIDIA | Best on AMD | ~80-90% of native |
+| Host API | C/C++ | C/C++ | C (verbose) |
+
+**OpenCL's weakness:** The host API is extremely verbose — creating contexts, command queues, building programs, setting arguments requires dozens of lines of boilerplate. This is what SYCL solves.
+
+#### SYCL — Modern C++ for Heterogeneous Computing
+
+**What SYCL is:** A Khronos standard that provides a **single-source C++ programming model** for heterogeneous computing. Write host and device code in the same C++ file, using standard C++ features (lambdas, templates, RAII).
+
+**Why SYCL matters:**
+- **Single source:** No separate kernel files or string-based kernels
+- **Modern C++:** Lambdas, templates, type safety — unlike OpenCL's C99 kernels
+- **Multi-target:** Compile the same code for CPU, NVIDIA GPU, AMD GPU, Intel GPU, or FPGA
+- **Growing ecosystem:** Intel oneAPI (DPC++), AdaptiveCpp (hipSYCL), Codeplay ComputeCpp
+
+**SYCL example:**
+```cpp
+#include <sycl/sycl.hpp>
+
+int main() {
+    sycl::queue q;  // Auto-selects best device (GPU if available)
+
+    float* a = sycl::malloc_shared<float>(N, q);
+    float* b = sycl::malloc_shared<float>(N, q);
+    float* c = sycl::malloc_shared<float>(N, q);
+
+    // Initialize a, b on host...
+
+    q.parallel_for(sycl::range<1>(N), [=](sycl::id<1> i) {
+        c[i] = a[i] + b[i];
+    }).wait();
+
+    sycl::free(a, q); sycl::free(b, q); sycl::free(c, q);
+}
+```
+
+Compare with the equivalent CUDA code — SYCL is significantly less boilerplate while being portable across vendors.
+
+**CUDA vs HIP vs SYCL side-by-side:**
+
+| Feature | CUDA | HIP | SYCL |
+|---------|------|-----|------|
+| Language | CUDA C++ | HIP C++ | Standard C++ |
+| Source model | Separate `.cu` files | Separate `.hip.cpp` files | **Single source** |
+| Memory model | Manual `cudaMalloc/Memcpy` | Manual `hipMalloc/Memcpy` | **Unified shared memory** (USM) or buffers |
+| Kernel syntax | `<<<grid, block>>>` | Same | `parallel_for` lambda |
+| Targets | NVIDIA only | AMD + NVIDIA | **CPU, NVIDIA, AMD, Intel, FPGA** |
+| Maturity | 17 years, dominant | 7 years, growing | 5 years, emerging |
+| Best for | Peak NVIDIA perf | AMD perf + portability | **Maximum portability** |
+
+**SYCL implementations:**
+
+| Implementation | Vendor | Targets |
+|---------------|--------|---------|
+| **Intel oneAPI (DPC++)** | Intel | Intel GPU, CPU, FPGA, NVIDIA (plugin), AMD (plugin) |
+| **AdaptiveCpp (hipSYCL)** | Open source | NVIDIA (CUDA), AMD (ROCm), Intel, CPU |
+| **Codeplay ComputeCpp** | Codeplay | Multiple backends |
+
+**Connection to the stack:**
+- **L2 (Compiler):** SYCL compilers use LLVM/SPIR-V — the same IR infrastructure as MLIR (Phase 4C)
+- **L3 (Runtime):** SYCL runtimes manage device selection, memory, and scheduling — same concepts as XRT (Phase 4A) and CUDA runtime (Phase 4B)
+- **Future direction:** As AI inference moves beyond NVIDIA-only (AMD, Intel, custom NPUs), portable APIs like SYCL become essential
+
+**Projects:**
+1. **Port CUDA vector add to OpenCL** — experience the verbose host API. Run on CPU and GPU.
+2. **Same kernel in SYCL** — rewrite the same vector add using SYCL `parallel_for`. Compare code size and readability.
+3. **SYCL matmul** — implement tiled matrix multiplication in SYCL with local memory (`sycl::local_accessor`). Run on CPU and GPU, compare performance with your CUDA tiled matmul.
+4. **Multi-backend test** — compile the same SYCL kernel for CPU (OpenMP backend), NVIDIA GPU (CUDA backend via AdaptiveCpp), and Intel GPU (Level Zero). Compare performance across all three.
 
 ---
 
@@ -462,6 +617,9 @@ const char* kernel_src = R"(
 | SIMD / vectorization | Phase 4C: MLIR `vector` dialect, compiler auto-vectorization |
 | OpenMP / multi-core | Phase 2: FreeRTOS multi-core on Jetson SPE, Zynq PS |
 | CUDA kernels | Phase 4B: Jetson inference, Phase 4C: Triton/CUTLASS kernel engineering |
+| ROCm / HIP | Phase 5A: AMD GPU infrastructure (MI300X), portable kernel engineering |
+| OpenCL | Phase 4A: Xilinx Vitis FPGA host API, embedded GPU compute |
+| SYCL | Future portable compute — CPU, GPU, FPGA, custom NPU from one source |
 | Memory hierarchy thinking | Phase 4A: FPGA BRAM/URAM tiling, Phase 5F: scratchpad design for AI chip |
 | Tiled matmul | Phase 4A: HLS matmul accelerator, Phase 5F: systolic array architecture |
 | GPU architecture model | Phase 5B: CUDA-X libraries, Phase 5F: design something better |
@@ -477,12 +635,13 @@ You're learning the workload first. Then you'll build the machine that runs it.
 
 ## Key Takeaways
 
-1. **Parallelism exists at multiple levels** — instruction (SIMD), thread (OpenMP), massive (CUDA)
+1. **Parallelism exists at multiple levels** — instruction (SIMD), thread (OpenMP), massive (CUDA/HIP)
 2. **CPU vs GPU is latency vs throughput** — different tools for different jobs
 3. **Memory is the real bottleneck** — not compute. This is true for CUDA kernels, FPGA accelerators, and custom AI chips.
-4. **CUDA is the industry standard** for GPU compute and AI inference
-5. **Tiling is the universal optimization** — from shared memory in CUDA to systolic arrays in silicon
-6. **Future = heterogeneous + portable** — SYCL, OpenCL, and custom accelerators all coexist
+4. **CUDA is the industry standard** for GPU compute and AI inference — learn it first
+5. **HIP makes your CUDA skills portable** — same code runs on AMD and NVIDIA
+6. **Tiling is the universal optimization** — from shared memory in CUDA to systolic arrays in silicon
+7. **Future = heterogeneous + portable** — SYCL targets CPU, GPU, FPGA, and custom accelerators from one codebase
 
 ---
 
