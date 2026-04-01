@@ -17,6 +17,8 @@ This track is organized by GPU vendor:
 | **Nvidia GPU** | CUDA, NCCL, NVLink/NVSwitch, InfiniBand, GPUDirect, Slurm/K8s, multi-GPU/multi-node clusters | [Nvidia GPU →](Nvidia%20GPU/Guide.md) |
 | **AMD GPU** | ROCm, HIP, RCCL, AMD Instinct (MI300X), RDNA/CDNA architecture, porting CUDA workloads | [AMD GPU →](AMD%20GPU/Guide.md) |
 
+For the full CUDA-X library ecosystem (cuBLAS, cuDNN, CUTLASS, TensorRT, NCCL, RAPIDS, and 40+ more), see **[Phase 5B — High Performance Computing](../2.%20High%20Performance%20Computing/Guide.md)**.
+
 ---
 
 ## How to use this track

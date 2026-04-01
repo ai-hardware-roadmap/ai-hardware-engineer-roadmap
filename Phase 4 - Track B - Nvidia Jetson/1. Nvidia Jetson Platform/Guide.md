@@ -442,17 +442,74 @@ sdkmanager
 # Verify Jetson is detected in recovery mode:
 lsusb | grep NVIDIA
 # Should show: NVIDIA Corp. APX
+```
 
+#### JetPack 6.2.2 Component Breakdown (SDK Manager)
+
+Below is the exact component list for **JetPack 6.2.2** on **Jetson Orin Nano 8GB Developer Kit** as shown in SDK Manager. Understand what each component does — this maps directly to the 8-layer stack.
+
+**Jetson Linux (L4T) — Flash to device**
+
+| Component | Version | Size | Layer | What it does |
+|-----------|---------|------|:-----:|-------------|
+| Jetson Linux Image | 36.5 | 2455 MB | L4 | Full L4T root filesystem image (Ubuntu 22.04 base + NVIDIA drivers) |
+| Drivers for Jetson | 36.5 | 715 MB | L3/L4 | Kernel modules: nvgpu, nvhost, camera drivers, display, PCIe, DMA |
+| File System and OS | 36.5 | 1749 MB | L4 | Ubuntu 22.04 rootfs with NVIDIA-specific packages and config |
+| **Flash Jetson Linux** | **36.5** | **9520 MB** | — | Writes all above to eMMC/NVMe via USB recovery mode |
+
+**Jetson Runtime Components — Install on target**
+
+| Component | Version | Size | Layer | What it does |
+|-----------|---------|------|:-----:|-------------|
+| Additional Setups | — | 4.1 MB | L4 | Post-flash configuration scripts |
+| DateTime Target Setup | — | 1.0 MB | L4 | NTP / hardware clock sync |
+| GStreamer | 36.5 | 1.4 MB | L3 | Multimedia pipeline framework (feeds DeepStream, camera pipelines) |
+| DLA Compiler | 36.5 | 2.7 MB | L2 | Compiles TensorRT layers for Deep Learning Accelerator hardware |
+
+**CUDA & AI Runtime — The inference stack**
+
+| Component | Version | Size | Layer | What it does |
+|-----------|---------|------|:-----:|-------------|
+| CUDA Runtime | 12.6 | 2199 MB | L3 | GPU runtime: cudart, cudaMemcpy, streams, events, kernel launch |
+| CUDA X-AI Runtime | — | 1197 MB | L1/L3 | cuBLAS, cuFFT, cuSPARSE, cuSOLVER — math libraries for AI workloads |
+| cuDNN Runtime | 9.3 | 778 MB | L1/L2 | Optimized conv, attention, normalization kernels for neural networks |
+| TensorRT Runtime | 10.3 | 419 MB | L2/L3 | Graph optimization, layer fusion, INT8/FP16 engine build + execution |
+
+**Computer Vision Runtime**
+
+| Component | Version | Size | Layer | What it does |
+|-----------|---------|------|:-----:|-------------|
+| OpenCV Runtime | 4.8 | 12.1 MB | L1 | Image processing, feature detection, camera calibration |
+| cuPVA Runtime | 2.5 | 0.3 MB | L3 | Programmable Vision Accelerator — hardware CV engine on Orin |
+| VPI Runtime | 3.2 | 33.0 MB | L1/L3 | Vision Programming Interface — unified API for CPU/GPU/PVA/DLA vision ops |
+
+**Container & Multimedia**
+
+| Component | Version | Size | Layer | What it does |
+|-----------|---------|------|:-----:|-------------|
+| NVIDIA Container Runtime | — | 4.9 MB | L3/L4 | Run NGC containers with GPU access (docker + nvidia-container-toolkit) |
+| Multimedia API | 36.5 | 71.9 MB | L3 | NVDEC/NVENC hardware video decode/encode, V4L2 camera, ISP access |
+
+**Jetson SDK Components — Developer tools (host + target)**
+
+| Component | Version | Size | Layer | What it does |
+|-----------|---------|------|:-----:|-------------|
+| CUDA Toolkit for L4T | 12.6 | 2196 MB | L3 | nvcc compiler, cuda headers, samples — build CUDA kernels on-device |
+| Nsight Systems | 2024.5 | 299 MB | L1–L3 | System-wide profiler: timeline view of CPU, GPU, DLA, memory, streams |
+| Nsight Graphics | 2024.2 | 196 MB | L1 | Graphics debugger and frame profiler |
+| DeepStream | 7.1 | 603 MB | L1/L3 | GStreamer-based multi-stream video analytics pipeline (nvinfer + tracker) |
+| GXF Runtime | 4.1 | 466 MB | L3 | Graph eXecution Framework — dataflow runtime for Holoscan/sensor pipelines |
+| Jetson Platform Services | 2.0 | 0.1 MB | L4 | System services for fleet management, monitoring, diagnostics |
+
+> **Total download:** ~22 GB. After flash + install, the Orin Nano rootfs uses ~14 GB.
+>
+> **What to select:** For AI inference work, select everything. For minimal edge deployment, you can skip Nsight Graphics, DeepStream, and GXF — add them later via `apt`.
+
+```bash
 # ── SDK MANAGER STEPS ──────────────────────────────────────
-# 1. Select: Jetson Orin Nano [8GB module]
-# 2. JetPack version: 6.x (latest)
-# 3. Select target components:
-#    ✓ Jetson Linux (L4T)         — required
-#    ✓ CUDA Toolkit               — required for GPU
-#    ✓ cuDNN                      — required for deep learning
-#    ✓ TensorRT                   — required for optimized inference
-#    ✓ VPI                        — camera/vision pipeline
-#    ✓ DeepStream                 — (optional, video analytics)
+# 1. Select: Jetson Orin Nano [8GB Developer Kit]
+# 2. JetPack version: 6.2.2
+# 3. Select target components (see tables above)
 # 4. Click Continue, accept licenses
 # 5. Flashing starts — takes 10–20 minutes
 ```
