@@ -508,6 +508,8 @@ Estimated **monthly active US job postings** (LinkedIn + Indeed + Greenhouse + c
 
 ### Job Volume Visualization (with Remote %)
 
+**L1–L6: Hands-on in this roadmap** (practical projects and deep skill building)
+
 ```
 Monthly US Postings by Sub-Layer (Q1 2026)          Postings  Remote %
 
@@ -520,23 +522,29 @@ L6a RTL Design         ███████████████████
 L6c FPGA/HLS           █████████████████ 1,400                               5%
 L1a Inference Opt      ████████████████ 1,350                               15%  ░░
 L1b Edge AI            ████████████ 950                                     10%  ░
-L7a Physical Design    ████████████ 950                                      1%
 L3c HPC Infra          ███████████ 850                                      10%  ░
 L3b Kernel/Drivers     █████████ 700                                         5%
 L3a GPU Runtime        ████████ 600                                          5%
 L2c Kernel Eng         ███████ 500                                           5%
-L8b Silicon Valid      ██████ 500                                            1%
-L7b DFT/CAD            ██████ 500                                            1%
 L2b Compiler Backend   █████ 400                                             2%
-L8a Packaging          █████ 400                                             1%
 L2a Graph/IR           ███ 275                                               2%
 L5b System/SoC Arch    ███ 275                                               2%
 L5a Accelerator Arch   ██ 150                                                1%
                        └──────────────────────────────────┘
                        0   500  1K   1.5K   2K   2.5K  3K   4K    Remote: ░ = 10%+
-
-Total: ~21K–25K/month                                        ░░ = 15%+
+                                                                          ░░ = 15%+
 ```
+
+*L7–L8: Theory and guided labs only in this roadmap (OpenROAD, TinyTapeout) — listed for market context*
+
+| *Sub-Layer* | *Monthly Postings* | *Remote %* | *Note* |
+|:---:|:---:|:---:|---|
+| *L7a Physical Design* | *~950* | *1%* | *Requires EDA licenses (Synopsys, Cadence) + foundry PDK access* |
+| *L7b DFT/CAD* | *~500* | *1%* | *Security-sensitive data, tool-locked* |
+| *L8a Packaging/Process* | *~400* | *1%* | *Cleanroom and foundry interaction* |
+| *L8b Silicon Validation* | *~500* | *1%* | *Lab equipment, ATE, first silicon* |
+
+**Total: ~21K–25K/month** (L1–L6: ~18K–22K practical roles · L7–L8: ~2,350 theory-context roles)
 
 **Remote-friendly sub-layers (10%+ remote postings):**
 - L1a Inference Optimization (15%) — profiling and optimization can be done with cloud GPU access
