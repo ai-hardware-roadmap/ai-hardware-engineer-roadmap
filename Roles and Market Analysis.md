@@ -6,13 +6,15 @@
 
 ---
 
-## Layer Map — 8 Layers, 21 Sub-Layers
+## Layer Map — 8 Layers, 23 Sub-Layers
 
 | Layer | Sub-Layer | Focus | Typical Roles |
 |:-----:|:---------:|-------|---------------|
 | **L1** | **L1a** Inference Optimization | Model optimization, profiling, quantization | ML Inference Engineer, AI Performance Engineer |
 | | **L1b** Edge AI Deployment | On-device pipelines, Jetson/MCU, power-constrained | Edge AI Engineer, Embedded AI Engineer |
 | | **L1c** AI Application | Vision, robotics, solutions engineering | CV Engineer, Robotics AI Engineer |
+| | **L1d** Agentic AI & GenAI | LLM agents, RAG, tool use, GenAI applications | Agentic AI Engineer, GenAI Engineer, AI Engineer |
+| | **L1e** ML Engineering & MLOps | Training pipelines, model lifecycle, deployment infra | ML Engineer, MLOps Engineer, AI/ML Engineer |
 | **L2** | **L2a** Graph & IR Optimization | Fusion, memory planning, graph passes | DL Graph Optimization Engineer |
 | | **L2b** Compiler Backend | LLVM, MLIR, code generation, custom targets | AI Compiler Engineer, GPU Compiler Engineer |
 | | **L2c** Kernel Engineering | Triton, CUTLASS, Flash-Attention, hand-tuned kernels | Kernel Optimization Engineer, MTS Kernels |
@@ -90,6 +92,62 @@
 | Junior | $110K–$145K | 15% | 25% | 60% |
 | Mid | $160K–$220K | 10% | 25% | 65% |
 | Senior | $240K–$320K+ | 10% | 20% | 70% |
+
+---
+
+## L1d — Agentic AI & GenAI
+
+**Focus:** Build applications on top of large language models — agents, RAG pipelines, tool-use orchestration, GenAI products.
+
+| Title | What they do |
+|-------|-------------|
+| Agentic AI Engineer | Design multi-step AI agents: tool use, planning, memory, chain-of-thought orchestration |
+| GenAI Engineer | Build GenAI-powered products: chatbots, code assistants, content generation, multimodal apps |
+| AI Engineer | Full-stack AI application development: prompt engineering, fine-tuning, API integration, evaluation |
+
+| Level | Total Comp (Top Tier) | Remote | Hybrid | Onsite |
+|-------|----------------------|--------|--------|--------|
+| Junior | $120K–$160K | 30% | 35% | 35% |
+| Mid | $175K–$250K | 25% | 35% | 40% |
+| Senior | $270K–$400K+ | 20% | 30% | 50% |
+
+**Market notes:**
+- **Highest remote flexibility** in the entire stack — most work is API/cloud-based, no hardware needed
+- **Fastest-growing category by absolute job count** — LLM/GenAI application demand exploded 2023–2026
+- Salary premium for engineers who understand inference optimization (L1a) + agent orchestration
+- Overlaps with software engineering more than hardware — included here because these roles generate the *workloads* your AI chip must run
+- Companies hiring: OpenAI, Anthropic, Google DeepMind, Meta, every enterprise SaaS company, startups
+
+**Connection to AI hardware:** Agentic AI creates the inference demand (long-context, tool-calling, multi-turn) that drives hardware requirements. Understanding these workloads helps L2 (compiler) and L5 (architecture) engineers design for real usage patterns.
+
+---
+
+## L1e — ML Engineering & MLOps
+
+**Focus:** Build and operate ML training/inference pipelines — model lifecycle, data pipelines, serving infrastructure, monitoring.
+
+| Title | What they do |
+|-------|-------------|
+| Machine Learning Engineer | Training pipelines, model architecture, feature engineering, evaluation |
+| MLOps Engineer | CI/CD for models, experiment tracking (MLflow, W&B), model registry, serving infra |
+| AI/ML Engineer | End-to-end: data → training → optimization → deployment → monitoring |
+| ML Platform Engineer | Build internal ML platforms: compute scheduling, data versioning, model serving |
+| Data/ML Infrastructure Engineer | GPU cluster management for training, distributed data pipelines |
+
+| Level | Total Comp (Top Tier) | Remote | Hybrid | Onsite |
+|-------|----------------------|--------|--------|--------|
+| Junior | $115K–$155K | 25% | 30% | 45% |
+| Mid | $170K–$240K | 20% | 30% | 50% |
+| Senior | $260K–$380K+ | 15% | 30% | 55% |
+
+**Market notes:**
+- **Largest absolute job count** across all L1 sub-layers — every company doing AI needs ML engineers
+- Higher remote flexibility than hardware roles but less than pure GenAI (some roles need GPU cluster access)
+- MLOps is maturing: Kubernetes + GPU, model serving (Triton, vLLM), experiment tracking are standard skills
+- Strong overlap with L3c (HPC Infrastructure) for training-focused roles
+- Companies hiring: every tech company, banks, healthcare, defense, manufacturing — ML is horizontal
+
+**Connection to AI hardware:** ML engineers define the training workloads (distributed training, large batch, mixed precision) and serving requirements (latency SLAs, throughput targets) that hardware must support. Understanding MLOps helps L1a (inference optimization) and L3c (HPC) engineers.
 
 ---
 
@@ -486,6 +544,8 @@ Estimated **monthly active US job postings** (LinkedIn + Indeed + Greenhouse + c
 | **L1a** Inference Optimization | 1,200–1,500 | +35% | Balanced | 45–60 days |
 | **L1b** Edge AI Deployment | 800–1,100 | +15% | Balanced | 40–55 days |
 | **L1c** AI Application | 2,000–2,500 | +10% | Slight surplus | 30–45 days |
+| **L1d** Agentic AI & GenAI | 5,000–7,000 | +120% | **High demand** | 25–40 days |
+| **L1e** ML Engineering & MLOps | 8,000–10,000 | +25% | Balanced | 30–45 days |
 | **L2a** Graph/IR Optimization | 200–350 | +60% | **Severe shortage** | 90–120 days |
 | **L2b** Compiler Backend | 300–500 | +55% | **Severe shortage** | 90–150 days |
 | **L2c** Kernel Engineering | 400–600 | +50% | **Shortage** | 75–100 days |
@@ -504,7 +564,7 @@ Estimated **monthly active US job postings** (LinkedIn + Indeed + Greenhouse + c
 | **L7b** DFT/CAD | 400–600 | +10% | Balanced | 45–60 days |
 | **L8a** Packaging/Process | 300–500 | +30% | Shortage | 60–80 days |
 | **L8b** Silicon Validation | 400–600 | +15% | Balanced | 45–60 days |
-| | **~20,700–24,800** | | | |
+| | **~33,700–41,800** | | | |
 
 ### Job Volume Visualization (with Remote %)
 
@@ -513,26 +573,29 @@ Estimated **monthly active US job postings** (LinkedIn + Indeed + Greenhouse + c
 ```
 Monthly US Postings by Sub-Layer (Q1 2026)          Postings  Remote %
 
-L4a Embedded SW        ████████████████████████████████████████████ 4,000   10%  ░
-L4c Automotive/IoT     ████████████████████████████ 2,400                   15%  ░░
-L6b Verification       ██████████████████████████ 2,250                      2%
-L1c AI Application     ██████████████████████████ 2,250                     15%  ░░
-L4b Embedded Linux     ████████████████████ 1,750                           10%  ░
-L6a RTL Design         ████████████████████ 1,750                            2%
-L6c FPGA/HLS           █████████████████ 1,400                               5%
-L1a Inference Opt      ████████████████ 1,350                               15%  ░░
-L1b Edge AI            ████████████ 950                                     10%  ░
-L3c HPC Infra          ███████████ 850                                      10%  ░
-L3b Kernel/Drivers     █████████ 700                                         5%
-L3a GPU Runtime        ████████ 600                                          5%
-L2c Kernel Eng         ███████ 500                                           5%
-L2b Compiler Backend   █████ 400                                             2%
-L2a Graph/IR           ███ 275                                               2%
-L5b System/SoC Arch    ███ 275                                               2%
-L5a Accelerator Arch   ██ 150                                                1%
-                       └──────────────────────────────────┘
-                       0   500  1K   1.5K   2K   2.5K  3K   4K    Remote: ░ = 10%+
-                                                                          ░░ = 15%+
+L1e ML Eng / MLOps     ████████████████████████████████████████████████████████████ 9,000   20%  ░░░
+L1d Agentic AI/GenAI   ████████████████████████████████████████████ 6,000                   25%  ░░░░
+L4a Embedded SW        ██████████████████████████████ 4,000                                 10%  ░
+L4c Automotive/IoT     ██████████████████ 2,400                                             15%  ░░
+L6b Verification       █████████████████ 2,250                                               2%
+L1c AI Application     █████████████████ 2,250                                              15%  ░░
+L4b Embedded Linux     █████████████ 1,750                                                  10%  ░
+L6a RTL Design         █████████████ 1,750                                                   2%
+L6c FPGA/HLS           ██████████ 1,400                                                      5%
+L1a Inference Opt      ██████████ 1,350                                                     15%  ░░
+L1b Edge AI            ███████ 950                                                          10%  ░
+L3c HPC Infra          ██████ 850                                                           10%  ░
+L3b Kernel/Drivers     █████ 700                                                             5%
+L3a GPU Runtime        ████ 600                                                              5%
+L2c Kernel Eng         ████ 500                                                              5%
+L2b Compiler Backend   ███ 400                                                               2%
+L2a Graph/IR           ██ 275                                                                2%
+L5b System/SoC Arch    ██ 275                                                                2%
+L5a Accelerator Arch   █ 150                                                                 1%
+                       └──────────────────────────────────────────────────────┘
+                       0    1K    2K    3K    4K    5K    6K    7K    8K   9K
+
+                       Remote: ░ = 10%+  ░░ = 15%+  ░░░ = 20%+  ░░░░ = 25%+
 ```
 
 *L7–L8: Theory and guided labs only in this roadmap (OpenROAD, TinyTapeout) — listed for market context*
@@ -544,7 +607,7 @@ L5a Accelerator Arch   ██ 150                                               
 | *L8a Packaging/Process* | *~400* | *1%* | *Cleanroom and foundry interaction* |
 | *L8b Silicon Validation* | *~500* | *1%* | *Lab equipment, ATE, first silicon* |
 
-**Total: ~21K–25K/month** (L1–L6: ~18K–22K practical roles · L7–L8: ~2,350 theory-context roles)
+**Total: ~34K–42K/month** (L1–L6: ~31K–39K practical roles · L7–L8: ~2,350 theory-context roles)
 
 **Remote-friendly sub-layers (10%+ remote postings):**
 - L1a Inference Optimization (15%) — profiling and optimization can be done with cloud GPU access
@@ -564,8 +627,9 @@ L5a Accelerator Arch   ██ 150                                               
 ### Key Insights from Job Data
 
 **Highest volume (easiest to find openings):**
+- L1e ML Engineering / MLOps (~9,000/month) — every company doing AI needs ML engineers
+- L1d Agentic AI / GenAI (~6,000/month) — LLM application demand exploding
 - L4a Embedded Software (~4,000/month) — the bread and butter of hardware engineering
-- L4c Automotive/IoT (~2,400/month) — ADAS growth driving automotive embedded demand
 - L6b Design Verification (~2,250/month) — chronic shortage means constant openings
 
 **Lowest volume but highest pay (hardest to get, hardest to fill):**
@@ -573,12 +637,19 @@ L5a Accelerator Arch   ██ 150                                               
 - L2a Graph/IR Optimization (~275/month) — every chip startup needs one, few candidates exist
 - L2b Compiler Backend (~400/month) — MLIR/LLVM expertise is extremely rare
 
+**Most remote-friendly:**
+- L1d Agentic AI / GenAI (25% remote) — API/cloud-based, no hardware needed
+- L1e ML Engineering / MLOps (20% remote) — training on cloud GPUs, MLflow/K8s
+- L1a/L1c (15% remote) — inference optimization and applications
+
 **Best ROI for career investment:**
 - L2b/L2c (Compiler/Kernel) — low supply, high demand, highest pay, growing 50–60% YoY
 - L5a (Architecture) — requires experience, but once you're there, extreme scarcity = leverage
 - L6b (Verification) — chronic shortage means job security; moderate pay but never unemployed
+- L1d (Agentic AI) — if you combine agent/GenAI skills with L1a inference optimization, you're uniquely valuable
 
 **Fastest growing (YoY posting increase):**
+- L1d Agentic AI / GenAI: +120% (LLM application wave)
 - L5a Accelerator Architecture: +70% (AI chip startup wave)
 - L2a Graph/IR: +60% (every new chip needs a compiler)
 - L2b Compiler Backend: +55%
@@ -596,6 +667,8 @@ L5a Accelerator Arch   ██ 150                                               
 | L1a Inference Optimization | $250K–$350K+ | ~1,350 | Medium | Growing (LLM) |
 | L1b Edge AI | $220K–$300K+ | ~950 | Medium | Stable |
 | L1c AI Application | $240K–$320K+ | ~2,250 | Low-Medium | Stable |
+| L1d Agentic AI / GenAI | $270K–$400K+ | ~6,000 | Medium | **Surging** (+120% YoY) |
+| L1e ML Eng / MLOps | $260K–$380K+ | ~9,000 | Low-Medium | Growing (+25% YoY) |
 | **L2a Graph/IR** | **$350K–$480K+** | **~275** | **High** | **Surging** |
 | **L2b Compiler Backend** | **$400K–$550K+** | **~400** | **Very High** | **Surging** |
 | **L2c Kernel Engineering** | **$350K–$500K+** | **~500** | **Very High** | **Surging** |
