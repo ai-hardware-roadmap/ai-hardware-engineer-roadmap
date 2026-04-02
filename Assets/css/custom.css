@@ -1,49 +1,149 @@
-/* AI Hardware Engineer Roadmap — Custom MkDocs Material Overrides */
+/* AI Hardware Engineer Roadmap — MkDocs Material Custom Theme */
 
-/* Layer color badges */
-.md-typeset .layer-l1 { color: #22c55e; font-weight: 700; }
-.md-typeset .layer-l2 { color: #ef4444; font-weight: 700; }
-.md-typeset .layer-l3 { color: #3b82f6; font-weight: 700; }
-.md-typeset .layer-l4 { color: #a855f7; font-weight: 700; }
-.md-typeset .layer-l5 { color: #f43f5e; font-weight: 700; }
-.md-typeset .layer-l6 { color: #f97316; font-weight: 700; }
-.md-typeset .layer-l7 { color: #94a3b8; font-weight: 700; }
-.md-typeset .layer-l8 { color: #94a3b8; font-weight: 700; }
-
-/* Wider content area */
+/* ── Wider layout ────────────────────────────── */
 .md-grid {
-  max-width: 1400px;
+  max-width: 1440px;
 }
 
-/* Code blocks */
+/* ── Home page hero ──────────────────────────── */
+.md-content__inner > h1:first-of-type {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+/* Center the banner image */
+.md-content__inner > p:nth-of-type(1) img {
+  display: block;
+  margin: 0 auto 1.5rem;
+  max-width: 100%;
+  border-radius: 12px;
+}
+
+/* First description paragraph — centered intro */
+.md-content__inner > p:nth-of-type(2) {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto 1.5rem;
+  color: var(--md-typeset-color);
+}
+
+/* ── Layer color highlights in tables ────────── */
+.md-typeset table td:first-child {
+  font-weight: 600;
+}
+
+/* Bold L1-L8 in table cells */
+.md-typeset td:first-child:is(
+  [class*="layer"],
+  :has(strong)
+) {
+  white-space: nowrap;
+}
+
+/* ── Code blocks ─────────────────────────────── */
 .md-typeset code {
   font-size: 0.82em;
 }
 
-/* Tables — slightly more compact */
-.md-typeset table:not([class]) th {
-  font-size: 0.78em;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.md-typeset table:not([class]) td {
-  font-size: 0.85em;
-}
-
-/* ASCII art blocks — preserve alignment */
 .md-typeset pre code {
   font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
   font-size: 0.78em;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
-/* Navigation tabs — bolder active state */
+/* ASCII art — prevent wrapping */
+.md-typeset pre {
+  overflow-x: auto;
+}
+
+/* ── Tables ──────────────────────────────────── */
+.md-typeset table:not([class]) {
+  font-size: 0.88rem;
+  border: 1px solid var(--md-typeset-table-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--md-typeset-table-color);
+  border-bottom: 2px solid var(--md-primary-fg-color);
+}
+
+.md-typeset table:not([class]) td {
+  padding: 0.5rem 0.75rem;
+}
+
+.md-typeset table:not([class]) tr:hover td {
+  background: var(--md-accent-fg-color--transparent);
+}
+
+/* ── Navigation tabs ─────────────────────────── */
 .md-tabs__link--active {
   font-weight: 700;
 }
 
-/* Footer link color */
+/* ── Phase header styling ────────────────────── */
+.md-typeset h2 {
+  border-bottom: 2px solid var(--md-primary-fg-color);
+  padding-bottom: 0.3rem;
+  margin-top: 2rem;
+}
+
+/* ── Blockquotes as callouts ─────────────────── */
+.md-typeset blockquote {
+  border-left: 4px solid var(--md-primary-fg-color);
+  background: var(--md-admonition-bg-color);
+  padding: 0.8rem 1.2rem;
+  border-radius: 0 6px 6px 0;
+  margin: 1rem 0;
+}
+
+.md-typeset blockquote p {
+  margin-bottom: 0;
+}
+
+/* ── Footer ──────────────────────────────────── */
 .md-footer-meta a {
   color: var(--md-accent-fg-color);
+}
+
+/* ── Mermaid diagrams ────────────────────────── */
+.mermaid {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+/* ── Print styles ────────────────────────────── */
+@media print {
+  .md-sidebar,
+  .md-tabs,
+  .md-header,
+  .md-footer {
+    display: none;
+  }
+  .md-content {
+    max-width: 100%;
+  }
+}
+
+/* ── Mobile responsive ───────────────────────── */
+@media screen and (max-width: 768px) {
+  .md-content__inner > h1:first-of-type {
+    font-size: 1.5rem;
+  }
+  .md-typeset table:not([class]) {
+    font-size: 0.78rem;
+  }
+  .md-typeset table:not([class]) th,
+  .md-typeset table:not([class]) td {
+    padding: 0.35rem 0.5rem;
+  }
 }
