@@ -506,35 +506,52 @@ Estimated **monthly active US job postings** (LinkedIn + Indeed + Greenhouse + c
 | **L8b** Silicon Validation | 400–600 | +15% | Balanced | 45–60 days |
 | | **~20,700–24,800** | | | |
 
-### Job Volume Visualization
+### Job Volume Visualization (with Remote %)
 
 ```
-Monthly US Postings by Sub-Layer (Q1 2026 estimate)
+Monthly US Postings by Sub-Layer (Q1 2026)          Postings  Remote %
 
-L4a Embedded SW        ████████████████████████████████████████████ 4,000
-L4c Automotive/IoT     ████████████████████████████ 2,400
-L6b Verification       ██████████████████████████ 2,250
-L1c AI Application     ██████████████████████████ 2,250
-L4b Embedded Linux     ████████████████████ 1,750
-L6a RTL Design         ████████████████████ 1,750
-L6c FPGA/HLS           █████████████████ 1,400
-L1a Inference Opt      ████████████████ 1,350
-L1b Edge AI            ████████████ 950
-L7a Physical Design    ████████████ 950
-L3c HPC Infra          ███████████ 850
-L3b Kernel/Drivers     █████████ 700
-L3a GPU Runtime        ████████ 600
-L2c Kernel Eng         ███████ 500
-L8b Silicon Valid      ██████ 500
-L7b DFT/CAD            ██████ 500
-L2b Compiler Backend   █████ 400
-L8a Packaging          █████ 400
-L2a Graph/IR           ███ 275
-L5b System/SoC Arch    ███ 275
-L5a Accelerator Arch   ██ 150
-                       └──────────────────────────────────────────┘
-                       0    500  1,000  1,500  2,000  2,500  3,000  4,000
+L4a Embedded SW        ████████████████████████████████████████████ 4,000   10%  ░
+L4c Automotive/IoT     ████████████████████████████ 2,400                   15%  ░░
+L6b Verification       ██████████████████████████ 2,250                      2%
+L1c AI Application     ██████████████████████████ 2,250                     15%  ░░
+L4b Embedded Linux     ████████████████████ 1,750                           10%  ░
+L6a RTL Design         ████████████████████ 1,750                            2%
+L6c FPGA/HLS           █████████████████ 1,400                               5%
+L1a Inference Opt      ████████████████ 1,350                               15%  ░░
+L1b Edge AI            ████████████ 950                                     10%  ░
+L7a Physical Design    ████████████ 950                                      1%
+L3c HPC Infra          ███████████ 850                                      10%  ░
+L3b Kernel/Drivers     █████████ 700                                         5%
+L3a GPU Runtime        ████████ 600                                          5%
+L2c Kernel Eng         ███████ 500                                           5%
+L8b Silicon Valid      ██████ 500                                            1%
+L7b DFT/CAD            ██████ 500                                            1%
+L2b Compiler Backend   █████ 400                                             2%
+L8a Packaging          █████ 400                                             1%
+L2a Graph/IR           ███ 275                                               2%
+L5b System/SoC Arch    ███ 275                                               2%
+L5a Accelerator Arch   ██ 150                                                1%
+                       └──────────────────────────────────┘
+                       0   500  1K   1.5K   2K   2.5K  3K   4K    Remote: ░ = 10%+
+
+Total: ~21K–25K/month                                        ░░ = 15%+
 ```
+
+**Remote-friendly sub-layers (10%+ remote postings):**
+- L1a Inference Optimization (15%) — profiling and optimization can be done with cloud GPU access
+- L1c AI Application (15%) — SDK/solutions work, customer-facing but often remote-capable
+- L4c Automotive/IoT (15%) — IoT firmware (not ADAS) has most remote flexibility
+- L1b Edge AI (10%) — some roles allow remote with dev kit shipping
+- L3c HPC Infrastructure (10%) — cluster management is SSH-based
+- L4a Embedded Software (10%) — growing remote with remote lab access tools
+- L4b Embedded Linux/BSP (10%) — Yocto builds and kernel work can be remote
+
+**Almost zero remote (1–2%):**
+- L5a/L5b Architecture — daily whiteboard sessions with RTL and silicon teams
+- L6a/L6b RTL/DV — EDA tools, lab access, emulation hardware
+- L7a/L7b Physical Design/DFT — EDA licenses, foundry NDA data, security
+- L8a/L8b Packaging/Validation — cleanroom, lab equipment, ATE access
 
 ### Key Insights from Job Data
 
