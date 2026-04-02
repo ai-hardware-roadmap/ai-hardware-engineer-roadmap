@@ -113,14 +113,15 @@ Phase 5        ░░░     │    ░░░    │    ░░░    │        
 >
 > *Hub:* [**Phase 3 — Artificial Intelligence**](Phase%203%20-%20Artificial%20Intelligence/Guide.md)
 
-| Topic | Key Skills | Layer |
-|-------|------------|:-----:|
-| [**Neural Networks**](Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/Guide.md) | MLPs, CNNs, training, tinygrad, PyTorch; [pytorch-and-micrograd](Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/pytorch-and-micrograd/Guide.md) | L1 |
-| [**Edge AI**](Phase%203%20-%20Artificial%20Intelligence/Edge%20AI/Guide.md) | On-device tiers, latency/privacy, train → optimize → deploy | L1 |
-| [**Computer Vision**](Phase%203%20-%20Artificial%20Intelligence/Computer%20Vision/Guide.md) | Image processing, detection, OpenCV | L1 |
-| [**Sensor Fusion**](Phase%203%20-%20Artificial%20Intelligence/Sensor%20Fusion/Guide.md) | Camera, LiDAR, IMU, Kalman, BEVFusion, MOT | L1 |
+| # | Topic | Key Skills | Layer |
+|---|-------|------------|:-----:|
+| 1 | [**Neural Networks**](Phase%203%20-%20Artificial%20Intelligence/1.%20Neural%20Networks/Guide.md) | MLPs, CNNs, training, backpropagation, loss functions | L1 |
+| 2 | [**Deep Learning Frameworks**](Phase%203%20-%20Artificial%20Intelligence/2.%20Deep%20Learning%20Frameworks/Guide.md) | micrograd → PyTorch → tinygrad: autograd, ops, compiler pipeline | L1/L2 |
+| 3 | [**Computer Vision**](Phase%203%20-%20Artificial%20Intelligence/3.%20Computer%20Vision/Guide.md) | Image processing, detection, segmentation, 3D vision, OpenCV | L1 |
+| 4 | [**Sensor Fusion**](Phase%203%20-%20Artificial%20Intelligence/4.%20Sensor%20Fusion/Guide.md) | Camera, LiDAR, IMU, Kalman, BEVFusion, MOT | L1 |
+| 5 | [**Edge AI & Model Optimization**](Phase%203%20-%20Artificial%20Intelligence/5.%20Edge%20AI%20and%20Model%20Optimization/Guide.md) | Quantization, pruning, deployment pipeline — bridge to Phase 4 | L1 |
 
-**Build:** micrograd, CNN from scratch, tinygrad tutorials, OpenCV / detection exercises, calibration / tracking labs
+**Build:** micrograd from scratch, CNN training, tinygrad IR tracing, OpenCV detection, sensor calibration, INT8 quantization
 
 ---
 

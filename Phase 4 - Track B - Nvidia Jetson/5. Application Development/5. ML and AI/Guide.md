@@ -1832,5 +1832,5 @@ Use TAO for standard detection/classification on Jetson. Use the manual pipeline
 
 ---
 
-*Prerequisite map: [Phase 3 — Neural Networks](../../../Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/Guide.md)*
-*Next (sub-module): [5.6 ROS2](../6.%20ROS2/Guide.md) · **Sensor fusion** (Phase 3): [Sensor Fusion](../../../Phase%203%20-%20Artificial%20Intelligence/Sensor%20Fusion/Guide.md)*
+*Prerequisite map: [Phase 3 — Neural Networks](../../../Phase%203%20-%20Artificial%20Intelligence/1.%20Neural%20Networks/Guide.md)*
+*Next (sub-module): [5.6 ROS2](../6.%20ROS2/Guide.md) · **Sensor fusion** (Phase 3): [Sensor Fusion](../../../Phase%203%20-%20Artificial%20Intelligence/4.%20Sensor%20Fusion/Guide.md)*

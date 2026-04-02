@@ -727,4 +727,4 @@ You're learning the workload first. Then you'll build the machine that runs it.
 
 ## Next
 
-→ [**Phase 3 — Neural Networks**](../../Phase%203%20-%20Artificial%20Intelligence/Neural%20Networks/Guide.md) — the workloads that make all this parallelism necessary.
+→ [**Phase 3 — Neural Networks**](../../Phase%203%20-%20Artificial%20Intelligence/1.%20Neural%20Networks/Guide.md) — the workloads that make all this parallelism necessary.
