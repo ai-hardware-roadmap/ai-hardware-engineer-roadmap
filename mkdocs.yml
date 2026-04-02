@@ -1,0 +1,187 @@
+site_name: AI Hardware Engineer Roadmap
+site_url: https://ai-hpc.github.io/ai-hardware-engineer-roadmap/
+site_description: Design a custom AI inference chip. 8 layers, 23 sub-layers, 5 phases.
+site_author: ai-hpc
+repo_url: https://github.com/ai-hpc/ai-hardware-engineer-roadmap
+repo_name: ai-hpc/ai-hardware-engineer-roadmap
+edit_uri: edit/main/
+
+docs_dir: .
+
+theme:
+  name: material
+  logo: Assets/images/ai-hardware-engineer.png
+  favicon: Assets/images/ai-hardware-engineer.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ai-hpc
+  generator: false
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+plugins:
+  - search
+  - tags
+
+extra_css:
+  - Assets/css/custom.css
+
+nav:
+  - Home: README.md
+  - Roles & Market: Roles and Market Analysis.md
+
+  - Phase 1 — Digital Foundations:
+    - Overview: Phase 1 - Foundational Knowledge/1. Digital Design and Hardware Description Languages/Guide.md
+    - Digital Design:
+      - Guide: Phase 1 - Foundational Knowledge/1. Digital Design and Hardware Description Languages/Guide.md
+      - Fundamentals: Phase 1 - Foundational Knowledge/1. Digital Design and Hardware Description Languages/Digital Design Fundamentals/Guide.md
+      - HDLs: Phase 1 - Foundational Knowledge/1. Digital Design and Hardware Description Languages/Hardware Description Languages (HDLs)/Guide.md
+    - Computer Architecture: Phase 1 - Foundational Knowledge/2. Computer Architecture and Hardware/Guide.md
+    - Operating Systems: Phase 1 - Foundational Knowledge/3. Operating Systems/Guide.md
+    - C++ & Parallel Computing:
+      - Guide: Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/Guide.md
+      - C++ and SIMD: Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/C++ and SIMD/Guide.md
+      - OpenMP and oneTBB: Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/OpenMP and OneTBB/Guide.md
+      - CUDA and SIMT: Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/CUDA and SIMT/Guide.md
+      - ROCm and HIP: Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/ROCm and HIP/Guide.md
+      - OpenCL and SYCL: Phase 1 - Foundational Knowledge/4. C++ and Parallel Computing/OpenCL and SYCL/Guide.md
+
+  - Phase 2 — Embedded Systems:
+    - Schematic & PCB: Phase 2 - Embedded Systems/1. Schematic Capture and PCB Design/Guide.md
+    - Embedded Software: Phase 2 - Embedded Systems/2. Embedded Software/Guide.md
+    - Embedded Linux:
+      - Guide: Phase 2 - Embedded Systems/3. Embedded Linux/Guide.md
+      - Yocto: Phase 2 - Embedded Systems/3. Embedded Linux/Yocto/Guide.md
+
+  - Phase 3 — AI:
+    - Overview: Phase 3 - Artificial Intelligence/Guide.md
+    - 1. Neural Networks: Phase 3 - Artificial Intelligence/1. Neural Networks/Guide.md
+    - 2. Frameworks:
+      - Guide: Phase 3 - Artificial Intelligence/2. Deep Learning Frameworks/Guide.md
+      - micrograd: Phase 3 - Artificial Intelligence/2. Deep Learning Frameworks/micrograd/Guide.md
+      - PyTorch: Phase 3 - Artificial Intelligence/2. Deep Learning Frameworks/PyTorch/Guide.md
+      - tinygrad: Phase 3 - Artificial Intelligence/2. Deep Learning Frameworks/tinygrad/Guide.md
+    - "Track A: Hardware & Edge AI":
+      - 3. Computer Vision: Phase 3 - Artificial Intelligence/Track A - Hardware and Edge AI/3. Computer Vision/Guide.md
+      - 4. Sensor Fusion:
+        - Guide: Phase 3 - Artificial Intelligence/Track A - Hardware and Edge AI/4. Sensor Fusion/Guide.md
+        - Kalibr: Phase 3 - Artificial Intelligence/Track A - Hardware and Edge AI/4. Sensor Fusion/Kalibr/Guide.md
+        - BEVFusion: Phase 3 - Artificial Intelligence/Track A - Hardware and Edge AI/4. Sensor Fusion/BEVFusion/Guide.md
+        - MOT: Phase 3 - Artificial Intelligence/Track A - Hardware and Edge AI/4. Sensor Fusion/multi-object-tracking/Guide.md
+      - 5. Voice AI: Phase 3 - Artificial Intelligence/Track A - Hardware and Edge AI/5. Voice AI/Guide.md
+      - 6. Edge AI & Optimization: Phase 3 - Artificial Intelligence/Track A - Hardware and Edge AI/6. Edge AI and Model Optimization/Guide.md
+    - "Track B: Agentic AI & ML":
+      - 3. Agentic AI & GenAI: Phase 3 - Artificial Intelligence/Track B - Agentic AI and ML Engineering/3. Agentic AI and GenAI/Guide.md
+      - 4. ML Engineering & MLOps: Phase 3 - Artificial Intelligence/Track B - Agentic AI and ML Engineering/4. ML Engineering and MLOps/Guide.md
+      - 5. LLM App Development: Phase 3 - Artificial Intelligence/Track B - Agentic AI and ML Engineering/5. LLM Application Development/Guide.md
+    - CMU AI Courses: Phase 3 - Artificial Intelligence/CMU-AI-Courses.md
+
+  - Phase 4 — Deployment:
+    - "Track A: Xilinx FPGA":
+      - 1. FPGA Development: Phase 4 - Track A - Xilinx FPGA/1. Xilinx FPGA Development/Guide.md
+      - 2. Zynq UltraScale+: Phase 4 - Track A - Xilinx FPGA/2. Zynq UltraScale+ MPSoC/Guide.md
+      - 3. Advanced FPGA: Phase 4 - Track A - Xilinx FPGA/3. Advanced FPGA Design/Guide.md
+      - 4. HLS: Phase 4 - Track A - Xilinx FPGA/4. High-Level Synthesis (HLS)/Guide.md
+      - 5. Runtime & Drivers: Phase 4 - Track A - Xilinx FPGA/5. Runtime and Driver Development/Guide.md
+      - 6. Projects: Phase 4 - Track A - Xilinx FPGA/6. Projects/Wireless-Video-FPGA.md
+    - "Track B: NVIDIA Jetson":
+      - 1. Jetson Platform: Phase 4 - Track B - Nvidia Jetson/1. Nvidia Jetson Platform/Guide.md
+      - 2. Carrier Board: Phase 4 - Track B - Nvidia Jetson/2. Custom Carrier Board Design and Bring-Up/Guide.md
+      - 3. L4T Customization: Phase 4 - Track B - Nvidia Jetson/3. L4T Customization/Guide.md
+      - 4. FSP Firmware: Phase 4 - Track B - Nvidia Jetson/4. FSP (Firmware Support Package) Customization/Guide.md
+      - 5. App Development: Phase 4 - Track B - Nvidia Jetson/5. Application Development/Guide.md
+      - 6. Security & OTA: Phase 4 - Track B - Nvidia Jetson/6. Security and OTA/Guide.md
+      - 7. Manufacturing: Phase 4 - Track B - Nvidia Jetson/7. Compliance and Manufacturing/Guide.md
+      - 8. Runtime & Drivers: Phase 4 - Track B - Nvidia Jetson/8. Runtime and Driver Development/Guide.md
+    - "Track C: ML Compiler":
+      - Guide: Phase 4 - Track C - ML Compiler and Graph Optimization/Guide.md
+      - DL Inference Optimization:
+        - Overview: Phase 4 - Track C - ML Compiler and Graph Optimization/DL Inference Optimization/Guide.md
+        - 01 Graph & Ops: Phase 4 - Track C - ML Compiler and Graph Optimization/DL Inference Optimization/01 - Graph and Operator Optimization/Guide.md
+        - 02 Kernel Engineering: Phase 4 - Track C - ML Compiler and Graph Optimization/DL Inference Optimization/02 - Kernel Engineering/Guide.md
+        - 03 Compiler Stack: Phase 4 - Track C - ML Compiler and Graph Optimization/DL Inference Optimization/03 - Compiler Stack/Guide.md
+        - 04 Quantization: Phase 4 - Track C - ML Compiler and Graph Optimization/DL Inference Optimization/04 - Quantization/Guide.md
+        - 05 Runtimes: Phase 4 - Track C - ML Compiler and Graph Optimization/DL Inference Optimization/05 - Inference Runtimes and Deployment/Guide.md
+        - 06 tinygrad: Phase 4 - Track C - ML Compiler and Graph Optimization/DL Inference Optimization/06 - tinygrad Deep Dive/Guide.md
+
+  - Phase 5 — Specialization:
+    - "A: GPU Infrastructure":
+      - Guide: Phase 5 - Advanced Topics and Specialization/1. GPU Infrastructure/Guide.md
+      - Nvidia GPU: Phase 5 - Advanced Topics and Specialization/1. GPU Infrastructure/Nvidia GPU/Guide.md
+      - AMD GPU: Phase 5 - Advanced Topics and Specialization/1. GPU Infrastructure/AMD GPU/Guide.md
+    - "B: HPC (CUDA-X)":
+      - Guide: Phase 5 - Advanced Topics and Specialization/2. High Performance Computing/Guide.md
+      - CUDA-X Libraries: Phase 5 - Advanced Topics and Specialization/2. High Performance Computing/CUDA-X Libraries/Guide.md
+    - "C: Edge AI": Phase 5 - Advanced Topics and Specialization/3. Edge AI/Guide.md
+    - "D: Robotics": Phase 5 - Advanced Topics and Specialization/4. Robotics/Guide.md
+    - "E: Autonomous Vehicles":
+      - Guide: Phase 5 - Advanced Topics and Specialization/5. Autonomous Vehicles/Guide.md
+      - 1. Fundamentals: Phase 5 - Advanced Topics and Specialization/5. Autonomous Vehicles/1. Fundamentals/Guide.md
+      - 2. openpilot: Phase 5 - Advanced Topics and Specialization/5. Autonomous Vehicles/2. openpilot Reference Stack/Guide.md
+      - 3. tinygrad: Phase 5 - Advanced Topics and Specialization/5. Autonomous Vehicles/3. tinygrad for Inference/Guide.md
+      - 4. Perception: Phase 5 - Advanced Topics and Specialization/5. Autonomous Vehicles/4. Advanced Perception and Prediction/Guide.md
+      - 5. Safety: Phase 5 - Advanced Topics and Specialization/5. Autonomous Vehicles/5. Safety Standards and Deployment/Guide.md
+      - 6. Lauterbach: Phase 5 - Advanced Topics and Specialization/5. Autonomous Vehicles/6. Lauterbach TRACE32 Debug/Guide.md
+    - "F: AI Chip Design": Phase 5 - Advanced Topics and Specialization/6. AI Chip Design/Guide.md
