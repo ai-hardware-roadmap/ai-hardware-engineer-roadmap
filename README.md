@@ -27,7 +27,7 @@ A custom AI chip is an **8-layer vertical stack**. This roadmap builds vertical 
 | **L7** | **Physical Implementation** | EDA tools, place & route, timing closure |
 | **L8** | **Fabrication & Packaging** | Foundry process, CoWoS, post-silicon bring-up |
 
-> **L1–L6:** Hands-on projects throughout the curriculum | **L7–L8:** Theory and guided labs (OpenROAD, TinyTapeout)
+<small>**L1–L6:** Hands-on projects throughout the curriculum &nbsp;|&nbsp; **L7–L8:** Theory and guided labs (OpenROAD, TinyTapeout)</small>
 
 ---
 
