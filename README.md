@@ -10,13 +10,7 @@
 
 </div>
 
-A custom AI chip is an **8-layer vertical stack**. This roadmap builds vertical literacy across all 8 layers, with hands-on depth in **L4 (Firmware)** and **L1 (AI Applications)** today, targeting **L2 (ML Compiler)** next, and **L3–L8** over the coming decade.
-
-> **Current expertise:** L4 (ESP32, Jetson, FPGA, GPU/CUDA) + L1 (Agentic AI, GenAI, ML Engineering, MLOps)
->
-> **3-year target:** L2 (MLIR, TVM, LLVM, custom compiler backends, kernel engineering)
->
-> **10-year vision:** L3–L8 (Runtime → Architecture → RTL → Physical → Silicon)
+A custom AI chip is an **8-layer vertical stack**. This roadmap builds vertical literacy across all 8 layers — from AI applications and ML compilers down to RTL design and silicon fabrication.
 
 ---
 
@@ -34,88 +28,6 @@ A custom AI chip is an **8-layer vertical stack**. This roadmap builds vertical 
 | **L8** | **Fabrication & Packaging** | Foundry process, CoWoS, post-silicon bring-up |
 
 > **L1–L6:** Hands-on projects throughout the curriculum | **L7–L8:** Theory and guided labs (OpenROAD, TinyTapeout)
-
----
-
-## Where We Are Now — L4 + L1
-
-### L4 — Firmware, Embedded Systems & Hardware Platforms
-
-| Platform | Expertise | What we deliver |
-|----------|----------|-----------------|
-| **ESP32 / IoT** | ESP-IDF, FreeRTOS, BLE/Wi-Fi, OTA, low-power | IoT products, sensor hubs, edge gateways |
-| **NVIDIA Jetson** | JetPack, L4T, device tree, carrier board, TensorRT, DLA | Edge AI: smart cameras, robots, autonomous systems |
-| **Xilinx FPGA** | Vivado, Zynq UltraScale+, HLS, RTL, AXI | FPGA accelerators, video processing, custom IP |
-| **NVIDIA GPU / CUDA** | CUDA C++, cuBLAS, cuDNN, Nsight, multi-GPU | GPU-accelerated compute, inference optimization |
-
-### L1 — AI Applications & ML Engineering
-
-| Role | Skills | What we deliver |
-|------|--------|-----------------|
-| **Agentic AI Engineer** | LLM agents, tool use, LangChain/LangGraph | AI agents for automation and research |
-| **GenAI Engineer** | RAG, fine-tuning (LoRA/QLoRA), evaluation | GenAI products, chatbots, content generation |
-| **AI Engineer** | Full-stack AI: API integration, deployment, monitoring | End-to-end AI applications |
-| **ML Engineer** | PyTorch, distributed training, feature engineering | Custom models, training infrastructure |
-| **MLOps Engineer** | MLflow, Triton, vLLM, K8s+GPU, CI/CD | Production ML pipelines at scale |
-
-### What L4 + L1 Delivers Today
-
-| Product / Service | Platform | Revenue Model |
-|-------------------|----------|---------------|
-| **AI Smart Camera** | Jetson Orin Nano | Hardware + SaaS analytics |
-| **Voice AI Device** | ESP32-S3 + Jetson | Hardware + subscription |
-| **Autonomous Robot** | Jetson + ESP32 | Robot-as-a-Service |
-| **Industrial IoT Gateway** | ESP32 + Rockchip | Gateway + cloud platform |
-| **Video Processing Accelerator** | Xilinx Zynq | IP licensing / system sales |
-| **FPGA Inference Accelerator** | Zynq / Alveo | Accelerator cards / IP |
-| **GPU Inference Platform** | NVIDIA GPU | Managed inference ($/token) |
-| **AI Agent Platform** | Cloud + Edge | Platform SaaS |
-| **MLOps Consulting** | Any | Consulting + managed services |
-| **Edge AI Product Design** | Jetson / ESP32 / RK3588 | NRE + per-unit royalty |
-| **FPGA IP Development** | Xilinx | IP license + support |
-
-> **Key insight:** L4+L1 generates **11 distinct product/service lines**. This is the revenue engine that funds the L2 investment. Every product becomes *faster and more competitive* once we add compiler capabilities.
-
----
-
-## 3-Year Target — L2: ML Compiler & Graph Optimization
-
-Adding L2 transforms us from **hardware consumers** (deploy on NVIDIA/Xilinx) to **hardware enablers** (compile for *any* accelerator, including our own future silicon).
-
-| Without L2 (today) | With L2 (in 3 years) |
-|---------------------|---------------------|
-| Use TensorRT as a black box | Build custom compiler backends for any target |
-| Accept vendor fusion decisions | Write custom fusion passes that outperform defaults |
-| Limited to NVIDIA/Xilinx ecosystem | Compile for any accelerator: custom NPU, FPGA, edge chip |
-| Optimize at application level only | Optimize at every IR level: graph → loop → vector → hardware |
-
-### L2 Sub-Layers
-
-| Sub-Layer | Technologies | Year |
-|-----------|-------------|:----:|
-| **L2a — Graph & IR** | ONNX, TorchFX, SSA, operator fusion, memory planning, quantization passes | Y1 |
-| **L2b — Compiler Backend** | LLVM IR, MLIR dialects, TVM (Relay→TIR), tinygrad (BEAM), custom backends | Y1–2 |
-| **L2c — Kernel Engineering** | Triton, CUTLASS/CuTe, Flash-Attention, FlashInfer, fusion & tiling | Y2–3 |
-
-### 3-Year Execution
-
-| Year | Focus | Milestone |
-|------|-------|-----------|
-| **Y1** (2026–2027) | L2a + Triton basics | Custom ONNX fusion pass in production. First Triton kernels outperforming vendor defaults. |
-| **Y2** (2027–2028) | L2b (LLVM/MLIR/TVM) + CUTLASS | Custom MLIR dialect for FPGA. TVM BYOC backend compiling to Zynq. |
-| **Y3** (2028–2029) | Full L2 + Flash-Attention | End-to-end: PyTorch → our compiler → optimized code for GPU, FPGA, or future NPU. |
-
----
-
-## 10-Year Vision — L3 through L8
-
-| Year | Layer | What we add | What it enables |
-|------|:-----:|-------------|-----------------|
-| 2029–2030 | **L3** | Custom runtime, Linux drivers, CUDA-like API | Ship runtime SDK alongside compiler |
-| 2030–2032 | **L5** | AI accelerator microarchitecture | Define the chip our compiler targets |
-| 2031–2033 | **L6** | RTL implementation, UVM verification, FPGA prototype | Working silicon prototype on Zynq |
-| 2033–2034 | **L7** | Synthesis, P&R, timing closure, GDS-II | Tape-out ready for foundry |
-| 2034–2036 | **L8** | Fabrication, packaging, post-silicon validation | **Custom AI inference chip in production** |
 
 ---
 
@@ -281,6 +193,6 @@ Phase 5        ░░░     │    ░░░    │    ░░░    │        
 
 <div align="center">
 
-**Built for the AI hardware community** · [Star ⭐](https://github.com/ai-hpc/ai-hardware-engineer-roadmap) if you find this useful
+**A community-driven educational roadmap for AI hardware engineering.** · [Star ⭐](https://github.com/ai-hpc/ai-hardware-engineer-roadmap) if you find this useful
 
 </div>

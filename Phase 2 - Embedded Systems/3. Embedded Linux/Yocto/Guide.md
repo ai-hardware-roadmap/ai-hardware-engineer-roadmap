@@ -41,4 +41,4 @@ Each module is a separate file under **[Lecture/](Lecture/README.md)** with labs
 
 All step-by-step content, labs, glossary, and external links live in the **[Lecture/](Lecture/README.md)** files above.
 
-*Course maintainer tip:* when documentation and the internet disagree, trust the **docs matching your exact Yocto release branch**—metadata syntax and variable names do evolve.
+**Pro tip:** when documentation and the internet disagree, trust the **docs matching your exact Yocto release branch**—metadata syntax and variable names do evolve.
