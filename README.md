@@ -56,7 +56,7 @@ Phase 5        ░░░     │    ░░░    │    ░░░    │        
 
 ### Phase 1: Digital Foundations (6–12 months)
 
-> *The language of hardware — from gates and Verilog to CUDA kernels.*
+<small>*The language of hardware — from gates and Verilog to CUDA kernels.*</small>
 
 | Topic | Key Skills | Layer |
 |-------|------------|:-----:|
@@ -67,7 +67,7 @@ Phase 5        ░░░     │    ░░░    │    ░░░    │        
 
 ### Phase 2: Embedded Systems (6–12 months)
 
-> *The boards and buses that sit next to inference — MCUs, RTOS, and embedded Linux.*
+<small>*The boards and buses that sit next to inference — MCUs, RTOS, and embedded Linux.*</small>
 
 | Topic | Key Skills | Layer |
 |-------|------------|:-----:|
@@ -76,9 +76,7 @@ Phase 5        ░░░     │    ░░░    │    ░░░    │        
 
 ### Phase 3: Artificial Intelligence (6–12 months)
 
-> *The workloads your hardware must run.* Core + two tracks.
->
-> *Hub:* [**Phase 3 — Artificial Intelligence**](Phase%203%20-%20Artificial%20Intelligence/Guide.md)
+<small>*The workloads your hardware must run.* Core + two tracks. &nbsp;·&nbsp; *Hub:* [**Phase 3 — Artificial Intelligence**](Phase%203%20-%20Artificial%20Intelligence/Guide.md)</small>
 
 **Core (mandatory):**
 
@@ -108,7 +106,7 @@ Phase 5        ░░░     │    ░░░    │    ░░░    │        
 
 ### Phase 4: Hardware Deployment & Compilation (6–12 months each)
 
-> *Deploy AI on real silicon and learn how compilers bridge models to hardware.*
+<small>*Deploy AI on real silicon and learn how compilers bridge models to hardware.*</small>
 
 #### Track A — Xilinx FPGA
 
