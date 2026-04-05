@@ -80,7 +80,7 @@ auto r = q;  // Reference count = 2
 | Type | Ownership | Overhead | Use when |
 |------|-----------|----------|----------|
 | `std::unique_ptr` | Exclusive (one owner) | Zero (same as raw pointer) | Default choice. Single owner. |
-| `std::shared_ptr` | Shared (reference counted) | Atomic ref count (~16 bytes) | Multiple owners needed |
+| `std::shared_ptr` | Shared (reference counted) | Atomic ref count (control block overhead, impl-dependent) | Multiple owners needed |
 | `std::weak_ptr` | Non-owning observer | Minimal | Break circular references |
 
 **Rule:** Never use `new`/`delete` in modern C++. Use `make_unique` and `make_shared`.
@@ -364,6 +364,10 @@ std::for_each(std::execution::par_unseq, data.begin(), data.end(),
 
 **Why this is important:** `par_unseq` combines SIMD vectorization with multi-threading in one line. No intrinsics, no OpenMP pragmas, no oneTBB templates. It's the easiest path to parallel code — and it works with any STL-compatible container.
 
+> **`par_unseq` requirements:** Your loop body must have **no data races** (independent elements) AND **no loop-carried dependencies**. If element `i` depends on element `i-1`, `par_unseq` produces undefined behavior — not just wrong results, but undefined behavior.
+
+> **Warning — not always faster:** Parallel STL has overhead (thread pool spin-up, synchronization). For small arrays (< ~100K elements), `seq` is often faster. In HPC and production ML systems, teams frequently prefer **OpenMP** or **oneTBB** for more predictable, tunable, and debuggable parallelism. Benchmark before committing to `par` or `par_unseq`.
+
 **Compiler support:** GCC 9+ (with `-ltbb`), MSVC 2017+, Intel DPC++. Clang support is improving.
 
 ---
@@ -467,6 +471,21 @@ CPU vector instructions that process 4, 8, 16, or 32 data elements in one instru
 | AVX-512 (2017) | 512-bit | 16x float32 | x86 (server) |
 | ARM NEON | 128-bit | 4x float32 | ARM (Jetson, mobile) |
 
+### Parallel Mental Models
+
+SIMD is the first step in a hierarchy of data-parallel abstractions. Every level below uses the same fundamental idea:
+
+| Concept | CPU SIMD | GPU (CUDA) | Hardware |
+|---------|----------|------------|----------|
+| **Data parallelism** | AVX lanes (8× float) | Warp (32 threads) | Vector unit |
+| **Task parallelism** | `std::thread` / OpenMP | Thread blocks | Core clusters |
+| **Memory hierarchy** | L1/L2 cache | Shared / global memory | SRAM / DRAM |
+| **Latency hiding** | ILP + SIMD | Warp scheduling | Pipeline design |
+
+Learn SIMD well and the GPU mental model becomes obvious — not a new paradigm, but SIMD at 32× width with explicit memory tiers.
+
+---
+
 ### Auto-Vectorization (Compiler Does It)
 
 The easiest path — write a simple loop, let the compiler vectorize:
@@ -513,13 +532,17 @@ void add_vectors_avx(float* a, float* b, float* c, int n) {
 
 | Operation | Intrinsic | What it does |
 |-----------|-----------|-------------|
-| Load | `_mm256_load_ps(ptr)` | Load 8 aligned floats |
-| Load unaligned | `_mm256_loadu_ps(ptr)` | Load 8 floats (any alignment) |
-| Store | `_mm256_store_ps(ptr, v)` | Store 8 floats |
+| Load | `_mm256_load_ps(ptr)` | Load 8 **32-byte-aligned** floats — **crashes if misaligned** |
+| Load unaligned | `_mm256_loadu_ps(ptr)` | Load 8 floats (any alignment) — safer default |
+| Store | `_mm256_store_ps(ptr, v)` | Store 8 floats (aligned) |
 | Add | `_mm256_add_ps(a, b)` | 8 parallel additions |
 | Multiply | `_mm256_mul_ps(a, b)` | 8 parallel multiplications |
-| FMA | `_mm256_fmadd_ps(a, b, c)` | 8 parallel `a*b + c` (one instruction!) |
+| **FMA** | `_mm256_fmadd_ps(a, b, c)` | 8 parallel `a*b + c` — **one instruction, not two** |
 | Broadcast | `_mm256_set1_ps(x)` | Fill all 8 lanes with same value |
+
+> **`_mm256_load_ps` alignment:** If `ptr` is not 32-byte aligned, this generates a segfault (`#GP` fault) at runtime — not a compile error. When in doubt, use `_mm256_loadu_ps` (the `u` = unaligned). On modern CPUs the performance difference is negligible.
+
+> **FMA is the core of deep learning:** `_mm256_fmadd_ps(a, b, c)` computes `a*b + c` in a single fused instruction. GEMM (matrix multiplication), convolutions, and transformer attention inner loops are entirely composed of FMA. This is why FLOPS counts are usually reported as "FLOPS of FMA." On AVX2, 8-wide FMA at 2 ops/cycle = **16 GFLOPS/GHz per core**.
 
 **Aligned memory:**
 ```cpp
@@ -529,6 +552,79 @@ alignas(32) float data[1024];
 // Or dynamic allocation
 float* data = (float*)aligned_alloc(32, 1024 * sizeof(float));
 ```
+
+### Cache Lines and Memory Alignment
+
+The CPU fetches memory in **64-byte cache lines** — not individual bytes. This is the physical reason SIMD alignment matters and the root cause of most false-sharing bugs in multithreaded code.
+
+```
+Cache line = 64 bytes = 16 floats = 8 doubles = 2 AVX registers
+
+[float 0][float 1]...[float 15]   ← one cache line fetch
+         └─ AVX load ──┘└─ AVX load ──┘  ← if misaligned, spans two lines
+```
+
+**Why it matters:**
+
+| Scenario | Cache line impact |
+|----------|------------------|
+| `_mm256_load_ps` aligned | One cache line touched per load |
+| `_mm256_loadu_ps` misaligned | May touch two cache lines — up to 2× memory traffic |
+| False sharing (threads) | Two threads write different variables in same 64-byte line → cache ping-pong |
+| `alignas(64)` struct | Guarantees struct starts at cache line boundary |
+
+```cpp
+// False sharing — avoid this
+struct Workers {
+    int counter_a;  // same 64-byte line as counter_b
+    int counter_b;
+};
+
+// Fix: pad to cache line boundary
+struct alignas(64) WorkerA { int counter; };
+struct alignas(64) WorkerB { int counter; };
+```
+
+**Rule:** Align SIMD buffers to 32 bytes (`alignas(32)`) for AVX. Align per-thread data to 64 bytes (`alignas(64)`) to prevent false sharing.
+
+---
+
+### Data Layout: AoS vs SoA
+
+How you arrange data in memory determines whether SIMD can vectorize it. This is one of the most impactful micro-architecture decisions in HPC.
+
+**Array of Structs (AoS) — natural but SIMD-unfriendly:**
+```cpp
+struct Particle { float x, y, z, w; };
+Particle particles[N];  // Memory: xyzw xyzw xyzw xyzw ...
+
+// SIMD load picks up interleaved x,y,z,w — not what we want
+// Must gather/scatter or use expensive shuffles
+```
+
+**Struct of Arrays (SoA) — SIMD-friendly:**
+```cpp
+struct Particles {
+    float x[N], y[N], z[N], w[N];
+};
+Particles p;  // Memory: xxxx... yyyy... zzzz... wwww...
+
+// Now AVX loads 8 consecutive x values in one instruction
+for (int i = 0; i < N; i += 8) {
+    __m256 vx = _mm256_load_ps(&p.x[i]);  // 8 x-coords, perfectly packed
+    // process...
+}
+```
+
+| Layout | Memory pattern | SIMD efficiency | Typical use |
+|--------|---------------|-----------------|-------------|
+| AoS | `xyzw xyzw xyzw` | Low (shuffles needed) | Game objects, general code |
+| SoA | `xxxx yyyy zzzz` | High (contiguous lanes) | Physics simulations, ML kernels |
+| AoSoA | `[xxxx yyyy][xxxx yyyy]` | High + cache-friendly | Intel oneDNN, CUTLASS |
+
+> **Deep learning connection:** cuDNN uses NCHW (channels × height × width) and NHWC layouts. Switching between them is exactly an AoS↔SoA transformation. Tensor Core efficiency depends on the right layout.
+
+---
 
 ### `std::simd` (C++26, Experimental)
 
@@ -551,21 +647,86 @@ void add_vectors(float* a, float* b, float* c, int n) {
 
 Available in GCC 11+ with `-std=c++23 -lstdc++exp`. Not yet production-ready but worth tracking.
 
-### Profiling SIMD Code
+### Measurement First
+
+> *"Measure, don't guess. The bottleneck is never where you think it is."*
+
+Before writing a single intrinsic, profile to confirm what kind of bottleneck you actually have. Optimizing the wrong thing wastes time.
 
 ```bash
-# perf (Linux) — see which instructions are hot
-perf stat -e instructions,cycles,cache-misses ./my_program
+# perf stat — hardware counter overview
+perf stat -e instructions,cycles,cache-misses,fp_arith_inst_retired.256b_packed_single \
+    ./my_program
 
-# Check vectorization with perf
-perf record -e fp_arith_inst_retired.256b_packed_single ./my_program
-perf report
+# Key ratios to check:
+#   instructions/cycles < 2.0  → probably stalled on memory
+#   cache-misses high           → data layout problem (try SoA)
+#   256b_packed_single low      → auto-vectorization failed, add -fopt-info-vec
 
-# VTune (Intel) — visual analysis of vectorization
+# Confirm vectorization happened
+g++ -O2 -march=native -fopt-info-vec-optimized my_code.cpp
+# "loop vectorized using 32 byte vectors" = success
+
+# VTune (Intel) — visual hotspots and vectorization analysis
 vtune -collect hotspots ./my_program
 ```
 
-**Key metric:** If your code is compute-bound, SIMD should give 4-8x speedup (SSE→AVX). If it doesn't, you're memory-bound — focus on data layout and cache.
+### Roofline Model
+
+The **Roofline model** tells you whether your kernel is compute-bound or memory-bound — and therefore whether SIMD helps.
+
+```
+Peak FLOPS  = freq × cores × SIMD_width × FMA_factor
+Peak BW     = DRAM bandwidth (GB/s)
+AI          = FLOPs / bytes_accessed  (arithmetic intensity)
+
+If  AI > Peak FLOPS / Peak BW  → compute-bound  (SIMD / FMA helps)
+If  AI < Peak FLOPS / Peak BW  → memory-bound   (better layout / caching helps)
+```
+
+**Example for a modern desktop CPU:**
+```
+Peak AVX2 FP32 = 3.6 GHz × 8 lanes × 2 (FMA) = ~58 GFLOPS/core
+Peak DRAM BW   = ~50 GB/s
+Ridge point AI = 58 / 50 ≈ 1.2 FLOP/byte
+
+Vector add:  AI = 4 bytes out / 8 bytes in = 0.5 FLOP/byte → memory-bound
+Dot product: AI = 2N FLOP / 2N×4 bytes    = 0.25 FLOP/byte → memory-bound
+Matrix mult: AI = O(N³) FLOP / O(N²) bytes → compute-bound for large N ✓
+```
+
+**Implication:** SIMD gives the full 8× speedup only on compute-bound kernels. For memory-bound kernels (like vector add), the bottleneck is DRAM bandwidth — SIMD won't help much beyond reducing loop overhead.
+
+### SIMD → GPU: Mental Model Bridge
+
+The jump from SIMD to CUDA looks large but the underlying idea is the same. The key difference is *who* picks the element index:
+
+```cpp
+// ── SIMD mindset: one thread, one instruction covers N elements ──
+for (int i = 0; i < n; i += 8) {
+    __m256 va = _mm256_load_ps(&a[i]);
+    __m256 vb = _mm256_load_ps(&b[i]);
+    _mm256_store_ps(&c[i], _mm256_add_ps(va, vb));
+}
+// You write the stride (i += 8). The hardware runs 8 lanes silently.
+
+// ── GPU / SIMT mindset: one thread per element, hardware spawns thousands ──
+__global__ void add(float* a, float* b, float* c, int n) {
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
+    if (i < n) c[i] = a[i] + b[i];
+}
+// You write one element. The hardware runs 32 (warp) or thousands in parallel.
+```
+
+| Aspect | AVX (CPU SIMD) | CUDA warp (GPU SIMT) |
+|--------|---------------|----------------------|
+| Parallel width | 8× float32 | 32 threads |
+| Register file | `__m256` (256-bit) | 32× 32-bit registers per thread |
+| Memory | L1/L2 cache | Shared memory / global memory |
+| Divergence cost | Branch kills vectorization | Warp divergence serializes threads |
+| Programmer model | Explicit lanes (intrinsics) | Implicit (thread index) |
+
+---
 
 ### Connection to the Stack
 
@@ -573,6 +734,22 @@ vtune -collect hotspots ./my_program
 - **L2 (Compiler):** MLIR's `vector` dialect (Phase 4C) targets exactly this abstraction level
 - **L5 (Architecture):** When you design an accelerator's vector unit, you're designing custom SIMD hardware
 - **Sub-Track 3 (CUDA):** GPU "SIMT" is SIMD scaled to thousands of threads — same mental model
+
+---
+
+## Performance Traps and Common Mistakes
+
+These are the issues that consume weeks of debugging in real HPC and ML systems. Learn them here.
+
+| Trap | What happens | Fix |
+|------|-------------|-----|
+| **`shared_ptr` in hot loops** | Atomic ref-count inc/dec every iteration → cache line contention | Use raw pointer or `unique_ptr` inside hot paths; bump `shared_ptr` count once outside the loop |
+| **False sharing** | Two threads update different variables in the same 64-byte cache line → invisible serialization | Pad thread-local data to `alignas(64)` |
+| **Unaligned `_mm256_load_ps`** | Segfault (`#GP`) at runtime, not compile time | Use `_mm256_loadu_ps` unless you've verified 32-byte alignment with `alignas(32)` |
+| **Branching inside vectorized loops** | Compiler cannot vectorize; scalar fallback runs | Move conditionals outside the loop; use SIMD blend instructions (`_mm256_blendv_ps`) |
+| **Memory-bound SIMD** | SIMD adds complexity, negligible speedup | Profile first (Roofline); restructure data layout (SoA) before adding intrinsics |
+| **`par_unseq` with dependencies** | Silent data corruption or undefined behavior | Only use when elements are **completely independent** — no reads from neighboring indices |
+| **Ignoring NUMA** | Multi-socket systems: thread allocates memory on socket 0, socket 1 thread reads it → 2× bandwidth | Allocate memory on the NUMA node that will use it (`numactl`, `mbind`) |
 
 ---
 
