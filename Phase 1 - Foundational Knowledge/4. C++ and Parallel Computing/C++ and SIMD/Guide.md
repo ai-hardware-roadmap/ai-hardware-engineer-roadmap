@@ -600,6 +600,115 @@ _mm256_storeu_ps(out, acc);                // rank 3
 
 ---
 
+### Intrinsics by Functional Category
+
+A different lens — grouped by what you're trying to do, with both SSE (128-bit) and AVX (256-bit) versions side by side. This is how you look them up when solving a problem.
+
+#### 1. Data Movement & Initialization
+
+```cpp
+// Load — unaligned is the default today (negligible penalty on modern CPUs)
+__m128 a = _mm_loadu_ps(ptr);       // SSE:  4 floats
+__m256 b = _mm256_loadu_ps(ptr);    // AVX:  8 floats
+
+// Store — write register back to memory
+_mm_storeu_ps(ptr, a);              // SSE
+_mm256_storeu_ps(ptr, b);           // AVX
+
+// Broadcast — fill all lanes with one scalar (scaling, bias addition)
+__m128 scale = _mm_set1_ps(2.0f);        // SSE:  [2, 2, 2, 2]
+__m256 scale = _mm256_set1_ps(2.0f);     // AVX:  [2, 2, 2, 2, 2, 2, 2, 2]
+
+// Set individual lanes (note: highest lane first)
+__m256 v = _mm256_set_ps(7,6,5,4,3,2,1,0);   // reverse order
+__m256 v = _mm256_setr_ps(0,1,2,3,4,5,6,7);  // natural order (r = reversed param order)
+```
+
+#### 2. Arithmetic
+
+```cpp
+// Add / Subtract / Multiply / Divide
+__m256 r = _mm256_add_ps(a, b);     // a[i] + b[i]
+__m256 r = _mm256_sub_ps(a, b);     // a[i] - b[i]
+__m256 r = _mm256_mul_ps(a, b);     // a[i] * b[i]
+__m256 r = _mm256_div_ps(a, b);     // a[i] / b[i]  (slow — ~20 cycles)
+
+// FMA — the most important arithmetic intrinsic
+__m256 r = _mm256_fmadd_ps(a, b, c); // a[i]*b[i] + c[i], single instruction
+
+// Integer arithmetic (add 8 × int32)
+__m256i r = _mm256_add_epi32(a, b);
+__m256i r = _mm256_mullo_epi32(a, b);  // low 32 bits of each 32×32 product
+```
+
+> **`_ps` = packed single (float32). `_pd` = packed double. `_epi32` = packed int32.**
+> Learn the suffix system once and every intrinsic name becomes self-describing.
+
+#### 3. Comparison & Selection (Branchless Conditionals)
+
+SIMD has no branches. The fundamental pattern: **compare → mask → blend**.
+
+```cpp
+// Step 1: Compare → produces per-lane all-1s (true) or all-0s (false)
+__m256 mask = _mm256_cmp_ps(a, b, _CMP_GT_OS);   // mask[i] = a[i] > b[i] ? 0xFFFFFFFF : 0
+
+// SSE equivalent with explicit predicate:
+__m128 mask = _mm_cmplt_ps(a, b);                 // mask[i] = a[i] < b[i]
+
+// Step 2: Blend — select elements using mask
+__m256 result = _mm256_blendv_ps(if_false, if_true, mask);
+// result[i] = mask[i] ? if_true[i] : if_false[i]
+
+// Practical example: clamp to [lo, hi] without any branch
+__m256 clamped = _mm256_min_ps(_mm256_max_ps(v, lo), hi);
+
+// Practical example: absolute value without branch
+__m256 sign_mask = _mm256_set1_ps(-0.0f);         // sign bit only
+__m256 abs_v     = _mm256_andnot_ps(sign_mask, v); // clear sign bit = |v|
+```
+
+> **Comparison predicates for `_mm256_cmp_ps`:** `_CMP_EQ_OS`, `_CMP_LT_OS`, `_CMP_LE_OS`, `_CMP_GT_OS`, `_CMP_GE_OS`, `_CMP_NEQ_OS`, `_CMP_UNORD_Q` (NaN check). The `_OS` suffix = ordered, signaling (raises exception on NaN). Use `_OQ` for quiet (no exception).
+
+#### 4. Data Shuffling & Reduction
+
+```cpp
+// Shuffle — rearrange within 128-bit half (compile-time imm8 control)
+__m128 s = _mm_shuffle_ps(a, b, _MM_SHUFFLE(3,2,1,0));  // SSE: pick 4 elements from a and b
+__m256 s = _mm256_shuffle_ps(a, b, imm8);                // AVX: operates per 128-bit half!
+
+// Horizontal add — adds adjacent pairs (use sparingly, ~3 cycles each)
+__m128 h = _mm_hadd_ps(a, b);   // [a0+a1, a2+a3, b0+b1, b2+b3]
+
+// Better horizontal sum pattern (see "Horizontal sum" section above)
+// hadd is slow — only use it 1-2 times at the very end of a reduction loop
+```
+
+> **`_mm_hadd_ps` warning:** Horizontal add is one of the slowest SIMD instructions (~3-5 cycles vs 0.5 for `_mm_add_ps`). Never put it inside a loop. Use it once at the end to collapse an accumulator register — or better, use the `hsum` idiom from the Inspecting SIMD Registers section.
+
+---
+
+### SSE vs AVX Side-by-Side Reference
+
+| Category | SSE (128-bit, 4× float) | AVX (256-bit, 8× float) | Purpose |
+|----------|------------------------|------------------------|---------|
+| Load | `_mm_loadu_ps(ptr)` | `_mm256_loadu_ps(ptr)` | Read from memory |
+| Store | `_mm_storeu_ps(ptr, v)` | `_mm256_storeu_ps(ptr, v)` | Write to memory |
+| Broadcast | `_mm_set1_ps(x)` | `_mm256_set1_ps(x)` | Fill all lanes with scalar |
+| Add | `_mm_add_ps(a, b)` | `_mm256_add_ps(a, b)` | Element-wise addition |
+| Multiply | `_mm_mul_ps(a, b)` | `_mm256_mul_ps(a, b)` | Element-wise multiply |
+| FMA | `_mm_fmadd_ps(a, b, c)` | `_mm256_fmadd_ps(a, b, c)` | `a*b + c` |
+| Compare | `_mm_cmplt_ps(a, b)` | `_mm256_cmp_ps(a, b, pred)` | Vectorized compare → mask |
+| Blend | `_mm_blendv_ps(a, b, m)` | `_mm256_blendv_ps(a, b, m)` | Vectorized if/else |
+| Shuffle | `_mm_shuffle_ps(a, b, i)` | `_mm256_shuffle_ps(a, b, i)` | Rearrange elements |
+| Hadd | `_mm_hadd_ps(a, b)` | `_mm256_hadd_ps(a, b)` | Adjacent-pair add |
+
+**When to use SSE vs AVX:**
+- **AVX for throughput** — 2× the data per instruction, same latency
+- **SSE for compatibility** — SSE2 is available on every x86-64 CPU since ~2003
+- **SSE for remainder loops** — after the main AVX loop processes `n/8*8` elements, handle the last `n%8` with SSE or scalar
+
+---
+
 ### Cross-Lane Limitations (The AVX2 Gotcha)
 
 Most AVX2 "256-bit" instructions actually execute as **two independent 128-bit halves**. This is the single most surprising architectural quirk in AVX2 and causes subtle bugs when you expect full cross-lane operations.
