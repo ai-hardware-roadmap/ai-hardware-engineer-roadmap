@@ -35,19 +35,97 @@ auto z = vec.begin(); // std::vector<int>::iterator — much cleaner
 
 `auto` reduces verbosity and prevents type mismatch bugs. Use it for local variables, especially with complex types (iterators, template results).
 
-**`decltype` — get the type of an expression:**
-```cpp
-int a = 5;
-decltype(a) b = 10;   // b is int (same type as a)
+---
 
-// Useful in templates:
+#### The problem `decltype` solves
+
+In a generic multiply function, what is the return type?
+
+```cpp
+template<typename T, typename U>
+??? multiply(T a, U b) {
+    return a * b;
+}
+// int   * int    → int
+// int   * double → double
+// float * double → double
+```
+
+**Pre-C++11 workarounds — both inadequate:**
+
+```cpp
+// Option 1: force a type — loses precision, not generic
+template<typename T, typename U>
+double multiply(T a, U b) { return a * b; }
+
+// Option 2: std::common_type — verbose, breaks for custom operators
+template<typename T, typename U>
+typename std::common_type<T, U>::type multiply(T a, U b) { return a * b; }
+```
+
+**C++11 solution — trailing return type with `decltype`:**
+
+```cpp
 template<typename T, typename U>
 auto multiply(T a, U b) -> decltype(a * b) {
     return a * b;
 }
 ```
 
-**Why it matters for parallel computing:** Generic code (templates, parallel algorithms) needs type deduction constantly. You'll see `auto` and `decltype` in every CUDA template library (CUTLASS, CuTe).
+The compiler deduces the **exact type of the expression `a * b`** — works for built-in types, user-defined operators, and arbitrarily complex template expressions.
+
+**C++14 simplification — `decltype` inferred from the return statement:**
+
+```cpp
+template<typename T, typename U>
+auto multiply(T a, U b) {   // return type deduced automatically
+    return a * b;
+}
+```
+
+No trailing `-> decltype(...)` needed. The compiler infers from the `return` expression.
+
+---
+
+#### `auto` vs `decltype` — the key difference
+
+`auto` strips references and `const`. `decltype` preserves exact type semantics.
+
+```cpp
+int x = 5;
+int& ref = x;
+
+auto        a = ref;  // a is int   — reference stripped
+decltype(ref) b = x;  // b is int&  — reference preserved
+
+const int c = 10;
+auto        d = c;    // d is int        — const stripped
+decltype(c) e = c;    // e is const int  — const preserved
+```
+
+**Rule of thumb:**
+- Use `auto` → 90% of the time (local variables, loop iterators, lambda captures)
+- Use `decltype` → when you need **exact type semantics** (template return types, forwarding, trait-style code)
+
+---
+
+#### Comparison: old vs modern
+
+| | Pre-C++11 | C++11 `decltype` | C++14 `auto` return |
+|---|---|---|---|
+| Return type deduction | Manual, error-prone | Exact expression type | Inferred from `return` |
+| Generic correctness | Limited | Exact | Exact |
+| Custom operator support | Hard | Yes | Yes |
+| Readability | Verbose | Clean | Cleanest |
+
+---
+
+**Why it matters for parallel computing:** CUTLASS, CuTe, oneAPI DPC++, and ROCm all use `auto` + `decltype` extensively because:
+- Kernels are templated on precision (`float`, `half`, `int8_t`)
+- Types of intermediate expressions depend on template parameters
+- `decltype` lets the library express "whatever type `a*b` produces" without hardcoding it
+
+You will see patterns like `decltype(auto)`, `std::declval<T>()`, and trailing return types throughout CUDA template libraries — recognizing them now saves significant confusion later.
 
 ---
 
