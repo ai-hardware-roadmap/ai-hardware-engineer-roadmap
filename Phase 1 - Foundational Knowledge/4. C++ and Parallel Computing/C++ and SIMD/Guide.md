@@ -298,6 +298,15 @@ auto [min_val, max_val] = std::minmax_element(data.begin(), data.end());
 
 Lambdas are **the single most important C++ feature for parallel programming**. Every parallel framework uses them.
 
+**Syntax:**
+```
+[ captures ] ( parameters ) -> return_type { body }
+```
+- `captures` → which variables from the outer scope to bring in
+- `parameters` → like a normal function
+- `return_type` → optional, usually inferred
+- `body` → code block
+
 **Basic lambda:**
 ```cpp
 auto add = [](int a, int b) {
@@ -307,19 +316,157 @@ auto add = [](int a, int b) {
 int result = add(3, 4);  // 7
 ```
 
-**Lambda with capture (access surrounding variables):**
+---
+
+#### Capture Modes
+
+| Mode | Meaning | Thread-safe? | Use when |
+|------|---------|-------------|---------|
+| `[=]` | All outer vars by value (copy) | Yes | Default for parallel callbacks |
+| `[&]` | All outer vars by reference | No | Single-threaded only |
+| `[var]` | Specific var by value | Yes | Explicit, recommended |
+| `[&var]` | Specific var by reference | No | Read-only, single-threaded |
+| `[=, &var]` | Mixed: most by value, one by ref | Partial | Fine-grained control |
+| `[var = std::move(obj)]` | Move object into lambda | Yes | Transfer ownership (C++14) |
+
 ```cpp
 int multiplier = 10;
 
-// [=] capture by value (copy)
-auto scale_copy = [=](int x) { return x * multiplier; };
-
-// [&] capture by reference (no copy, but thread-unsafe)
-auto scale_ref = [&](int x) { return x * multiplier; };
-
-// [multiplier] capture specific variable by value
-auto scale_specific = [multiplier](int x) { return x * multiplier; };
+auto scale_copy     = [=](int x)       { return x * multiplier; };  // copy — safe in threads
+auto scale_ref      = [&](int x)       { return x * multiplier; };  // ref — dangerous in parallel
+auto scale_specific = [multiplier](int x) { return x * multiplier; };  // best practice
 ```
+
+---
+
+#### Mutable Lambdas
+
+By default, values captured by value are `const` inside the lambda. Use `mutable` to modify the internal copy without touching the original:
+
+```cpp
+int a = 10;
+
+auto f = [a]() mutable {
+    a += 5;
+    std::cout << a;  // prints 15
+};
+f();
+std::cout << a;  // still 10 — original unchanged
+```
+
+`mutable` modifies the lambda's **own copy**, not the outer variable.
+
+---
+
+#### Generic Lambdas (C++14)
+
+Use `auto` parameters to make a lambda templated automatically — no explicit `template<>` needed:
+
+```cpp
+auto add = [](auto a, auto b) { return a + b; };
+
+add(3, 4);        // int + int = 7
+add(3.14, 2.71);  // double + double = 5.85
+add(1.0f, 2.0f);  // float + float
+```
+
+This is used heavily in parallel STL, oneTBB, and SYCL to write type-generic kernels.
+
+---
+
+#### Thread Safety Rules
+
+**Capture by value `[x]`** — each thread gets its own copy. Safe.
+
+**Capture by reference `[&x]`** — all threads share the same variable. Race condition if any thread writes to it.
+
+```cpp
+std::vector<int> data = {1, 2, 3, 4};
+int multiplier = 2;
+
+// Safe: each element read is independent, multiplier captured by value
+std::for_each(std::execution::par, data.begin(), data.end(),
+              [multiplier](int& x) { x *= multiplier; });
+
+// Unsafe: if multiplier were captured by ref and modified by any thread
+std::for_each(std::execution::par, data.begin(), data.end(),
+              [&](int& x) { x *= multiplier; });  // race condition if multiplier changes
+```
+
+> **Rule: prefer `[=]` or named value captures in parallel loops. Use `[&]` only in single-threaded code or when the captured variables are read-only.**
+
+---
+
+#### Lambda Lifetime — Dangling Reference Trap
+
+If a lambda outlives the scope of its captured references, you get a dangling reference:
+
+```cpp
+std::function<int()> make_lambda() {
+    int local = 42;
+    return [&]() { return local; };  // DANGLING — local is destroyed when function returns
+}
+
+auto f = make_lambda();
+f();  // undefined behavior
+```
+
+**Fix 1 — capture by value:**
+```cpp
+return [local]() { return local; };  // safe copy
+```
+
+**Fix 2 — move ownership into the lambda (C++14):**
+```cpp
+auto buf = std::make_unique<int>(42);
+std::thread t([buf = std::move(buf)]() {
+    std::cout << *buf;  // safe: ownership moved into lambda
+});
+t.join();
+```
+
+`[buf = std::move(buf)]` transfers ownership of the `unique_ptr` into the lambda. The lambda now owns the resource, so it can't outlive it.
+
+---
+
+#### Device Lambdas (CUDA / SYCL)
+
+Modern CUDA and SYCL support lambdas on GPU device code:
+
+```cpp
+// CUDA — device lambda inside kernel
+__global__ void kernel(float* a, float* b, int N) {
+    int i = threadIdx.x + blockIdx.x * blockDim.x;
+    if (i < N) {
+        auto square = [=](float x) { return x * x; };  // [=] only — no refs on device
+        a[i] = square(b[i]);
+    }
+}
+
+// SYCL — lambda IS the kernel
+q.parallel_for(sycl::range{N}, [=](sycl::id<1> i) {
+    C[i] = A[i] + B[i];
+});
+```
+
+> **`[&]` is not allowed in GPU device lambdas.** Device code cannot reference host memory addresses. Always use `[=]` (capture by value) for GPU lambdas.
+
+---
+
+#### Lambda Quick Reference
+
+| Feature | Syntax | Notes |
+|---------|--------|-------|
+| Capture all by value | `[=]` | Safe in threads |
+| Capture all by ref | `[&]` | Dangerous in parallel |
+| Specific var by value | `[var]` | Best practice |
+| Specific var by ref | `[&var]` | Single-threaded only |
+| Generic (auto params) | `[](auto x, auto y){}` | C++14, type-generic |
+| Mutable | `[x]() mutable {}` | Modify internal copy |
+| Move into lambda | `[x = std::move(obj)]` | Transfer ownership, C++14 |
+| Immediately invoked | `[&]() { ... }()` | IIFE — run in-place |
+
+---
 
 **Where lambdas are used in this curriculum:**
 
@@ -327,11 +474,11 @@ auto scale_specific = [multiplier](int x) { return x * multiplier; };
 |-----------|-------------|
 | **Parallel STL** | `std::sort(std::execution::par, v.begin(), v.end(), [](auto a, auto b) { return a > b; });` |
 | **oneTBB** | `tbb::parallel_for(0, N, [&](int i) { C[i] = A[i] + B[i]; });` |
-| **OpenMP** (C++17) | Used in task-based parallelism |
-| **CUDA** (modern) | Device lambdas in `__device__` context |
+| **OpenMP** (C++17) | Task-based parallelism |
+| **CUDA** (modern) | Device lambdas in `__device__` context — `[=]` only |
 | **SYCL** | `q.parallel_for(range, [=](id<1> i) { C[i] = A[i] + B[i]; });` |
 
-**Key message:** If you don't understand lambdas, you can't write parallel code in modern C++.
+**Key message:** If you don't understand lambdas and captures, you cannot write parallel code in modern C++.
 
 ---
 
