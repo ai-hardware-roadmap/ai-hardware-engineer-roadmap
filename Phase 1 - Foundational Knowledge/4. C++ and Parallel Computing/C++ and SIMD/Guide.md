@@ -425,7 +425,101 @@ std::thread t([buf = std::move(buf)]() {
 t.join();
 ```
 
-`[buf = std::move(buf)]` transfers ownership of the `unique_ptr` into the lambda. The lambda now owns the resource, so it can't outlive it.
+`[buf = std::move(buf)]` transfers ownership of the `unique_ptr` into the lambda. The lambda now owns the resource — it cannot outlive it.
+
+---
+
+#### Move-Into-Lambda — Deep Dive
+
+This is worth understanding completely because it appears constantly in parallel and async code.
+
+**Why `unique_ptr` cannot be captured by value:**
+
+```cpp
+std::unique_ptr<int> ptr = std::make_unique<int>(42);
+
+auto f = [ptr]() { std::cout << *ptr; };  // DOES NOT COMPILE
+// unique_ptr has no copy constructor — copying would violate unique ownership
+```
+
+`unique_ptr` expresses "exactly one owner". Capture-by-value would require copying the pointer, creating two owners. The compiler forbids it.
+
+**Solution — capture by move (C++14):**
+
+```cpp
+auto f = [p = std::move(ptr)]() {
+    std::cout << *p << "\n";   // lambda owns it, safe to use
+};
+
+// What happened to ptr?
+std::cout << (ptr ? "not empty" : "empty") << "\n";  // "empty" — ptr is now nullptr
+f();  // prints 42
+```
+
+**Ownership transfer visualized:**
+
+```
+Before move:
+  ptr ──────────────► [ 42 ]   (heap)
+
+After [p = std::move(ptr)]:
+  ptr ──► nullptr
+  lambda.p ─────────► [ 42 ]   (same heap allocation, new owner)
+```
+
+No copy. No new allocation. The lambda took the backpack — the original holder is now empty.
+
+**Thread ownership — each thread gets its own resource:**
+
+```cpp
+#include <thread>
+#include <memory>
+
+int main() {
+    auto buf = std::make_unique<int[]>(1000);  // 4 KB buffer
+
+    std::thread t([b = std::move(buf)]() {
+        b[0] = 42;
+        std::cout << b[0] << "\n";  // lambda owns the buffer exclusively
+    });
+
+    t.join();
+    // buf is empty here — the thread owned and (after join) released it
+}
+```
+
+The thread lambda owns `buf` exclusively. No data race. No need for a mutex. When the thread finishes, the lambda destructs and `unique_ptr` frees the memory automatically.
+
+**Moving other moveable types:**
+
+Any type with a move constructor works — not just `unique_ptr`:
+
+```cpp
+std::vector<float> weights(1000000);   // 4 MB
+std::string config = load_config();
+auto handle = open_gpu_context();      // hypothetical RAII GPU handle
+
+// Move all three into a thread lambda — zero copying
+std::thread worker([
+    w = std::move(weights),
+    cfg = std::move(config),
+    ctx = std::move(handle)
+]() {
+    // worker owns all three resources
+    run_inference(w, cfg, ctx);
+});
+worker.join();
+```
+
+| What you move | Why |
+|--------------|-----|
+| `unique_ptr<T>` | Exclusive GPU/CPU resource handle |
+| `vector<float>` | Large weight/activation buffer |
+| `string` | Config or serialized model data |
+| `std::thread` | Transfer thread ownership to lambda |
+| Custom RAII handle | GPU context, file, socket |
+
+**Rule:** If a type is non-copyable (or copying is expensive), and the lambda needs to own it or outlive the current scope, use `[x = std::move(obj)]`.
 
 ---
 
