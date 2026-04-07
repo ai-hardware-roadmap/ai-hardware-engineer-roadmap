@@ -989,103 +989,88 @@ float result = parallel_deterministic_reduce(
 // Floating-point result identical on every run
 ```
 
-#### Complete Example 3 — Monte Carlo π Estimation (Functor Style)
+#### Complete Example 3 — Monte Carlo π Estimation
 
-`parallel_reduce` has two API styles. The lambda form (above) is concise. The **functor (body class) style** makes it explicit how splitting and joining work — useful for complex state.
+Monte Carlo π estimation is a classic parallel workload: throw random points at a unit square, count how many land inside the quarter-circle, then estimate π from the ratio.
+
+```
+  1 ┤        ╭──────╮
+    │      ╭─╯      │
+    │    ╭─╯  ●●●   │   ● = inside circle  (x²+y² ≤ 1)
+    │  ╭─╯ ●●●●●●●  │   ○ = outside circle
+    │ ─╯ ●●●●●●●●●  │
+    │  ○○○●●●●●●●●  │
+    │  ○○○○●●●●●●●  │
+    │  ○○○○○●●●●●   │
+  0 ┼──────────────── 1
+       π ≈ 4 × (hits / total)
+```
+
+**`parallel_reduce` lambda form — complete example:**
 
 ```cpp
 #include <oneapi/tbb.h>
 #include <iostream>
 #include <random>
 
-// The body class encapsulates the per-thread state
-class MonteCarloPi {
-public:
-    long long hits = 0;   // points inside the unit circle
-
-    MonteCarloPi() = default;
-
-    // Splitting constructor: called when TBB splits work to a new thread
-    // Must initialize to identity (0 hits)
-    MonteCarloPi(MonteCarloPi& /*other*/, oneapi::tbb::split)
-        : hits(0) {}
-
-    // operator(): runs on each subrange assigned to this thread
-    void operator()(const oneapi::tbb::blocked_range<size_t>& r) {
-        // Each thread gets its own RNG — avoids contention on shared state
-        std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<double> dist(0.0, 1.0);
-
-        long long local_hits = 0;
-        for (size_t i = r.begin(); i < r.end(); ++i) {
-            double x = dist(rng), y = dist(rng);
-            if (x*x + y*y <= 1.0) ++local_hits;
-        }
-        hits += local_hits;   // safe: this thread owns 'hits'
-    }
-
-    // join(): merge another thread's result into this one
-    void join(const MonteCarloPi& other) {
-        hits += other.hits;
-    }
-};
-
 int main() {
     const size_t N = 10'000'000;
 
-    MonteCarloPi body;
-    oneapi::tbb::parallel_reduce(
+    // parallel_reduce<Range, Value>(range, identity, body, combine)
+    //
+    //  body(range, running_value) → new_value   (reduce a chunk)
+    //  combine(a, b)              → merged      (merge two chunk results)
+    long long hits = oneapi::tbb::parallel_reduce(
         oneapi::tbb::blocked_range<size_t>(0, N),
-        body
+
+        0LL,          // identity — each thread starts its partial count at 0
+
+        // ── body: called once per subrange, on the thread that owns it ──
+        [](const oneapi::tbb::blocked_range<size_t>& r, long long init) {
+            // Construct a separate RNG per invocation.
+            // A single shared mt19937 would need a mutex on every call,
+            // serializing the whole loop. Per-thread RNGs = zero contention.
+            std::mt19937 rng(std::random_device{}());
+            std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+            for (size_t i = r.begin(); i < r.end(); ++i) {
+                double x = dist(rng), y = dist(rng);
+                if (x*x + y*y <= 1.0) ++init;   // accumulate into running total
+            }
+            return init;   // hand partial count back to TBB
+        },
+
+        // ── combine: called to merge two partial counts into one ──
+        std::plus<long long>{}
     );
 
-    double pi = 4.0 * body.hits / N;
+    double pi = 4.0 * hits / N;
     std::cout << "Estimated π = " << pi << "\n";
-    // Typical output: 3.1415...
+    // Typical output: Estimated π = 3.14159...
 }
 ```
 
-**How the split/join tree works:**
+**How TBB splits and joins the work:**
 
 ```
-                    MonteCarloPi(root)
-                   [0 … 10,000,000)
-                   /               \
-          split()                 split()
-         /                               \
-   Thread 0                          Thread 1
-   [0 … 2.5M)                       [2.5M … 5M)
-   hits = 1,963,xxx                  hits = 1,964,xxx
-                   \               /
-                    join() → hits += other.hits
-                         ...
-                    Final: hits = 7,854,xxx
-                    π ≈ 4 × 7,854,xxx / 10,000,000 ≈ 3.1416
+           parallel_reduce(blocked_range(0, 10M), 0LL, body, combine)
+                              [0 … 10,000,000)
+                             /                \
+                            /                  \
+                [0 … 5,000,000)          [5,000,000 … 10M)
+               /               \         /               \
+       [0…2.5M)           [2.5M…5M)  [5M…7.5M)     [7.5M…10M)
+       hits=1,963k        hits=1,964k hits=1,963k   hits=1,964k
+              \               /         \               /
+           combine(a,b) = a+b           combine(a,b) = a+b
+               hits=3,927k                  hits=3,927k
+                          \                 /
+                           combine(a,b) = a+b
+                               hits=7,854k
+                           π ≈ 4×7,854k/10M ≈ 3.1416
 ```
 
-**Why per-thread RNG matters:** A single shared `mt19937` would require a mutex on every call — serializing the entire computation. Each thread constructs its own seeded generator inside `operator()` — zero contention.
-
-**Lambda form of the same thing** (for comparison):
-
-```cpp
-long long hits = oneapi::tbb::parallel_reduce(
-    oneapi::tbb::blocked_range<size_t>(0, N),
-    0LL,                          // identity
-    [](const oneapi::tbb::blocked_range<size_t>& r, long long init) {
-        std::mt19937 rng(std::random_device{}());
-        std::uniform_real_distribution<double> dist(0.0, 1.0);
-        for (size_t i = r.begin(); i < r.end(); ++i) {
-            double x = dist(rng), y = dist(rng);
-            if (x*x + y*y <= 1.0) ++init;
-        }
-        return init;
-    },
-    std::plus<long long>{}        // combine
-);
-double pi = 4.0 * hits / N;
-```
-
-Use the **functor style** when: accumulator is non-trivially copyable, you need custom split logic, or state initialization is expensive. Use **lambda style** for everything else.
+Each leaf calls `body(subrange, 0LL)` — the identity `0LL` means every thread starts counting from zero. After all leaves finish, TBB walks back up the tree calling `combine` to sum the partial counts.
 
 ---
 
