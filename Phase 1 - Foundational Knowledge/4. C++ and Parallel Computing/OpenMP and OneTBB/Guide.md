@@ -8,50 +8,6 @@ This guide is organized in three parts. Section 1 is a brief baseline on raw C++
 
 ---
 
-**Contents**
-
-- [1. Baseline: std::thread and Synchronization](#1-baseline-stdthread-and-synchronization)
-- [2. OpenMP](#2-openmp)
-  - [2.0 Mental Model: Fork-Join](#20-mental-model-fork-join)
-  - [2.1 Your First Parallel Loop](#21-your-first-parallel-loop)
-  - [2.2 The Classic Race Condition](#22-the-classic-race-condition)
-  - [2.3 Data Sharing Clauses](#23-data-sharing-clauses)
-  - [2.4 Schedules — How Work Is Divided](#24-schedules--how-work-is-divided)
-  - [2.5 Reductions](#25-reductions)
-  - [2.6 Collapse — Parallelizing Nested Loops](#26-collapse--parallelizing-nested-loops)
-  - [2.7 SIMD — Vectorization Hints](#27-simd--vectorization-hints)
-  - [2.8 Protecting Shared State: critical and atomic](#28-protecting-shared-state-critical-and-atomic)
-  - [2.9 Synchronization: Barriers and nowait](#29-synchronization-barriers-and-nowait)
-  - [2.10 Sections — Fixed Concurrent Operations](#210-sections--fixed-concurrent-operations)
-  - [2.11 Tasks — Recursive and Irregular Work](#211-tasks--recursive-and-irregular-work)
-  - [2.12 Thread Info and Environment](#212-thread-info-and-environment)
-  - [2.13 Nested Parallelism](#213-nested-parallelism)
-  - [2.14 Common Pitfalls](#214-common-pitfalls)
-  - [2.15 OpenMP vs oneTBB](#215-openmp-vs-onetbb)
-- [3. oneTBB](#3-onetbb-oneapi-threading-building-blocks)
-  - [3.0 Mental Model: Work-Stealing Scheduler](#30-mental-model-work-stealing-scheduler)
-  - [3.1 parallel_for — Parallel Loop](#31-parallel_for--parallel-loop)
-  - [3.2 parallel_reduce — Parallel Reduction](#32-parallel_reduce--parallel-reduction)
-  - [3.3 parallel_scan — Prefix Sum](#33-parallel_scan--prefix-sum)
-  - [3.4 parallel_sort](#34-parallel_sort)
-  - [3.5 parallel_for_each — Unknown Iteration Space](#35-parallel_for_each--unknown-iteration-space)
-  - [3.6 parallel_pipeline — Assembly Line](#36-parallel_pipeline--assembly-line)
-  - [3.7 parallel_invoke and task_group — Explicit Tasks](#37-parallel_invoke-and-task_group--explicit-tasks)
-  - [3.8 Per-Thread Storage — enumerable_thread_specific](#38-per-thread-storage--enumerable_thread_specific)
-  - [3.9 combinable — Simpler Per-Thread Accumulation](#39-combinablet--simpler-per-thread-accumulation)
-  - [3.10 Flow Graph](#310-flow-graph--data-flow-and-dependence-graphs)
-  - [3.11 Concurrent Containers](#311-concurrent-containers)
-  - [3.12 Scalable Memory Allocator](#312-scalable-memory-allocator)
-  - [3.13 task_arena — Control Thread Pool](#313-task_arena--control-thread-pool)
-  - [3.14 global_control — Runtime Configuration](#314-global_control--runtime-configuration)
-  - [3.15 Exception Handling and Cancellation](#315-exception-handling-and-cancellation)
-  - [3.16 Work Isolation](#316-work-isolation)
-  - [3.17 Pattern Cheat Sheet](#317-pattern-cheat-sheet)
-  - [3.18 Connection to GPU Programming](#318-connection-to-gpu-programming)
-- [Resources](#resources)
-
----
-
 ## 1. Baseline: `std::thread` and Synchronization
 
 Before frameworks, understand what they abstract over:
