@@ -1715,45 +1715,119 @@ numa_arena.execute([&]{
 
 ### 3.14 `global_control` — Runtime Configuration
 
+`task_arena` limits threads *locally* (inside one block). `global_control` sets a **program-wide policy** that applies to every TBB algorithm everywhere — including third-party libraries that use TBB internally.
+
+```
+task_arena(4).execute(...)      global_control(max_allowed_parallelism, 4)
+  Only this block uses 4         Every parallel_for, parallel_reduce,
+  Everything else: unlimited     pipeline, etc. in the entire process: ≤ 4
+```
+
+Uses RAII — settings revert automatically when the object goes out of scope:
+
 ```cpp
 #include "oneapi/tbb/global_control.h"
 
-// Limit maximum number of worker threads globally
-global_control ctrl(
-    global_control::max_allowed_parallelism, 4
-);
-// All TBB algorithms now use at most 4 threads
-// Restored when ctrl goes out of scope (RAII)
+{
+    tbb::global_control ctrl(
+        tbb::global_control::max_allowed_parallelism, 4
+    );
+    // ── all TBB work inside this scope uses at most 4 threads ──
+    tbb::parallel_for(0, N, body_a);   // ≤ 4 threads
+    some_library_call();               // if it uses TBB: also ≤ 4 threads
+}
+// ── ctrl destroyed → limit lifted, TBB uses all cores again ──
+tbb::parallel_for(0, N, body_b);       // full thread count again
+```
 
-// Stack size for worker threads
-global_control stack_ctrl(
-    global_control::thread_stack_size, 8 * 1024 * 1024  // 8 MB
+**Set thread stack size** — useful when tasks recurse deeply or allocate large local arrays:
+
+```cpp
+tbb::global_control stack_ctrl(
+    tbb::global_control::thread_stack_size,
+    8 * 1024 * 1024   // 8 MB per worker thread (default is typically 1–4 MB)
 );
 ```
+
+Each thread has a fixed stack. Deep recursion or large stack-allocated buffers silently overflow the default. Increase it before the first TBB task is created.
+
+**`task_arena` vs `global_control`:**
+
+| | `task_arena` | `global_control` |
+|--|--|--|
+| Scope | One `execute()` block | Entire process |
+| Thread limit | Per isolated region | All TBB algorithms |
+| Work-stealing isolation | Yes | No |
+| Typical use | Independent subsystems, NUMA pinning | Embedding TBB in a GUI/server, global throttling |
 
 ---
 
 ### 3.15 Exception Handling and Cancellation
 
+In normal single-threaded C++, an exception unwinds the call stack to the nearest `catch`. In a parallel loop, each iteration runs in a different thread with its own stack — there is no shared call stack to unwind.
+
+TBB bridges this: when a worker thread throws, TBB catches it internally, cancels remaining *pending* iterations, then re-throws the exception on the calling thread once the loop completes.
+
+```
+Thread 0: iteration  0 → OK
+Thread 1: iteration  5 → throws std::runtime_error("bad input")
+                         ↑ TBB catches it
+Thread 2: iteration 10 → OK (already running → finishes normally)
+Pending iterations 11–N → CANCELLED (never start)
+                         ↓ TBB re-throws on calling thread
+Main thread: catch block runs
+```
+
 ```cpp
-// Exceptions propagate from worker threads to the calling thread
 try {
-    parallel_for(0, N, [](int i) {
+    tbb::parallel_for(0, N, [](int i) {
         if (bad_condition(i))
             throw std::runtime_error("bad input");
     });
 } catch (const std::exception& e) {
-    // Caught here — remaining iterations are cancelled
+    // Caught here on the calling thread
+    // Already-running iterations completed; pending ones were skipped
     std::cerr << e.what() << "\n";
 }
-
-// Explicit cancellation via task_group_context
-task_group_context ctx;
-parallel_for(blocked_range<int>(0, N), body, auto_partitioner(), ctx);
-
-// From another thread:
-ctx.cancel_group_execution();  // remaining tasks will not start
 ```
+
+> Already-running iterations always finish. Only *pending* (not-yet-started) tasks are cancelled. You cannot abort a task mid-execution.
+
+**Explicit cancellation without exceptions** — use `task_group_context` when you want to cancel from another thread or condition (e.g., a timeout, a "stop" button):
+
+```cpp
+tbb::task_group_context ctx;
+
+// Start the parallel loop in one thread
+tbb::parallel_for(
+    tbb::blocked_range<int>(0, N),
+    body,
+    tbb::auto_partitioner(),
+    ctx          // ← attach context
+);
+
+// From another thread (e.g., a watchdog or UI thread):
+ctx.cancel_group_execution();
+// → pending tasks stop being scheduled
+// → running tasks finish naturally
+// → parallel_for returns without throwing
+```
+
+**Cancellation flow:**
+
+```
+cancel_group_execution() called
+          │
+          ▼
+Pending tasks   → skip (never execute)
+Running tasks   → run to completion (cannot be interrupted)
+parallel_for()  → returns normally (no exception thrown)
+```
+
+| Mechanism | Triggers how | Running tasks | Pending tasks | Throws? |
+|-----------|-------------|---------------|---------------|---------|
+| Worker throws exception | Exception in body | Finish | Cancelled | Yes, on caller |
+| `ctx.cancel_group_execution()` | External call | Finish | Cancelled | No |
 
 ---
 
