@@ -469,94 +469,128 @@ shared_var = computed;
 
 ### 1.9 Synchronization: Barriers and nowait
 
-Every `#pragma omp for` has an implicit barrier at the end — all threads wait until the slowest finishes. `nowait` removes that barrier to overlap phases.
+Every `#pragma omp for` has an **implicit barrier** at the end — all threads block until the slowest one finishes. `nowait` removes it so fast threads can immediately start the next independent loop.
+
+```
+Default (implicit barrier):
+T0: [████ loop ████]░░░░░░░░░░ wait ░░░░░[next loop]
+T1: [████████████████ loop ████████████][next loop]
+T2: [██ loop ██]░░░░░░░░░░░░░░ wait ░░░░[next loop]
+                               ▲
+                   all threads held here
+
+With nowait:
+T0: [████ loop ████][next loop immediately]
+T1: [████████████████ loop ████████████][next loop]
+T2: [██ loop ██][next loop immediately]
+     only safe when the two loops are data-independent
+```
 
 ```cpp
 #pragma omp parallel
 {
-    // Threads do independent work
-    do_phase_one(omp_get_thread_num());
-
-    // 'nowait' removes the barrier — threads proceed immediately when done
-    #pragma omp for nowait
+    #pragma omp for nowait          // no barrier after this loop
     for (int i = 0; i < N; i++)
-        a[i] = compute(i);
+        a[i] = compute_a(i);        // writes only a[]
 
-    // threads that finish early do NOT wait — they proceed here
-    // only safe if subsequent code doesn't depend on all threads finishing
+    #pragma omp for nowait          // no barrier after this loop either
+    for (int i = 0; i < N; i++)
+        b[i] = compute_b(i);        // writes only b[] — independent of a[]
 
-    // Explicit barrier — synchronize all threads at a specific point
-    #pragma omp barrier
-    // all threads are here now
+    #pragma omp barrier             // explicit sync: a[] and b[] both fully written
+    use(a, b);                      // safe to read both here
 }
 ```
+
+**When `nowait` is safe:** the next work unit reads from a completely different data set than the loop just completed. If there is any dependency, keep the implicit barrier.
 
 ---
 
 ### 1.10 Sections — Fixed Concurrent Operations
 
-When you have a small fixed set of independent operations (not a loop), `sections` runs each one on a separate thread:
+`sections` is for a **small, known-at-compile-time** set of independent operations — not a loop. Each `section` block runs on one thread; all blocks run concurrently.
+
+```
+#pragma omp parallel sections
+┌─────────────────────────────────────────────────┐
+│  section 1 → T0: [────── load_data() ──────────]│
+│  section 2 → T1: [── init_config() ──]          │
+│  section 3 → T2: [──────── warmup() ────────────]│
+└────────────────────────── implicit barrier ──────┘
+                  all three done → program continues
+```
 
 ```cpp
 #pragma omp parallel sections
 {
     #pragma omp section
-    {
-        printf("Thread %d: loading data\n", omp_get_thread_num());
-        load_data();
-    }
+    load_data();        // thread 0
 
     #pragma omp section
-    {
-        printf("Thread %d: initializing config\n", omp_get_thread_num());
-        init_config();
-    }
+    init_config();      // thread 1
 
     #pragma omp section
-    {
-        printf("Thread %d: warming up cache\n", omp_get_thread_num());
-        warmup();
-    }
+    warmup();           // thread 2
 }
-// All three run in parallel, all done here
+// all three finished here
 ```
 
-Sections handles a fixed set of concurrent operations. When the number of tasks is dynamic or recursive, use tasks (next section).
+**Sections vs Tasks:**
+
+| | `sections` | `tasks` |
+|--|-----------|---------|
+| Number of units | Fixed at compile time | Dynamic, recursive |
+| Use case | Load + init + warmup | Tree traversal, Fibonacci |
+| Overhead | Very low | Higher (task queue) |
+
+Use `sections` when you can count the operations by hand. Use `tasks` (next section) when the work fans out recursively or the count isn't known until runtime.
 
 ---
 
 ### 1.11 Tasks — Recursive and Irregular Work
 
-Tasks are for work that doesn't fit a regular loop: **recursive algorithms, tree traversal, linked lists**.
+Tasks decouple **work creation** from **work execution**. One thread creates tasks and puts them in a queue; any thread in the team picks them up and executes them.
 
-```cpp
-// Recursive parallel tree sum using tasks
-int sum_tree(Node* node) {
-    if (!node) return 0;
-
-    int left_sum, right_sum;
-
-    #pragma omp parallel   // create thread team
-    #pragma omp single     // only ONE thread creates tasks (others wait for tasks)
-    {
-        #pragma omp task shared(left_sum)
-        left_sum = sum_tree(node->left);
-
-        #pragma omp task shared(right_sum)
-        right_sum = sum_tree(node->right);
-
-        #pragma omp taskwait  // wait for both tasks before using results
-    }
-
-    return node->value + left_sum + right_sum;
-}
+```
+single thread creates tasks:          thread pool executes them:
+  task(left  branch) ──► queue ──► T1: sum_tree(left)
+  task(right branch) ──► queue ──► T2: sum_tree(right)
+  taskwait ─────────────────────► T0: waits, then adds results
 ```
 
-**Fibonacci (classic task example):**
+**Tree sum — correct pattern (parallel region outside, tasks inside):**
+
+```cpp
+// The recursive function only creates tasks — no parallel region here
+int sum_tree(Node* node) {
+    if (!node) return 0;
+    int left_sum = 0, right_sum = 0;
+
+    #pragma omp task shared(left_sum)
+    left_sum = sum_tree(node->left);
+
+    #pragma omp task shared(right_sum)
+    right_sum = sum_tree(node->right);
+
+    #pragma omp taskwait        // wait for both before combining
+    return node->value + left_sum + right_sum;
+}
+
+// Parallel region created ONCE outside — not inside the recursive function
+int result;
+#pragma omp parallel
+#pragma omp single              // one thread drives task creation
+result = sum_tree(root);
+```
+
+> **Common mistake:** putting `#pragma omp parallel` inside the recursive function. That creates a new thread team on every recursive call — thousands of nested thread pools, massive overhead, and likely wrong results.
+
+**Fibonacci with cutoff:**
 
 ```cpp
 int fib(int n) {
-    if (n < 2) return n;
+    if (n < 2)  return n;
+    if (n < 25) return fib(n-1) + fib(n-2);  // serial below cutoff
 
     int x, y;
     #pragma omp task shared(x) firstprivate(n)
@@ -569,14 +603,20 @@ int fib(int n) {
     return x + y;
 }
 
-// Call from inside a parallel region:
 int result;
 #pragma omp parallel
 #pragma omp single
-result = fib(30);
+result = fib(50);
 ```
 
-> **`single` is critical:** without it, every thread would create tasks, creating an explosion. `single` ensures only one thread spawns the top-level tasks; the rest of the team executes them.
+**Why each clause matters:**
+
+| Clause | What it does |
+|--------|-------------|
+| `shared(x)` | All threads see the same `x` — task writes its result there |
+| `firstprivate(n)` | Each task gets its own copy of `n` at creation time — required for correctness in recursion |
+| `taskwait` | Suspends the current task until all child tasks finish |
+| `single` | Only one thread spawns tasks; the rest execute them. Without it, every thread would spawn the full tree → exponential task explosion |
 
 ---
 
