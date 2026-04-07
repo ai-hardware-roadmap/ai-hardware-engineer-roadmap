@@ -10,8 +10,8 @@ docs_dir: docs
 
 theme:
   name: material
-  logo: Assets/images/ai-hardware-engineer.png
-  favicon: Assets/images/ai-hardware-engineer.png
+  logo: Assets/images/arrow.png
+  favicon: Assets/images/arrow.png
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
