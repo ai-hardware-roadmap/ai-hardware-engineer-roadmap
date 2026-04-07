@@ -14,21 +14,7 @@ This guide covers two parts. Section 1 is a progressive tour of OpenMP — from 
 
 OpenMP uses the **fork-join model**. The program starts with one thread (the *master*). When it hits a parallel region, it forks into a team of threads. When the region ends, all threads join back into one.
 
-```
-main thread ────────────────────────────────────────────────►
-                    │                               │
-            ┌───────┴───────────────────────────┐   │
-            │    #pragma omp parallel           │   │
-            │                                   │   │
-thread 0 ───┤── work ── work ── work ────────── ┤───┤
-thread 1 ───┤── work ── work ── work ────────── ┤───┤
-thread 2 ───┤── work ── work ── work ────────── ┤───┤
-thread 3 ───┤── work ── work ── work ────────── ┤───┤
-            │                                   │   │
-            └─────────────── implicit barrier ──┘   │
-                                                    │
-main thread continues ───────────────────────────────►
-```
+![Fork-join model](../../../../../Assets/images/openmp-fork-join.svg)
 
 **The compiler does this for you:** `#pragma omp parallel for` is essentially a loop split + thread pool dispatch + barrier, all generated automatically.
 
