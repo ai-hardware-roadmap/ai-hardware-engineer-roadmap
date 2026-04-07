@@ -669,6 +669,112 @@ parallel_for(blocked_range<int>(0, N), body, static_partitioner());
 
 **Grainsize tuning:** Each chunk should take ≥ ~100,000 clock cycles (~50 µs at 2 GHz). Too-small chunks = scheduling overhead dominates. Rule: if loop body takes 10 ns, grainsize of 10,000+ is reasonable.
 
+#### Complete Example 1 — Squaring an Array
+
+The clearest way to see the transition from serial to parallel:
+
+```cpp
+#include <oneapi/tbb.h>
+#include <iostream>
+#include <vector>
+
+int main() {
+    const size_t N = 1'000'000;
+    std::vector<int> data(N, 3);    // all 3s
+    std::vector<int> result(N);
+
+    // Serial version:
+    // for (size_t i = 0; i < N; ++i)
+    //     result[i] = data[i] * data[i];
+
+    // Parallel version — one line change:
+    oneapi::tbb::parallel_for(size_t(0), N, [&](size_t i) {
+        result[i] = data[i] * data[i];   // each thread handles a range of i
+    });
+
+    std::cout << "result[0]=" << result[0]
+              << "  result[N-1]=" << result[N-1] << "\n";
+    // Expected: 9  9
+}
+```
+
+**What the runtime does:**
+
+```
+N = 1,000,000   threads = 8
+
+Thread 0:  i = 0 … 124,999       → result[i] = data[i]²
+Thread 1:  i = 125,000 … 249,999 → result[i] = data[i]²
+...
+Thread 7:  i = 875,000 … 999,999 → result[i] = data[i]²
+
+All done → join back
+```
+
+No race condition: each thread writes to a different `result[i]`.
+
+---
+
+#### Complete Example 2 — 2D Image Box Blur
+
+`blocked_range2d` splits a 2D pixel grid into rectangular tiles. Each tile stays hot in CPU cache because rows and columns are contiguous.
+
+```cpp
+#include <oneapi/tbb.h>
+#include <iostream>
+#include <vector>
+
+int main() {
+    const size_t W = 800, H = 600;
+
+    // 2D image as flat vector, row-major: pixel(y,x) = image[y * W + x]
+    std::vector<int> image (H * W, 100);   // all pixels = 100
+    std::vector<int> blurred(H * W, 0);
+
+    oneapi::tbb::parallel_for(
+        oneapi::tbb::blocked_range2d<size_t>(0, H, 0, W),
+        [&](const oneapi::tbb::blocked_range2d<size_t>& tile) {
+            for (size_t y = tile.rows().begin(); y < tile.rows().end(); ++y) {
+                for (size_t x = tile.cols().begin(); x < tile.cols().end(); ++x) {
+                    // 3×3 box blur — average the 9 surrounding pixels
+                    int sum = 0;
+                    for (int dy = -1; dy <= 1; ++dy) {
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            size_t nx = (x + dx < W) ? x + dx : x;
+                            size_t ny = (y + dy < H) ? y + dy : y;
+                            sum += image[ny * W + nx];
+                        }
+                    }
+                    blurred[y * W + x] = sum / 9;
+                }
+            }
+        }
+    );
+
+    std::cout << "blurred pixel(300,400) = " << blurred[300 * W + 400] << "\n";
+    // Expected: 100 (uniform image, blur changes nothing)
+}
+```
+
+**Why `blocked_range2d` beats two nested `parallel_for` calls:**
+
+```
+blocked_range2d splits the grid into rectangular tiles:
+
+  ┌───────┬───────┬───────┐
+  │ T0    │ T1    │ T2    │   Each tile = contiguous memory block
+  │       │       │       │   → good L1/L2 cache reuse within tile
+  ├───────┼───────┼───────┤
+  │ T3    │ T4    │ T5    │
+  │       │       │       │
+  └───────┴───────┴───────┘
+
+Two nested parallel_for → each row is a separate task → too many tiny tasks
+blocked_range2d    → each tile is one task → right granularity
+```
+
+The `tile.rows()` and `tile.cols()` accessors give you the subrange for this tile. Always use flat `vector<T>` with `[y * W + x]` indexing — `vector<vector<T>>` breaks spatial locality.
+
 ---
 
 ### 3.2 `parallel_reduce` — Parallel Reduction
@@ -747,6 +853,104 @@ float result = parallel_deterministic_reduce(
 );
 // Floating-point result identical on every run
 ```
+
+#### Complete Example 3 — Monte Carlo π Estimation (Functor Style)
+
+`parallel_reduce` has two API styles. The lambda form (above) is concise. The **functor (body class) style** makes it explicit how splitting and joining work — useful for complex state.
+
+```cpp
+#include <oneapi/tbb.h>
+#include <iostream>
+#include <random>
+
+// The body class encapsulates the per-thread state
+class MonteCarloPi {
+public:
+    long long hits = 0;   // points inside the unit circle
+
+    MonteCarloPi() = default;
+
+    // Splitting constructor: called when TBB splits work to a new thread
+    // Must initialize to identity (0 hits)
+    MonteCarloPi(MonteCarloPi& /*other*/, oneapi::tbb::split)
+        : hits(0) {}
+
+    // operator(): runs on each subrange assigned to this thread
+    void operator()(const oneapi::tbb::blocked_range<size_t>& r) {
+        // Each thread gets its own RNG — avoids contention on shared state
+        std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+        long long local_hits = 0;
+        for (size_t i = r.begin(); i < r.end(); ++i) {
+            double x = dist(rng), y = dist(rng);
+            if (x*x + y*y <= 1.0) ++local_hits;
+        }
+        hits += local_hits;   // safe: this thread owns 'hits'
+    }
+
+    // join(): merge another thread's result into this one
+    void join(const MonteCarloPi& other) {
+        hits += other.hits;
+    }
+};
+
+int main() {
+    const size_t N = 10'000'000;
+
+    MonteCarloPi body;
+    oneapi::tbb::parallel_reduce(
+        oneapi::tbb::blocked_range<size_t>(0, N),
+        body
+    );
+
+    double pi = 4.0 * body.hits / N;
+    std::cout << "Estimated π = " << pi << "\n";
+    // Typical output: 3.1415...
+}
+```
+
+**How the split/join tree works:**
+
+```
+                    MonteCarloPi(root)
+                   [0 … 10,000,000)
+                   /               \
+          split()                 split()
+         /                               \
+   Thread 0                          Thread 1
+   [0 … 2.5M)                       [2.5M … 5M)
+   hits = 1,963,xxx                  hits = 1,964,xxx
+                   \               /
+                    join() → hits += other.hits
+                         ...
+                    Final: hits = 7,854,xxx
+                    π ≈ 4 × 7,854,xxx / 10,000,000 ≈ 3.1416
+```
+
+**Why per-thread RNG matters:** A single shared `mt19937` would require a mutex on every call — serializing the entire computation. Each thread constructs its own seeded generator inside `operator()` — zero contention.
+
+**Lambda form of the same thing** (for comparison):
+
+```cpp
+long long hits = oneapi::tbb::parallel_reduce(
+    oneapi::tbb::blocked_range<size_t>(0, N),
+    0LL,                          // identity
+    [](const oneapi::tbb::blocked_range<size_t>& r, long long init) {
+        std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
+        for (size_t i = r.begin(); i < r.end(); ++i) {
+            double x = dist(rng), y = dist(rng);
+            if (x*x + y*y <= 1.0) ++init;
+        }
+        return init;
+    },
+    std::plus<long long>{}        // combine
+);
+double pi = 4.0 * hits / N;
+```
+
+Use the **functor style** when: accumulator is non-trivially copyable, you need custom split logic, or state initialization is expensive. Use **lambda style** for everything else.
 
 ---
 
