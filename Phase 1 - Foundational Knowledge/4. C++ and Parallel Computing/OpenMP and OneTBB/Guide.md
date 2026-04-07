@@ -42,7 +42,7 @@ master ──── [serial] ──── fork ──── [parallel] ───
 | Work distribution | Divides loop iterations across threads (`schedule` clause controls how) |
 | Synchronization | Implicit barrier at the end of every parallel region |
 
-**Compile:** `g++ -O2 -std=c++17 -fopenmp my_code.cpp -ltbb -o my_code`
+**Compile:** `g++ -O2 -std=c++17 -fopenmp fib_benchmark.cpp -ltbb -o fib_benchmark`
 
 ---
 
