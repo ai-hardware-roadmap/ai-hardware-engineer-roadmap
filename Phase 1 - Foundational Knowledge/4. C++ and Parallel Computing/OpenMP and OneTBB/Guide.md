@@ -4,6 +4,52 @@ Part of [Phase 1 section 4 — C++ and Parallel Computing](../Guide.md).
 
 **Goal:** Shared-memory **CPU parallelism** with **OpenMP** (directive-based) and **oneTBB** (task-based algorithms and flow graphs) so structured parallel patterns feel familiar before CUDA.
 
+This guide is organized in three parts. Section 1 is a brief baseline on raw C++ threads. Section 2 is a progressive tour of OpenMP — from a one-line `#pragma` to tasks and SIMD. Section 3 covers oneTBB's template-based API in the same order, from simple loops to flow graphs and runtime controls. Each section builds on the previous one.
+
+---
+
+**Contents**
+
+- [1. Baseline: std::thread and Synchronization](#1-baseline-stdthread-and-synchronization)
+- [2. OpenMP](#2-openmp)
+  - [2.0 Mental Model: Fork-Join](#20-mental-model-fork-join)
+  - [2.1 Your First Parallel Loop](#21-your-first-parallel-loop)
+  - [2.2 The Classic Race Condition](#22-the-classic-race-condition)
+  - [2.3 Data Sharing Clauses](#23-data-sharing-clauses)
+  - [2.4 Schedules — How Work Is Divided](#24-schedules--how-work-is-divided)
+  - [2.5 Reductions](#25-reductions)
+  - [2.6 Collapse — Parallelizing Nested Loops](#26-collapse--parallelizing-nested-loops)
+  - [2.7 SIMD — Vectorization Hints](#27-simd--vectorization-hints)
+  - [2.8 Protecting Shared State: critical and atomic](#28-protecting-shared-state-critical-and-atomic)
+  - [2.9 Synchronization: Barriers and nowait](#29-synchronization-barriers-and-nowait)
+  - [2.10 Sections — Fixed Concurrent Operations](#210-sections--fixed-concurrent-operations)
+  - [2.11 Tasks — Recursive and Irregular Work](#211-tasks--recursive-and-irregular-work)
+  - [2.12 Thread Info and Environment](#212-thread-info-and-environment)
+  - [2.13 Nested Parallelism](#213-nested-parallelism)
+  - [2.14 Common Pitfalls](#214-common-pitfalls)
+  - [2.15 OpenMP vs oneTBB](#215-openmp-vs-onetbb)
+- [3. oneTBB](#3-onetbb-oneapi-threading-building-blocks)
+  - [3.0 Mental Model: Work-Stealing Scheduler](#30-mental-model-work-stealing-scheduler)
+  - [3.1 parallel_for — Parallel Loop](#31-parallel_for--parallel-loop)
+  - [3.2 parallel_reduce — Parallel Reduction](#32-parallel_reduce--parallel-reduction)
+  - [3.3 parallel_scan — Prefix Sum](#33-parallel_scan--prefix-sum)
+  - [3.4 parallel_sort](#34-parallel_sort)
+  - [3.5 parallel_for_each — Unknown Iteration Space](#35-parallel_for_each--unknown-iteration-space)
+  - [3.6 parallel_pipeline — Assembly Line](#36-parallel_pipeline--assembly-line)
+  - [3.7 parallel_invoke and task_group — Explicit Tasks](#37-parallel_invoke-and-task_group--explicit-tasks)
+  - [3.8 Per-Thread Storage — enumerable_thread_specific](#38-per-thread-storage--enumerable_thread_specific)
+  - [3.9 combinable — Simpler Per-Thread Accumulation](#39-combinablet--simpler-per-thread-accumulation)
+  - [3.10 Flow Graph](#310-flow-graph--data-flow-and-dependence-graphs)
+  - [3.11 Concurrent Containers](#311-concurrent-containers)
+  - [3.12 Scalable Memory Allocator](#312-scalable-memory-allocator)
+  - [3.13 task_arena — Control Thread Pool](#313-task_arena--control-thread-pool)
+  - [3.14 global_control — Runtime Configuration](#314-global_control--runtime-configuration)
+  - [3.15 Exception Handling and Cancellation](#315-exception-handling-and-cancellation)
+  - [3.16 Work Isolation](#316-work-isolation)
+  - [3.17 Pattern Cheat Sheet](#317-pattern-cheat-sheet)
+  - [3.18 Connection to GPU Programming](#318-connection-to-gpu-programming)
+- [Resources](#resources)
+
 ---
 
 ## 1. Baseline: `std::thread` and Synchronization
@@ -35,6 +81,8 @@ counter.fetch_add(1, std::memory_order_relaxed);
 - **Profiling first** — find hotspots with `perf stat` or VTune before parallelizing. The bottleneck is rarely the obvious loop.
 
 OpenMP and oneTBB both build on these primitives. Understanding `std::thread` helps debug race conditions in any framework.
+
+Now that you know what parallelism primitives look like at the lowest level, the next two sections show how OpenMP and oneTBB abstract them away — turning the manual work above into one-line directives or template calls.
 
 ---
 
@@ -137,7 +185,7 @@ for (int i = 0; i < N; i++)
                    // all private sums are added together at the end
 ```
 
-Each thread gets its own private copy of `sum` (initialized to 0). After the loop, OpenMP adds all private copies into the original `sum`. No race.
+Each thread gets its own private copy of `sum` (initialized to 0). After the loop, OpenMP adds all private copies into the original `sum`. No race. Section 2.5 covers all supported reduction operators and custom reductions.
 
 ---
 
@@ -309,6 +357,8 @@ for (int i = 0; i < N; i++) {
 
 ### 2.4 Schedules — How Work Is Divided
 
+OpenMP divides loop iterations among threads according to a *schedule*. The right schedule depends on whether iterations take equal time or vary widely.
+
 ```cpp
 // Static (default): divide evenly before the loop starts
 // Thread 0 gets [0, N/P), thread 1 gets [N/P, 2N/P), ...
@@ -353,7 +403,7 @@ Tuning at runtime without recompile?   → runtime
 
 ### 2.5 Reductions
 
-Supported operators out of the box:
+Building on the `reduction(+:sum)` clause introduced in section 2.2, here are all supported operators and how to define custom reductions:
 
 ```cpp
 int sum = 0, product = 1, max_val = INT_MIN;
@@ -390,6 +440,8 @@ for (int i = 0; i < N; i++)
 
 ### 2.6 Collapse — Parallelizing Nested Loops
 
+When a nested loop's outer dimension is small (e.g., 4 rows but 8 threads), `collapse` merges the outer and inner loops into a single flattened iteration space so all threads have work.
+
 ```cpp
 // Without collapse: only the outer loop is parallelized
 // If outer loop has fewer iterations than threads → wasted threads
@@ -410,7 +462,33 @@ for (int i = 0; i < 4; i++)
 
 ---
 
-### 2.7 Critical Sections and Atomics
+### 2.7 SIMD — Vectorization Hints
+
+SIMD (Single Instruction, Multiple Data) processes multiple array elements in one CPU instruction. This is the same principle behind GPU SIMT — learning it here prepares you for CUDA's warp-level execution.
+
+```cpp
+// Ask the compiler to vectorize (SIMD) one loop on a single thread
+#pragma omp simd
+for (int i = 0; i < N; i++)
+    c[i] = a[i] * b[i] + d[i];
+
+// Parallelize across threads AND vectorize within each thread's chunk
+#pragma omp parallel for simd
+for (int i = 0; i < N; i++)
+    c[i] = a[i] * b[i];
+
+// simd with reduction (e.g. sum with SIMD accumulation)
+float sum = 0.0f;
+#pragma omp simd reduction(+:sum)
+for (int i = 0; i < N; i++)
+    sum += a[i];
+```
+
+The `simd` pragma is a hint. The compiler still decides if vectorization is safe. Add `-fopt-info-vec` to see what was vectorized.
+
+---
+
+### 2.8 Protecting Shared State: critical and atomic
 
 When `reduction` is not enough (complex shared state):
 
@@ -450,16 +528,15 @@ shared_var = computed;
 
 ---
 
-### 2.8 Barrier and Nowait
+### 2.9 Synchronization: Barriers and nowait
+
+Every `#pragma omp for` has an implicit barrier at the end — all threads wait until the slowest finishes. `nowait` removes that barrier to overlap phases.
 
 ```cpp
 #pragma omp parallel
 {
     // Threads do independent work
     do_phase_one(omp_get_thread_num());
-
-    // Implicit barrier at end of 'parallel for' — all threads wait here
-    // by default before continuing
 
     // 'nowait' removes the barrier — threads proceed immediately when done
     #pragma omp for nowait
@@ -477,7 +554,39 @@ shared_var = computed;
 
 ---
 
-### 2.9 Tasks — Irregular Parallelism
+### 2.10 Sections — Fixed Concurrent Operations
+
+When you have a small fixed set of independent operations (not a loop), `sections` runs each one on a separate thread:
+
+```cpp
+#pragma omp parallel sections
+{
+    #pragma omp section
+    {
+        printf("Thread %d: loading data\n", omp_get_thread_num());
+        load_data();
+    }
+
+    #pragma omp section
+    {
+        printf("Thread %d: initializing config\n", omp_get_thread_num());
+        init_config();
+    }
+
+    #pragma omp section
+    {
+        printf("Thread %d: warming up cache\n", omp_get_thread_num());
+        warmup();
+    }
+}
+// All three run in parallel, all done here
+```
+
+Sections handles a fixed set of concurrent operations. When the number of tasks is dynamic or recursive, use tasks (next section).
+
+---
+
+### 2.11 Tasks — Recursive and Irregular Work
 
 Tasks are for work that doesn't fit a regular loop: **recursive algorithms, tree traversal, linked lists**.
 
@@ -529,60 +638,6 @@ result = fib(30);
 ```
 
 > **`single` is critical:** without it, every thread would create tasks, creating an explosion. `single` ensures only one thread spawns the top-level tasks; the rest of the team executes them.
-
----
-
-### 2.10 Sections — Different Code on Different Threads
-
-```cpp
-#pragma omp parallel sections
-{
-    #pragma omp section
-    {
-        printf("Thread %d: loading data\n", omp_get_thread_num());
-        load_data();
-    }
-
-    #pragma omp section
-    {
-        printf("Thread %d: initializing config\n", omp_get_thread_num());
-        init_config();
-    }
-
-    #pragma omp section
-    {
-        printf("Thread %d: warming up cache\n", omp_get_thread_num());
-        warmup();
-    }
-}
-// All three run in parallel, all done here
-```
-
-Use `sections` for a fixed, small number of different concurrent operations. For dynamic work, use `tasks`.
-
----
-
-### 2.11 SIMD Pragma
-
-```cpp
-// Ask the compiler to vectorize (SIMD) one loop on a single thread
-#pragma omp simd
-for (int i = 0; i < N; i++)
-    c[i] = a[i] * b[i] + d[i];
-
-// Parallelize across threads AND vectorize within each thread's chunk
-#pragma omp parallel for simd
-for (int i = 0; i < N; i++)
-    c[i] = a[i] * b[i];
-
-// simd with reduction (e.g. sum with SIMD accumulation)
-float sum = 0.0f;
-#pragma omp simd reduction(+:sum)
-for (int i = 0; i < N; i++)
-    sum += a[i];
-```
-
-The `simd` pragma is a hint. The compiler still decides if vectorization is safe. Add `-fopt-info-vec` to see what was vectorized.
 
 ---
 
@@ -665,6 +720,8 @@ void outer_task() {
 | Best for | Existing loops, Fortran interop, scientific HPC | New C++ code, complex graphs, irregular tasks |
 
 **Resources:** [OpenMP specifications](https://www.openmp.org/specifications/) · [OpenMP API Reference Card (PDF)](https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf)
+
+The table above highlights where oneTBB offers capabilities OpenMP lacks — especially work-stealing, flow graphs, and concurrent containers. The next section covers oneTBB's API in the same progressive style, starting from simple loops and building toward complex graph-based patterns.
 
 ---
 
@@ -1299,7 +1356,7 @@ tg2.wait();
 
 ---
 
-### 3.8 `enumerable_thread_specific` — Per-Thread Storage
+### 3.8 Per-Thread Storage — `enumerable_thread_specific`
 
 The problem with shared accumulators: every thread writes to the same memory location, causing data races or expensive lock contention.
 
@@ -1314,7 +1371,7 @@ threads → single hist[]         threads → own hist[]
 
 Each thread gets its own isolated copy. They never touch each other during the parallel phase. At the end you iterate over all copies and combine them.
 
-**Problem without it:**
+**Problem without it** (same data race as section 2.2 — multiple threads writing to the same location):
 
 ```cpp
 // WRONG: all threads write to the same histogram → data race
@@ -1941,7 +1998,7 @@ If the inner loop works on independent data (no sharing with outer tasks), isola
 
 ---
 
-### 3.17 Design Patterns Summary
+### 3.17 Pattern Cheat Sheet
 
 **Reduce:**
 
