@@ -1510,25 +1510,39 @@ parallel_for_each(roots.begin(), roots.end(),
 
 ### 2.6 `parallel_pipeline` — Assembly Line
 
-A pipeline is a sequence of stages where each item flows through all stages in order. Unlike a plain `parallel_for` (all items do the same thing), a pipeline lets **different items be at different stages at the same time** — exactly like a factory assembly line.
+A pipeline is a sequence of stages where each item flows through all stages in order. Unlike `parallel_for` where all items do the same thing, a pipeline lets **different items be at different stages simultaneously**.
+
+**Without pipeline — one item at a time:**
 
 ```
-Without pipeline (serial):          With pipeline (3 items in-flight):
-  Item 1: read → process → write
-  Item 2: read → process → write    read₁ ──► process₁ ──► write₁
-  Item 3: read → process → write    read₂ ──► process₂ ──► write₂
-  (one item at a time)              read₃ ──► process₃ ──► write₃
-                                    (all happening simultaneously)
+time →
+item 1: [read]──[process]──[write]
+item 2:                            [read]──[process]──[write]
+item 3:                                               [read]──[process]──[write]
 ```
 
-The key constraint: a **serial** stage runs one item at a time (order preserved). A **parallel** stage runs multiple items simultaneously (order not preserved). You choose per-stage.
+**With pipeline — multiple items in-flight:**
 
 ```
-Stage 1 (serial_in_order)   Stage 2 (parallel)     Stage 3 (serial_in_order)
-  File reading                 CPU transform           Writing results
-  One file at a time           4 items at once         Must write in order
-  ← can't parallelize          ← CPU-bound here →      ← must be ordered →
+time →
+item 1: [read]──[process₁][process₂][process₃]──[write]
+item 2:         [read]────[process₁][process₂][process₃]──[write]
+item 3:                   [read]────[process₁][process₂][process₃]──[write]
+item 4:                             [read]─────────── ...
+         ↑serial↑         ↑──── parallel stage, N items at once ────↑↑serial↑
 ```
+
+The read and write stages are **serial** (one item at a time — file I/O or ordered output). The processing stage is **parallel** (CPU-bound work, items are independent).
+
+**Filter modes:**
+
+| Mode | Order | Concurrency | Use when |
+|------|-------|-------------|---------|
+| `serial_in_order` | Preserved | 1 at a time | File I/O, ordered output |
+| `serial_out_of_order` | Not preserved | 1 at a time | Single-threaded setup/teardown |
+| `parallel` | Not preserved | Multiple threads | CPU-bound, independent items |
+
+**Structure:**
 
 ```cpp
 #include "oneapi/tbb/pipeline.h"
@@ -1536,24 +1550,21 @@ Stage 1 (serial_in_order)   Stage 2 (parallel)     Stage 3 (serial_in_order)
 const int max_tokens = 16;   // max items in-flight simultaneously
 
 parallel_pipeline(max_tokens,
-    // Stage 1: serial input (reads one item at a time)
-    make_filter<void, InputData*>(
+    make_filter<void, InputData*>(            // void input = "source" stage
         filter_mode::serial_in_order,
         [&](flow_control& fc) -> InputData* {
             InputData* data = read_next();
-            if (!data) { fc.stop(); return nullptr; }
+            if (!data) { fc.stop(); return nullptr; }  // signal end of stream
             return data;
         }
     ) &
-    // Stage 2: parallel processing (multiple items at once)
     make_filter<InputData*, OutputData*>(
         filter_mode::parallel,
         [](InputData* in) -> OutputData* {
-            return transform(in);
+            return transform(in);             // runs on multiple threads
         }
     ) &
-    // Stage 3: serial output (writes in original order)
-    make_filter<OutputData*, void>(
+    make_filter<OutputData*, void>(           // void output = "sink" stage
         filter_mode::serial_in_order,
         [&](OutputData* out) {
             write_result(out);
@@ -1563,17 +1574,73 @@ parallel_pipeline(max_tokens,
 );
 ```
 
-**Filter modes:**
+**Concrete example — batch inference pipeline:**
 
-| Mode | Ordering | Concurrency | Use when |
-|------|---------|-------------|---------|
-| `serial_in_order` | Preserved | 1 at a time | I/O, ordered output |
-| `serial_out_of_order` | Not preserved | 1 at a time | Single-threaded transform |
-| `parallel` | Not preserved | Multiple | CPU-bound transform, independent items |
+A common CPU inference pattern: load batches from disk, normalize, run model, write predictions. I/O and inference can overlap:
 
-**`max_tokens`** limits memory: the pipeline never has more than this many items in-flight simultaneously. If processing is fast but output is slow, tokens pile up — limit them to bound memory.
+```cpp
+struct Batch { std::vector<float> data; int id; };
 
-> **Throughput law:** Throughput = `max_tokens / slowest_serial_stage_latency`. A slow serial stage caps your throughput regardless of parallel stage speed.
+int batch_id = 0;
+const int TOTAL = 100;
+
+parallel_pipeline(/*max_tokens=*/8,
+    // Stage 1: load next batch from disk (serial — disk reads are sequential)
+    make_filter<void, Batch*>(
+        filter_mode::serial_in_order,
+        [&](flow_control& fc) -> Batch* {
+            if (batch_id >= TOTAL) { fc.stop(); return nullptr; }
+            auto* b = new Batch();
+            b->id   = batch_id++;
+            b->data = load_batch_from_disk(b->id);   // blocking I/O
+            return b;
+        }
+    ) &
+    // Stage 2: normalize pixels [0,255] → [0,1] (parallel — independent batches)
+    make_filter<Batch*, Batch*>(
+        filter_mode::parallel,
+        [](Batch* b) -> Batch* {
+            for (float& v : b->data) v /= 255.0f;
+            return b;
+        }
+    ) &
+    // Stage 3: run model inference (parallel — batches are independent)
+    make_filter<Batch*, Batch*>(
+        filter_mode::parallel,
+        [](Batch* b) -> Batch* {
+            run_inference(b->data);
+            return b;
+        }
+    ) &
+    // Stage 4: write predictions in order (serial — output file needs order)
+    make_filter<Batch*, void>(
+        filter_mode::serial_in_order,
+        [&](Batch* b) {
+            write_predictions(b->id, b->data);
+            delete b;
+        }
+    )
+);
+```
+
+**`max_tokens` and the throughput law:**
+
+```
+max_tokens too small:
+  [read]──[process]──[write]
+          idle  idle           ← CPU starved, pipeline stalls waiting for tokens
+
+max_tokens right:
+  [read]──[p1][p2][p3][p4]──[write]
+           ↑ all threads busy ↑
+
+max_tokens too large:
+  [read]──[p1][p2]...[p100]──[write]
+                 ↑ 100 batches buffered in memory → OOM risk
+```
+
+> **Throughput = `max_tokens / latency_of_slowest_serial_stage`.**
+> If your serial read stage takes 10 ms and you set `max_tokens = 8`, you can sustain 800 items/second through the pipeline regardless of how fast the parallel stage is. Doubling `max_tokens` doubles throughput — until the parallel stage becomes the bottleneck.
 
 ---
 
