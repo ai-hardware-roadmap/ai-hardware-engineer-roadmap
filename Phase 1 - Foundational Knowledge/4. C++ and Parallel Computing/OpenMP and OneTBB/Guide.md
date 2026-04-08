@@ -1070,44 +1070,39 @@ No race condition: each thread writes to a different `result[i]`.
 
 ---
 
-#### Complete Example 2 — 2D Image Box Blur
+#### Complete Example 2 — ReLU on a 2D Feature Map
 
-`blocked_range2d` splits a 2D pixel grid into rectangular tiles. Each tile stays hot in CPU cache because rows and columns are contiguous.
+ReLU (`max(0, x)`) is applied element-wise after a convolution layer. Every output value is independent — a perfect fit for `blocked_range2d`.
 
 ```cpp
 #include <oneapi/tbb.h>
+#include <algorithm>
 #include <iostream>
 #include <vector>
 
 int main() {
-    const size_t W = 800, H = 600;
+    // Feature map: H rows × W columns, row-major flat storage
+    const size_t H = 1024, W = 1024;
+    std::vector<float> feat(H * W);
+    std::vector<float> out (H * W);
 
-    // 2D image as flat vector, row-major: pixel(y,x) = image[y * W + x]
-    std::vector<int> image (H * W, 100);   // all pixels = 100
-    std::vector<int> blurred(H * W, 0);
+    // Fill with values in range [-128, 127]
+    for (size_t i = 0; i < H * W; ++i)
+        feat[i] = static_cast<float>(i % 256) - 128.0f;
 
+    // Apply ReLU in parallel over tiles
     oneapi::tbb::parallel_for(
         oneapi::tbb::blocked_range2d<size_t>(0, H, 0, W),
         [&](const oneapi::tbb::blocked_range2d<size_t>& tile) {
-            for (size_t y = tile.rows().begin(); y < tile.rows().end(); ++y) {
-                for (size_t x = tile.cols().begin(); x < tile.cols().end(); ++x) {
-                    // 3×3 box blur — average the 9 surrounding pixels
-                    int sum = 0;
-                    for (int dy = -1; dy <= 1; ++dy) {
-                        for (int dx = -1; dx <= 1; ++dx) {
-                            size_t nx = (x + dx < W) ? x + dx : x;
-                            size_t ny = (y + dy < H) ? y + dy : y;
-                            sum += image[ny * W + nx];
-                        }
-                    }
-                    blurred[y * W + x] = sum / 9;
-                }
-            }
+            for (size_t y = tile.rows().begin(); y < tile.rows().end(); ++y)
+                for (size_t x = tile.cols().begin(); x < tile.cols().end(); ++x)
+                    out[y * W + x] = std::max(0.0f, feat[y * W + x]);
         }
     );
 
-    std::cout << "blurred pixel(300,400) = " << blurred[300 * W + 400] << "\n";
-    // Expected: 100 (uniform image, blur changes nothing)
+    std::cout << "out(0,0)   = " << out[0]   << "\n";  // 0   (was -128)
+    std::cout << "out(0,129) = " << out[129] << "\n";  // 1   (was 1)
+    std::cout << "out(0,255) = " << out[255] << "\n";  // 127 (was 127)
 }
 ```
 
