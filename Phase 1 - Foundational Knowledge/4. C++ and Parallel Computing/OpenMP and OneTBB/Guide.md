@@ -1321,7 +1321,133 @@ tbb::parallel_scan(
 // out[i] = in[0] + in[1] + ... + in[i]
 ```
 
-Use cases: cumulative sums, exclusive scan for stream compaction, computing CDF from a histogram.
+**Inclusive vs exclusive scan:**
+
+```
+inclusive (what parallel_scan computes by default):
+  input:  [ 1,  2,  3,  4,  5 ]
+  output: [ 1,  3,  6, 10, 15 ]   out[i] includes in[i]
+
+exclusive (shifted by one, out[0] = identity):
+  input:  [ 1,  2,  3,  4,  5 ]
+  output: [ 0,  1,  3,  6, 10 ]   out[i] excludes in[i]
+```
+
+Exclusive scan: delay the write by one position — accumulate first, then write the value *before* adding the current element:
+
+```cpp
+tbb::parallel_scan(
+    tbb::blocked_range<int>(0, N), 0.0f,
+    [&](const tbb::blocked_range<int>& r, float running, bool is_final) {
+        for (int i = r.begin(); i < r.end(); i++) {
+            if (is_final)
+                out[i] = running;   // write before adding — exclusive
+            running += in[i];
+        }
+        return running;
+    },
+    [](float a, float b) { return a + b; }
+);
+```
+
+**Stream compaction — remove zeros in parallel:**
+
+Stream compaction filters an array in three steps, all parallelisable:
+
+```
+input:    [ 1,  0,  2,  0,  3,  0,  4 ]
+
+step 1 — flag non-zero elements:
+flags:    [ 1,  0,  1,  0,  1,  0,  1 ]
+
+step 2 — exclusive scan on flags → output indices:
+indices:  [ 0,  1,  1,  2,  2,  3,  3 ]
+
+step 3 — scatter: if flag[i], write input[i] to output[indices[i]]:
+output:   [ 1,  2,  3,  4 ]
+```
+
+```cpp
+const int N = 7;
+std::vector<int>  input  = {1, 0, 2, 0, 3, 0, 4};
+std::vector<int>  flags(N), indices(N), output(N);
+
+// Step 1: flag non-zero elements (parallel_for)
+tbb::parallel_for(0, N, [&](int i) {
+    flags[i] = (input[i] != 0) ? 1 : 0;
+});
+
+// Step 2: exclusive scan on flags → scatter indices
+tbb::parallel_scan(
+    tbb::blocked_range<int>(0, N), 0,
+    [&](const tbb::blocked_range<int>& r, int running, bool is_final) {
+        for (int i = r.begin(); i < r.end(); i++) {
+            if (is_final) indices[i] = running;
+            running += flags[i];
+        }
+        return running;
+    },
+    [](int a, int b) { return a + b; }
+);
+
+// Step 3: scatter non-zero elements to their computed positions (parallel_for)
+tbb::parallel_for(0, N, [&](int i) {
+    if (flags[i]) output[indices[i]] = input[i];
+});
+// output = [1, 2, 3, 4]
+```
+
+**Prefix max — running maximum:**
+
+```cpp
+// out[i] = max(in[0], in[1], ..., in[i])
+tbb::parallel_scan(
+    tbb::blocked_range<int>(0, N),
+    std::numeric_limits<float>::lowest(),   // identity for max
+    [&](const tbb::blocked_range<int>& r, float running, bool is_final) {
+        for (int i = r.begin(); i < r.end(); i++) {
+            running = std::max(running, in[i]);
+            if (is_final) out[i] = running;
+        }
+        return running;
+    },
+    [](float a, float b) { return std::max(a, b); }
+);
+```
+
+```
+input:  [ 2,  1,  5,  3,  4 ]
+output: [ 2,  2,  5,  5,  5 ]   running maximum
+```
+
+**Histogram → CDF (cumulative distribution function):**
+
+```cpp
+// hist[i] = count of pixels with brightness i
+// cdf[i]  = total pixels with brightness ≤ i
+// Used in histogram equalization to stretch image contrast.
+tbb::parallel_scan(
+    tbb::blocked_range<int>(0, 256), 0,
+    [&](const tbb::blocked_range<int>& r, int running, bool is_final) {
+        for (int i = r.begin(); i < r.end(); i++) {
+            running += hist[i];
+            if (is_final) cdf[i] = running;
+        }
+        return running;
+    },
+    [](int a, int b) { return a + b; }
+);
+```
+
+**`parallel_scan` works for any associative operation:**
+
+| Operation | Identity | Combine | Use case |
+|-----------|----------|---------|---------|
+| Sum | `0` | `a + b` | Prefix sum, CDF |
+| Max | `-∞` | `max(a,b)` | Running maximum, bounding box |
+| Min | `+∞` | `min(a,b)` | Running minimum |
+| Product | `1` | `a * b` | Running factorial, probability chain |
+| Exclusive sum | `0` | `a + b` | Stream compaction scatter indices |
 
 ---
 
