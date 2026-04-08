@@ -1646,48 +1646,78 @@ max_tokens too large:
 
 ### 2.7 `parallel_invoke` and `task_group` — Explicit Tasks
 
-For a fixed number of independent tasks (fork-join):
+**`parallel_invoke` — fixed, known set of tasks:**
+
+```
+parallel_invoke(f1, f2, f3, f4)
+
+  caller ──┬──► T0: f1() ──┐
+           ├──► T1: f2() ──┤
+           ├──► T2: f3() ──┤ implicit join — caller blocks until all done
+           └──► T3: f4() ──┘
+```
 
 ```cpp
 #include "oneapi/tbb/parallel_invoke.h"
 
-// Run two functions in parallel, wait for both
+// Two tasks — classic divide-and-conquer split
 parallel_invoke(
     []{ sort_left_half(); },
     []{ sort_right_half(); }
 );
-// Both are done here
+// Both guaranteed done here
 
-// Up to N functions
+// Any fixed number of callables
 parallel_invoke(
-    []{ task_a(); },
-    []{ task_b(); },
-    []{ task_c(); },
-    []{ task_d(); }
+    []{ build_index(); },
+    []{ load_weights(); },
+    []{ warm_up_cache(); }
 );
 ```
 
-For a dynamic number of tasks:
+Use `parallel_invoke` when the number of parallel operations is known at compile time and they are independent.
+
+**`task_group` — dynamic, runtime-determined tasks:**
+
+```
+task_group tg;
+tg.run(f1);   tg.run(f2);   tg.run(f3);   // enqueue at runtime
+...           // tasks may themselves call tg.run() — recursive OK
+tg.wait();    // caller blocks until all tasks (and their children) complete
+```
 
 ```cpp
 #include "oneapi/tbb/task_group.h"
 
+// Dynamic number of tasks — count not known until runtime
 task_group tg;
-
-for (auto& item : work_units) {
+for (auto& item : work_units)
     tg.run([&item]{ process(item); });
-}
+tg.wait();
 
-tg.wait();  // blocks until all tasks complete
-
-// task_group::run() is thread-safe — tasks can add more tasks
+// Recursive — tasks spawning more tasks
 task_group tg2;
 tg2.run([&]{
-    tg2.run([&]{ subtask_a(); });  // recursive is fine
+    tg2.run([&]{ subtask_a(); });
     tg2.run([&]{ subtask_b(); });
 });
 tg2.wait();
 ```
+
+**`parallel_invoke` vs `task_group`:**
+
+| | `parallel_invoke` | `task_group` |
+|--|-------------------|-------------|
+| Number of tasks | Fixed at compile time | Dynamic, determined at runtime |
+| Recursive tasks | No | Yes — tasks can call `tg.run()` |
+| Syntax | One call, all lambdas inline | `run()` / `wait()` separate |
+| Overhead | Slightly lower | Slightly higher (queue management) |
+| Use case | Merge sort split, dual data load | Tree traversal, work queue, graph |
+
+**When to use which:**
+- Know the exact tasks upfront? → `parallel_invoke`
+- Tasks discovered at runtime or spawn subtasks? → `task_group`
+- Recursive tree/graph traversal? → `task_group` (or oneTBB flow graph for DAGs)
 
 ---
 
