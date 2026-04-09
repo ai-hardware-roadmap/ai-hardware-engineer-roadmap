@@ -1439,6 +1439,241 @@ __m256 vres = _mm256_fmadd_ps(va, v_scale, vb);
 
 ---
 
+### ARM NEON Intrinsics (Jetson, Apple Silicon, Mobile)
+
+ARM NEON is the 128-bit SIMD extension for ARM processors — it's what runs on NVIDIA Jetson (Cortex-A78AE), Apple Silicon (M-series), Qualcomm Snapdragon, AWS Graviton, and every modern phone. If you deploy AI at the edge, NEON is how you vectorize CPU-side preprocessing.
+
+#### NEON vs x86 SIMD
+
+| | x86 SSE | x86 AVX2 | ARM NEON | ARM SVE/SVE2 |
+|---|---------|----------|----------|--------------|
+| Width | 128-bit | 256-bit | **128-bit** | 128–2048-bit (scalable) |
+| FP32 lanes | 4 | 8 | **4** | 4–64 |
+| Registers | 16 (XMM) | 16 (YMM) | **32 (V0–V31)** | 32 (Z0–Z31) |
+| FMA | SSE: No, FMA3: Yes | Yes | **Yes (vfmaq)** | Yes |
+| Header | `<immintrin.h>` | `<immintrin.h>` | **`<arm_neon.h>`** | `<arm_sve.h>` |
+| Compiler | gcc/clang `-msse4.2` | `-mavx2` | **`-march=armv8-a`** | `-march=armv8.2-a+sve` |
+
+NEON has **32 registers** (vs 16 on x86 AVX2) — more registers means the compiler can keep more values live without spilling. This partly compensates for the narrower 128-bit width.
+
+#### NEON Data Types
+
+```cpp
+#include <arm_neon.h>
+
+// Type naming: <base><bits>x<lanes>_t
+float32x4_t    // 4× FP32 in a 128-bit register
+float16x8_t    // 8× FP16 in a 128-bit register
+int32x4_t      // 4× INT32
+int8x16_t      // 16× INT8
+uint8x16_t     // 16× UINT8
+
+// "×2" variants — register pairs (used for interleaved load/store)
+float32x4x2_t  // pair of float32x4_t (8 floats across 2 registers)
+```
+
+#### NEON Intrinsics — Top 15 Most Used
+
+| Intrinsic | Operation | x86 equivalent |
+|-----------|-----------|----------------|
+| `vld1q_f32(ptr)` | Load 4 floats | `_mm_loadu_ps` |
+| `vst1q_f32(ptr, v)` | Store 4 floats | `_mm_storeu_ps` |
+| `vaddq_f32(a, b)` | a + b (4-wide) | `_mm_add_ps` |
+| `vsubq_f32(a, b)` | a − b | `_mm_sub_ps` |
+| `vmulq_f32(a, b)` | a × b | `_mm_mul_ps` |
+| `vfmaq_f32(acc, a, b)` | **acc + a×b (FMA)** | `_mm_fmadd_ps` |
+| `vmaxq_f32(a, b)` | max(a, b) | `_mm_max_ps` |
+| `vminq_f32(a, b)` | min(a, b) | `_mm_min_ps` |
+| `vdupq_n_f32(s)` | Broadcast scalar to all 4 lanes | `_mm_set1_ps` |
+| `vmovq_n_f32(0)` | Zero vector | `_mm_setzero_ps` |
+| `vcvtq_f32_s32(v)` | INT32→FP32 convert | `_mm_cvtepi32_ps` |
+| `vcvtq_s32_f32(v)` | FP32→INT32 convert | `_mm_cvtps_epi32` |
+| `vaddvq_f32(v)` | **Horizontal sum (all 4 lanes)** | No single instruction! |
+| `vmaxvq_f32(v)` | **Horizontal max** | No single instruction! |
+| `vld2q_f32(ptr)` | **Interleaved load** (AoS→SoA) | No equivalent |
+
+> **NEON advantage:** `vaddvq_f32` does a horizontal sum in a single instruction. On x86, horizontal reduction requires 3–4 shuffle+add steps. NEON also has `vld2q`/`vld3q`/`vld4q` for automatic AoS→SoA deinterleaving on load — extremely useful for RGB/RGBA image processing.
+
+#### Example 1: Vector Addition (NEON)
+
+```cpp
+#include <arm_neon.h>
+
+void add_vectors_neon(const float* a, const float* b, float* c, int n) {
+    int i = 0;
+    for (; i + 4 <= n; i += 4) {
+        float32x4_t va = vld1q_f32(&a[i]);
+        float32x4_t vb = vld1q_f32(&b[i]);
+        float32x4_t vc = vaddq_f32(va, vb);
+        vst1q_f32(&c[i], vc);
+    }
+    // Scalar remainder
+    for (; i < n; i++) c[i] = a[i] + b[i];
+}
+```
+
+```bash
+# Compile on Jetson / ARM64
+g++ -O2 -march=armv8.2-a+fp16 -o vecadd vecadd.cpp
+```
+
+#### Example 2: Dot Product with FMA
+
+```cpp
+float dot_neon(const float* a, const float* b, int n) {
+    float32x4_t acc = vmovq_n_f32(0.0f);
+    int i = 0;
+    for (; i + 4 <= n; i += 4) {
+        float32x4_t va = vld1q_f32(&a[i]);
+        float32x4_t vb = vld1q_f32(&b[i]);
+        acc = vfmaq_f32(acc, va, vb);    // acc += va * vb (fused multiply-add)
+    }
+    float result = vaddvq_f32(acc);       // horizontal sum — single instruction!
+    // Scalar remainder
+    for (; i < n; i++) result += a[i] * b[i];
+    return result;
+}
+```
+
+Compare to x86: the `vaddvq_f32` at the end replaces the 4-instruction horizontal sum shuffle dance (`hadd → hadd → extract`).
+
+#### Example 3: ReLU Activation (INT8, 16-wide)
+
+INT8 quantized inference is critical on Jetson — NEON processes 16 INT8 elements per instruction:
+
+```cpp
+void relu_int8_neon(const int8_t* input, int8_t* output, int n) {
+    int8x16_t zero = vmovq_n_s8(0);
+    int i = 0;
+    for (; i + 16 <= n; i += 16) {
+        int8x16_t v = vld1q_s8(&input[i]);
+        int8x16_t result = vmaxq_s8(v, zero);   // max(v, 0) = ReLU, 16 elements
+        vst1q_s8(&output[i], result);
+    }
+    for (; i < n; i++) output[i] = input[i] > 0 ? input[i] : 0;
+}
+```
+
+16 ReLU operations per instruction — this is why quantized INT8 inference on ARM is so fast.
+
+#### Example 4: RGB Deinterleave (AoS→SoA with vld3q)
+
+Image preprocessing on Jetson often starts with RGBRGBRGB... (AoS). NEON's `vld3q` deinterleaves automatically:
+
+```cpp
+void rgb_to_planar(const uint8_t* rgb, uint8_t* r, uint8_t* g, uint8_t* b, int npixels) {
+    int i = 0;
+    for (; i + 16 <= npixels; i += 16) {
+        // Load 48 bytes (16 pixels × 3 channels) and deinterleave
+        uint8x16x3_t pixel = vld3q_u8(&rgb[i * 3]);
+        //   pixel.val[0] = R R R R R R R R R R R R R R R R  (16 red values)
+        //   pixel.val[1] = G G G G G G G G G G G G G G G G  (16 green values)
+        //   pixel.val[2] = B B B B B B B B B B B B B B B B  (16 blue values)
+
+        vst1q_u8(&r[i], pixel.val[0]);
+        vst1q_u8(&g[i], pixel.val[1]);
+        vst1q_u8(&b[i], pixel.val[2]);
+    }
+    // Scalar remainder
+    for (; i < npixels; i++) {
+        r[i] = rgb[i*3]; g[i] = rgb[i*3+1]; b[i] = rgb[i*3+2];
+    }
+}
+```
+
+On x86, this deinterleave requires multiple shuffle/permute/blend instructions. NEON does it in one load.
+
+#### Example 5: FP16 Vector Addition (Jetson + Apple Silicon)
+
+ARMv8.2-a added native FP16 arithmetic — critical for AI inference:
+
+```cpp
+#include <arm_neon.h>
+
+void add_fp16(const __fp16* a, const __fp16* b, __fp16* c, int n) {
+    int i = 0;
+    for (; i + 8 <= n; i += 8) {
+        float16x8_t va = vld1q_f16(&a[i]);     // Load 8× FP16
+        float16x8_t vb = vld1q_f16(&b[i]);
+        float16x8_t vc = vaddq_f16(va, vb);    // 8-wide FP16 add
+        vst1q_f16(&c[i], vc);
+    }
+    for (; i < n; i++) c[i] = a[i] + b[i];
+}
+```
+
+```bash
+# Must enable FP16 arithmetic
+g++ -O2 -march=armv8.2-a+fp16 -o fp16add fp16add.cpp
+```
+
+8 FP16 values per 128-bit register — same throughput per register as 4× FP32, but half the memory traffic.
+
+#### Example 6: Tiled 4×4 Matrix Multiply (NEON)
+
+Small matrix multiply is common in on-device transformer attention:
+
+```cpp
+void matmul_4x4_neon(const float* A, const float* B, float* C) {
+    // Load all 4 columns of B
+    float32x4_t b0 = vld1q_f32(&B[0]);
+    float32x4_t b1 = vld1q_f32(&B[4]);
+    float32x4_t b2 = vld1q_f32(&B[8]);
+    float32x4_t b3 = vld1q_f32(&B[12]);
+
+    for (int i = 0; i < 4; i++) {
+        float32x4_t a_row = vld1q_f32(&A[i * 4]);
+
+        // C[i] = A[i,0]*B[0] + A[i,1]*B[1] + A[i,2]*B[2] + A[i,3]*B[3]
+        float32x4_t c = vmulq_laneq_f32(b0, a_row, 0);      // broadcast A[i,0] × B col 0
+        c = vfmaq_laneq_f32(c, b1, a_row, 1);                // += A[i,1] × B col 1
+        c = vfmaq_laneq_f32(c, b2, a_row, 2);                // += A[i,2] × B col 2
+        c = vfmaq_laneq_f32(c, b3, a_row, 3);                // += A[i,3] × B col 3
+
+        vst1q_f32(&C[i * 4], c);
+    }
+}
+```
+
+`vmulq_laneq_f32(vec, src, lane)` broadcasts one lane of `src` and multiplies with all 4 lanes of `vec`. `vfmaq_laneq_f32` does the same with fused multiply-add. This pattern is the building block of larger tiled GEMM on ARM.
+
+#### NEON vs AVX2 Summary
+
+| | AVX2 (x86) | NEON (ARM) |
+|---|------------|------------|
+| Register width | 256-bit | 128-bit |
+| FP32 lanes | 8 | 4 |
+| Registers | 16 | **32** |
+| Horizontal sum | 3–4 instructions | **1 instruction** (`vaddvq`) |
+| AoS deinterleave | Complex shuffles | **1 instruction** (`vld3q/vld4q`) |
+| FP16 native | No (convert to FP32) | **Yes** (ARMv8.2-a) |
+| Cross-lane gotchas | 128-bit lane boundary | None (true 128-bit) |
+| Typical platform | Server, workstation | **Jetson, phone, Apple Silicon, Graviton** |
+
+**When to use NEON vs let the compiler vectorize:** Same rule as x86 — try auto-vectorization first (`-O2 -march=armv8.2-a`). Use manual NEON intrinsics when the compiler fails (complex access patterns, interleaved data, FP16 arithmetic) or when you need guaranteed performance (real-time inference on Jetson).
+
+#### ARM SVE/SVE2 — The Future
+
+SVE (Scalable Vector Extension) is ARM's answer to the fixed-width problem. Instead of 128 bits, SVE registers are **variable width** (128–2048 bits, set per chip). Your code works on any width without recompiling:
+
+```cpp
+#include <arm_sve.h>
+
+void add_sve(const float* a, const float* b, float* c, int n) {
+    for (int i = 0; i < n; i += svcntw()) {           // svcntw() = FP32 lanes at runtime
+        svbool_t pred = svwhilelt_b32(i, n);           // predicate mask for bounds
+        svfloat32_t va = svld1(pred, &a[i]);
+        svfloat32_t vb = svld1(pred, &b[i]);
+        svst1(pred, &c[i], svadd_f32_m(pred, va, vb));
+    }
+}
+// Same binary runs on 128-bit (Neoverse N1) and 256-bit (Neoverse V2) and future 512-bit
+```
+
+SVE2 is available on Neoverse V2 (AWS Graviton4), Apple M4, and upcoming Jetson. NEON knowledge transfers directly — SVE is NEON with scalable width and predication.
+
+---
+
 ### Cross-Lane Limitations (The AVX2 Gotcha)
 
 Most AVX2 "256-bit" instructions actually execute as **two independent 128-bit halves**. This is the single most surprising architectural quirk in AVX2 and causes subtle bugs when you expect full cross-lane operations.
@@ -1817,6 +2052,11 @@ These are the issues that consume weeks of debugging in real HPC and ML systems.
 7. **AoS → SoA benchmark** — Implement vector dot product for an array of `Vec3` structs (AoS) and compare to the SoA layout version. Observe the speedup gap (expect 10–40× from layout alone).
 8. **Horizontal sum** — Implement a dot product that uses `_mm256_fmadd_ps` to accumulate 8 at a time, then uses the horizontal sum idiom to reduce to a scalar. Verify against scalar result.
 9. **Tiny MHA block** — Implement a batched multi-head attention forward pass for seq=8, head_dim=16, heads=4 using raw AVX2 intrinsics. Pre-transpose weight matrices. Benchmark against scalar version. Observe that the speedup is ~2–3×, not 8× — explain why (memory-bound).
+10. **NEON dot product** — Implement dot product on ARM using `vfmaq_f32` and `vaddvq_f32`. Benchmark on Jetson or Apple Silicon. Compare GFLOPS with the AVX2 version.
+11. **NEON RGB deinterleave** — Use `vld3q_u8` to convert RGBRGB... to planar R,G,B arrays. Benchmark against scalar loop. Measure on Jetson with a real camera frame (1920×1080).
+12. **NEON INT8 ReLU** — Implement `max(x, 0)` on 16-wide INT8 vectors. Process 1M elements. Measure throughput (GB/s) and compare to theoretical LPDDR5 bandwidth on Jetson.
+13. **NEON FP16 GEMM** — Implement a tiled 64×64 FP16 matrix multiply using `vfmaq_f16`. Compare throughput with FP32 version. Verify output correctness by upconverting to FP32.
+14. **NEON vs auto-vec** — Write the same 5 kernels (add, dot, relu, scale, reduce) both as manual NEON and as plain loops compiled with `-O2 -march=armv8.2-a`. Compare assembly output on Godbolt. Note where the compiler matches your intrinsics and where it doesn't.
 
 ---
 
@@ -1833,6 +2073,16 @@ These are the issues that consume weeks of debugging in real HPC and ML systems.
 | [hands-on-simd-programming](https://github.com/yuninxia/hands-on-simd-programming) | Progressive labs from basic intrinsics → image processing → full MHA block → quantized GPT decoder. Run `./runme.sh` to see benchmarks. |
 | [awesome-simd](https://github.com/awesome-simd/awesome-simd) | Curated index of real-world SIMD libraries, tools, blogs, and references |
 | [Agner Fog Optimization Guides](https://www.agner.org/optimize/) | Definitive reference on CPU micro-architecture, instruction latencies, calling conventions |
+
+### ARM / NEON
+
+| Resource | What it covers |
+|----------|---------------|
+| [ARM NEON Intrinsics Reference](https://developer.arm.com/architectures/instruction-sets/intrinsics/) | Official searchable intrinsics guide (like Intel's, but for ARM) |
+| [ARM Neon Programmer's Guide](https://developer.arm.com/documentation/den0018/latest) | Official tutorial: data types, operations, optimization |
+| [ncnn NEON optimization](https://github.com/Tencent/ncnn/wiki/how-ncnn-optimizes) | Real-world NEON optimization for neural network inference |
+| [Arm Performance Libraries](https://developer.arm.com/tools-and-software/server-and-hpc/downloads/arm-performance-libraries) | Optimized BLAS/LAPACK/FFT for ARM (like MKL for x86) |
+| [SIMDe](https://github.com/simd-everywhere/simde) | Emulates x86 intrinsics on ARM — run AVX code on Jetson |
 
 ### Reference and Tooling
 
