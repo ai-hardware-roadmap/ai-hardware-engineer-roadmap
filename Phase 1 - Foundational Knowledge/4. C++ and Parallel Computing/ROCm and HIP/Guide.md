@@ -362,7 +362,217 @@ omniperf analyze -p workloads/my_run
 
 ---
 
-## 6. Resources
+## 6. HIP Streams and Asynchronous Execution
+
+Just like CUDA streams, HIP streams let you overlap compute, memory transfers, and host work.
+
+```cpp
+hipStream_t s1, s2;
+hipStreamCreate(&s1);
+hipStreamCreate(&s2);
+
+// Overlap two independent kernels on different streams
+kernel_A<<<grid, block, 0, s1>>>(d_a);
+kernel_B<<<grid, block, 0, s2>>>(d_b);
+
+// Overlap H2D copy with compute
+hipMemcpyAsync(d_in, h_in, bytes, hipMemcpyHostToDevice, s1);
+kernel<<<grid, block, 0, s1>>>(d_in, d_out);
+hipMemcpyAsync(h_out, d_out, bytes, hipMemcpyDeviceToHost, s1);
+
+// Wait for both streams
+hipStreamSynchronize(s1);
+hipStreamSynchronize(s2);
+hipStreamDestroy(s1);
+hipStreamDestroy(s2);
+```
+
+**Events for timing:**
+
+```cpp
+hipEvent_t start, stop;
+hipEventCreate(&start);
+hipEventCreate(&stop);
+
+hipEventRecord(start, stream);
+kernel<<<grid, block, 0, stream>>>(args);
+hipEventRecord(stop, stream);
+hipEventSynchronize(stop);
+
+float ms;
+hipEventElapsedTime(&ms, start, stop);
+printf("Kernel: %.3f ms\n", ms);
+```
+
+**Pinned (page-locked) memory** — required for async transfers to overlap with compute:
+
+```cpp
+float *h_pinned;
+hipHostMalloc(&h_pinned, bytes, hipHostMallocDefault);  // pinned on host
+// hipMemcpyAsync now truly async (DMA engine, no CPU involvement)
+hipHostFree(h_pinned);
+```
+
+---
+
+## 7. Memory Management
+
+### 7.1 Explicit Allocation (Standard)
+
+```cpp
+float *d_ptr;
+hipMalloc(&d_ptr, bytes);                               // device memory
+hipMemcpy(d_ptr, h_ptr, bytes, hipMemcpyHostToDevice);  // explicit copy
+hipFree(d_ptr);
+```
+
+### 7.2 Managed Memory (HMM)
+
+AMD's Heterogeneous Memory Management (HMM) provides CUDA-like managed memory — the runtime migrates pages between host and device automatically:
+
+```cpp
+float *managed;
+hipMallocManaged(&managed, bytes);    // accessible from both host and device
+
+// Host code: just use it
+for (int i = 0; i < n; i++) managed[i] = i;
+
+// Device code: pages migrate on demand
+kernel<<<grid, block>>>(managed, n);
+hipDeviceSynchronize();
+
+// Host reads back: pages migrate back
+printf("%f\n", managed[0]);
+hipFree(managed);
+```
+
+**When to use managed memory:**
+- Prototyping (avoids manual copy bookkeeping)
+- Irregular access patterns where you can't predict which data the GPU needs
+- **NOT** for performance-critical paths — explicit async copies with pinned memory are always faster
+
+### 7.3 HIP Memory Comparison
+
+| Method | Performance | Ease of use | When to use |
+|--------|-----------|-------------|-------------|
+| `hipMalloc` + `hipMemcpy` | Best | Manual | Production kernels |
+| `hipMalloc` + `hipMemcpyAsync` + pinned | Best (overlapped) | Manual | Pipeline overlapping |
+| `hipMallocManaged` | Good (page faults) | Automatic | Prototyping, irregular access |
+| `hipHostMalloc` (coherent) | Moderate | Direct access | Small data, host+device shared |
+
+---
+
+## 8. Matrix Core Programming (rocWMMA)
+
+Matrix Cores are AMD's equivalent of NVIDIA Tensor Cores. The `rocWMMA` library provides a WMMA-style interface similar to NVIDIA's `nvcuda::wmma`.
+
+```cpp
+#include <rocwmma/rocwmma.hpp>
+
+using namespace rocwmma;
+
+// Matrix dimensions: 16×16 tiles, FP16 input, FP32 accumulate
+constexpr int M = 16, N = 16, K = 16;
+
+__global__ void gemm_wmma(half* A, half* B, float* C, int lda, int ldb, int ldc) {
+    // Declare matrix fragments (live in registers)
+    fragment<matrix_a, M, N, K, half, row_major> frag_a;
+    fragment<matrix_b, M, N, K, half, col_major> frag_b;
+    fragment<accumulator, M, N, K, float>         frag_c;
+
+    // Initialize accumulator to zero
+    fill_fragment(frag_c, 0.0f);
+
+    // Load tiles from global memory into fragments
+    load_matrix_sync(frag_a, A + blockRow * M * lda, lda);
+    load_matrix_sync(frag_b, B + blockCol * N, ldb);
+
+    // Matrix multiply-accumulate: C += A × B
+    mma_sync(frag_c, frag_a, frag_b, frag_c);
+
+    // Store result back to global memory
+    store_matrix_sync(C + blockRow * M * ldc + blockCol * N, frag_c, ldc, mem_row_major);
+}
+```
+
+**Supported data types on MI300X:**
+
+| Input type | Accumulate type | Tile size | Throughput |
+|-----------|----------------|-----------|------------|
+| FP16      | FP32           | 16×16×16  | Full rate  |
+| BF16      | FP32           | 16×16×16  | Full rate  |
+| FP8 (E4M3/E5M2) | FP32    | 16×16×32  | 2× FP16   |
+| INT8      | INT32          | 16×16×32  | 2× FP16   |
+| FP64      | FP64           | 16×16×4   | Full rate  |
+
+For production-quality GEMM kernels, use **Composable Kernel (CK)** — AMD's equivalent of CUTLASS. CK provides template-based, auto-tuned matrix multiply and attention kernels that target Matrix Cores.
+
+---
+
+## 9. Multi-GPU Programming with RCCL
+
+RCCL (ROCm Communication Collectives Library) is AMD's equivalent of NCCL. It implements ring-allreduce, all-gather, broadcast, and other collectives across multiple AMD GPUs connected via Infinity Fabric or PCIe.
+
+```cpp
+#include <rccl/rccl.h>
+
+// Initialize one communicator per GPU
+int nGPUs = 8;
+ncclComm_t comms[8];
+int devs[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+ncclCommInitAll(comms, nGPUs, devs);
+
+// All-reduce: sum gradients across all GPUs
+for (int i = 0; i < nGPUs; i++) {
+    hipSetDevice(i);
+    ncclAllReduce(send_buf[i], recv_buf[i], count,
+                  ncclFloat, ncclSum, comms[i], streams[i]);
+}
+
+// Synchronize all streams
+for (int i = 0; i < nGPUs; i++) {
+    hipSetDevice(i);
+    hipStreamSynchronize(streams[i]);
+}
+```
+
+**Multi-GPU topology on MI300X systems:**
+
+```
+8× MI300X in OAM form factor:
+
+  GPU 0 ←─ Infinity Fabric ──→ GPU 1
+    │                             │
+    │         ┌───────────┐       │
+    ├─────────┤ xGMI/IF  ├───────┤
+    │         │  switch   │       │
+    ├─────────┤  fabric   ├───────┤
+    │         └───────────┘       │
+  GPU 2 ←─────────────────────→ GPU 3
+    ⋮                             ⋮
+  GPU 6 ←─────────────────────→ GPU 7
+
+Each link: ~400 GB/s bidirectional (comparable to NVLink 4.0)
+All-to-all bandwidth: sufficient for 8-way tensor parallelism
+```
+
+**PyTorch on AMD — it just works:**
+
+```bash
+# Install ROCm-enabled PyTorch
+pip install torch --index-url https://download.pytorch.org/whl/rocm6.3
+
+# Same code, different backend
+import torch
+x = torch.randn(4096, 4096, device='cuda')  # 'cuda' maps to HIP on AMD
+y = torch.mm(x, x)  # calls rocBLAS under the hood
+```
+
+PyTorch uses HIP as the backend — the `torch.cuda.*` API works identically on AMD GPUs. This is why HIP's CUDA-compatible API design was so important.
+
+---
+
+## 10. Resources
 
 | Resource | URL |
 |----------|-----|
@@ -375,13 +585,16 @@ omniperf analyze -p workloads/my_run
 
 ---
 
-## 7. Projects
+## 11. Projects
 
 1. **HIPIFY your CUDA kernel** — Take your CUDA vector add and matmul from Sub-Track 3. Convert to HIP using `hipify-clang`. Build with `hipcc`. Run on AMD GPU (or ROCm Docker on NVIDIA). Verify identical output.
 2. **Wavefront vs warp** — Write a parallel reduction kernel. Run on both AMD (wavefront=64) and NVIDIA (warp=32). Measure how the wavefront width difference affects performance and code structure.
 3. **Profile with Omniperf** — Profile your HIP tiled matmul with `omniperf`. Generate a roofline plot. Compare with NVIDIA `ncu` roofline for the same kernel.
 4. **rocBLAS vs cuBLAS** — Call rocBLAS `rocblas_sgemm` for matrix multiply. Compare performance and API with cuBLAS `cublasSgemm` for the same matrix sizes.
 5. **HIPIFY a real project** — Pick a small open-source CUDA project (e.g., a convolution kernel or sorting algorithm). Run the full HIPIFY workflow: convert → build → fix errors → validate → profile.
+6. **Stream overlap** — Implement a pipeline that overlaps H2D copy, kernel execution, and D2H copy across 3 streams. Measure throughput improvement over synchronous execution.
+7. **rocWMMA GEMM** — Write a tiled FP16 matrix multiply using rocWMMA fragments. Compare throughput against rocBLAS `rocblas_hgemm` for M=N=K=4096.
+8. **Multi-GPU allreduce** — Use RCCL to sum a 1 GB float array across 2+ GPUs. Measure bandwidth and compare to theoretical Infinity Fabric limit.
 
 ---
 
