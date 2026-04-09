@@ -38,14 +38,19 @@ A CUDA application always starts on the CPU (host). The host copies data to the 
 *Source: NVIDIA CUDA Programming Guide*
 
 ```
-Host (CPU)                        Device (GPU)
-──────────                        ────────────
-Serial code runs here             Parallel kernels run here
-Allocates device memory           Executes kernel with thousands of threads
-Copies data H→D                   Each thread runs the same function
-Launches kernel ──────────────►   Grid of blocks of threads
-Waits for completion              Results written to device memory
-Copies results D→H ◄──────────   Done
+time
+ │  Host (CPU)                          Device (GPU)
+ │  ──────────                          ────────────
+ │  Serial code runs here
+ │  Allocates device memory
+ │  Copies data H→D
+ │  Launches kernel ──────────────────────────────────────►
+ │  (async — returns immediately)                          Kernel starts
+ │  Can do CPU work here                                   Grid of blocks
+ │                                                         Threads execute
+ │  cudaDeviceSynchronize() ─── blocks ──────────────────────────────────┐
+ │                                                         Results in mem │
+ ▼  Copies results D→H ◄──────────────────────────────────────────────────┘
 ```
 
 **Key rules:**
