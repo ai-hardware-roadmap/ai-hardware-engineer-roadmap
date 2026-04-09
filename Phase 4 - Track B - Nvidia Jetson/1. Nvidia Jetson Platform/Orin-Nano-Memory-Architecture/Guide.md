@@ -29,6 +29,162 @@
 
 ---
 
+## 0. Jetson vs Discrete GPU — The Fundamental Difference
+
+Before any detail: understand **why Jetson memory is fundamentally different** from a desktop/server GPU. This changes everything about how you write CUDA code for edge AI.
+
+### Discrete GPU (Desktop/Server: RTX 4090, H100)
+
+```
+┌─────────────────────────────────┐    PCIe Gen5 x16     ┌──────────────────────────┐
+│          CPU (Host)             │◄════════════════════►│       GPU (Device)        │
+│                                 │     64 GB/s          │                          │
+│  DDR5 System RAM                │                      │  HBM3 / GDDR6X           │
+│  64–512 GB                      │                      │  24–192 GB               │
+│  ~100 GB/s                      │                      │  ~1–3.35 TB/s            │
+│                                 │                      │                          │
+│  CPU can NOT access GPU memory  │                      │  GPU can NOT access RAM   │
+│  directly                       │                      │  directly                │
+└─────────────────────────────────┘                      └──────────────────────────┘
+
+Problem: every byte must cross PCIe (64 GB/s bottleneck)
+  cudaMemcpy(d_ptr, h_ptr, size, cudaMemcpyHostToDevice);  ← mandatory, slow
+  cudaMemcpy(h_ptr, d_ptr, size, cudaMemcpyDeviceToHost);  ← mandatory, slow
+```
+
+### Jetson (Orin Nano / Orin NX / AGX Orin)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           T234 SoC                                      │
+│                                                                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐  │
+│  │  CPU     │  │  GPU     │  │  DLA     │  │  ISP/VI  │  │ NVENC  │  │
+│  │  A78AE   │  │  Ampere  │  │          │  │  Camera  │  │ NVDEC  │  │
+│  │  6 cores │  │  1024    │  │  10 TOPS │  │          │  │        │  │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘  └───┬────┘  │
+│       │             │             │             │             │        │
+│       └─────────────┴─────────────┴─────────────┴─────────────┘        │
+│                              │                                          │
+│                    ┌─────────┴─────────┐                                │
+│                    │ Memory Controller │                                │
+│                    │  (MC) + SMMU      │                                │
+│                    └─────────┬─────────┘                                │
+└──────────────────────────────┼──────────────────────────────────────────┘
+                               │
+                    ┌──────────┴──────────┐
+                    │  8 GB LPDDR5        │
+                    │  ~51 GB/s bandwidth │
+                    │  SHARED by ALL      │
+                    └─────────────────────┘
+
+No PCIe. No copy. CPU, GPU, DLA, camera ALL access the SAME physical memory.
+```
+
+### What This Means for Your Code
+
+| Operation | Discrete GPU | Jetson |
+|-----------|-------------|--------|
+| **Allocate GPU memory** | `cudaMalloc` (separate VRAM) | `cudaMalloc` (same DRAM pool) |
+| **Copy host→device** | `cudaMemcpy` **(mandatory, slow)** | **Often unnecessary** — use zero-copy |
+| **Copy device→host** | `cudaMemcpy` **(mandatory, slow)** | **Often unnecessary** — use zero-copy |
+| **Managed memory** | Page migration over PCIe (very slow) | Page migration in same DRAM (fast) |
+| **Camera → GPU** | Camera→RAM→PCIe→VRAM (3 copies) | Camera→DRAM→GPU reads same DRAM (**0 copies**) |
+| **Memory capacity** | CPU: 512 GB + GPU: 192 GB (separate) | **8 GB total** (shared by everything) |
+| **Bandwidth** | CPU: 100 GB/s, GPU: 3,350 GB/s (separate) | **~51 GB/s shared** (everyone competes) |
+
+### The Three Programming Implications
+
+**1. Zero-copy is your biggest advantage.**
+On discrete GPU, `cudaMemcpy` often dominates execution time. On Jetson, skip it:
+
+```cpp
+// ── Discrete GPU: mandatory copy ──────────────────────────────
+float *h_data = (float*)malloc(size);          // host RAM
+float *d_data;
+cudaMalloc(&d_data, size);                     // GPU VRAM
+cudaMemcpy(d_data, h_data, size, cudaMemcpyHostToDevice);  // PCIe copy (slow!)
+kernel<<<grid, block>>>(d_data);
+cudaMemcpy(h_data, d_data, size, cudaMemcpyDeviceToHost);  // PCIe copy (slow!)
+
+// ── Jetson: zero-copy with pinned host memory ─────────────────
+float *shared;
+cudaMallocHost(&shared, size);                 // pinned, in same DRAM
+// Both CPU and GPU access 'shared' directly — NO copy needed
+fill_data_on_cpu(shared);                      // CPU writes
+kernel<<<grid, block>>>(shared);               // GPU reads same memory
+cudaDeviceSynchronize();
+read_results_on_cpu(shared);                   // CPU reads GPU output
+```
+
+**2. Memory bandwidth is your bottleneck — not compute.**
+Discrete H100: 3,350 GB/s HBM → 989 TFLOPS. Jetson Orin Nano: 51 GB/s LPDDR5 → 40 TOPS. The compute-to-bandwidth ratio is dramatically different:
+
+```
+H100 ridge point:   989 TFLOPS / 3,350 GB/s ≈ 295 FLOP/byte
+Orin Nano ridge point: 40 TOPS / 51 GB/s ≈ 0.78 OP/byte
+
+→ Almost EVERYTHING is memory-bound on Jetson.
+→ Tiling, data reuse, and INT8 quantization are not optional — they're mandatory.
+```
+
+**3. Memory capacity is precious — 8 GB total.**
+On a server, a 7B LLM model takes 14 GB (FP16) in GPU VRAM, leaving 500+ GB system RAM for everything else. On Jetson 8 GB, that same model won't even fit. You must:
+- Quantize aggressively (INT8 → 7 GB, INT4 → 3.5 GB)
+- Account for OS + camera + CUDA runtime (~2–3 GB)
+- Choose models that fit the budget (YOLOv8-N at 3.2M params, not YOLOv8-X at 68M)
+
+### Memory Budget Comparison
+
+```
+Discrete Server (H100 80GB + 512 GB DDR5):
+  GPU VRAM: 80 GB  │ System RAM: 512 GB
+  ─────────────────│────────────────────
+  Model: 40 GB     │ OS: 4 GB
+  Activations: 20 GB│ App: 2 GB
+  Scratch: 15 GB   │ Datasets: 200 GB
+  Free: 5 GB       │ Free: 306 GB
+
+Jetson Orin Nano 8GB (shared):
+  ┌──────────────────────────────────┐
+  │ 8 GB LPDDR5 (total)             │
+  │                                  │
+  │ Firmware carveouts:   ~0.4 GB   │
+  │ OS + kernel:          ~0.5 GB   │
+  │ CMA (camera buffers): ~0.75 GB  │
+  │ CUDA runtime:         ~0.3 GB   │
+  │ Model (INT8 YOLO):    ~0.1 GB   │
+  │ Inference scratch:     ~0.2 GB   │
+  │ ─────────────────────────────── │
+  │ Free for userspace:    ~5.75 GB │
+  └──────────────────────────────────┘
+```
+
+### CUDA Memory API Decision Tree for Jetson
+
+```
+What are you allocating?
+│
+├── Camera frames / video decoder output
+│   └── Use DMA-BUF / NvBufSurface (zero-copy from hardware engine)
+│
+├── Model weights (loaded once, read by GPU)
+│   └── cudaMalloc (pinned device memory, fastest GPU access)
+│
+├── Pre/post-processing buffers (CPU writes, GPU reads, or vice versa)
+│   └── cudaMallocHost (pinned, both CPU and GPU access, no copy)
+│
+├── Prototyping / irregular access pattern
+│   └── cudaMallocManaged (automatic migration, but unpredictable latency)
+│
+└── Temporary GPU-only scratch
+    └── cudaMalloc (standard, fastest)
+```
+
+> **Key mindset shift:** On discrete GPU, you think "minimize PCIe transfers." On Jetson, you think "minimize total DRAM bandwidth consumption" — because CPU, GPU, camera, and display all share the same ~51 GB/s pipe.
+
+---
+
 ## 1. T234 SoC Memory Architecture Overview
 
 The Tegra234 SoC in Orin Nano 8GB uses a **unified memory architecture** — CPU, GPU, DLA, and all accelerators share a single 8GB LPDDR5 pool. There is no discrete GPU memory.
