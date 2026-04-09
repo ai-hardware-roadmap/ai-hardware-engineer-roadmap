@@ -8,6 +8,7 @@
 
 ## Table of Contents
 
+0. [Jetson vs Discrete GPU — The Fundamental Difference](#0-jetson-vs-discrete-gpu--the-fundamental-difference)
 1. [T234 SoC Memory Architecture Overview](#1-t234-soc-memory-architecture-overview)
 2. [Cache Hierarchy](#2-cache-hierarchy)
 3. [Boot-Time Memory Initialization](#3-boot-time-memory-initialization)
@@ -20,12 +21,16 @@
 10. [Camera → ISP → CUDA Zero-Copy Path](#10-camera--isp--cuda-zero-copy-path)
 11. [GPU Memory Management](#11-gpu-memory-management)
 12. [DLA Memory Path](#12-dla-memory-path)
-13. [OP-TEE and Secure Memory](#13-op-tee-and-secure-memory)
-14. [Multi-Camera Memory Planning](#14-multi-camera-memory-planning)
-15. [Performance Monitoring and Profiling](#15-performance-monitoring-and-profiling)
-16. [Production Debug Checklist](#16-production-debug-checklist)
-17. [Common Production Issues and Solutions](#17-common-production-issues-and-solutions)
-18. [References](#18-references)
+13. [TensorRT Engine Memory Management](#13-tensorrt-engine-memory-management)
+14. [Multi-Model and Multi-Engine Inference](#14-multi-model-and-multi-engine-inference)
+15. [LLM Memory Patterns on Unified Architecture](#15-llm-memory-patterns-on-unified-architecture)
+16. [Inference Memory Optimization Strategies](#16-inference-memory-optimization-strategies)
+17. [OP-TEE and Secure Memory](#17-op-tee-and-secure-memory)
+18. [Multi-Camera Memory Planning](#18-multi-camera-memory-planning)
+19. [Performance Monitoring and Profiling](#19-performance-monitoring-and-profiling)
+20. [Production Debug Checklist](#20-production-debug-checklist)
+21. [Common Production Issues and Solutions](#21-common-production-issues-and-solutions)
+22. [References](#22-references)
 
 ---
 
@@ -768,7 +773,409 @@ Running layers on DLA frees GPU for other tasks and reduces power consumption �
 
 ---
 
-## 13. OP-TEE and Secure Memory
+## 13. TensorRT Engine Memory Management
+
+TensorRT is the primary inference engine on Jetson. Understanding how it allocates and uses memory is essential for fitting models into the 8 GB budget.
+
+### How TensorRT Uses Memory
+
+```
+TensorRT engine lifecycle:
+
+1. Build phase (on workstation or Jetson):
+   Model (ONNX/UFF) → TensorRT optimizer → serialized engine (.engine file)
+
+2. Load phase (on Jetson at startup):
+   Read .engine from disk → deserialize → allocate:
+     ├── Weight memory:     model weights (pinned, read-only after load)
+     ├── Activation memory: intermediate layer outputs (reused across layers)
+     ├── Workspace memory:  scratch space for conv/GEMM algorithms
+     └── I/O buffers:       input and output tensors
+
+3. Inference phase (per frame):
+   Write input → execute() → read output
+   No new allocations — everything is preallocated
+```
+
+### Memory Breakdown for a Typical Model
+
+```
+YOLOv8-S (INT8, 640×640 input, batch=1):
+
+  Component              Memory      Notes
+  ──────────────────────────────────────────────────
+  Weights (INT8)          ~5 MB      Quantized from ~22 MB FP32
+  Activation buffers     ~12 MB      Largest intermediate tensor
+  Workspace              ~30 MB      Convolution algorithm scratch
+  I/O buffers             ~2 MB      Input image + output detections
+  ──────────────────────────────────────────────────
+  Total                  ~49 MB      Fits easily
+
+ResNet-50 (FP16, 224×224, batch=1):
+
+  Weights (FP16)         ~48 MB
+  Activation buffers     ~25 MB
+  Workspace              ~50 MB
+  I/O buffers             ~1 MB
+  ──────────────────────────────────────────────────
+  Total                 ~124 MB
+
+Llama 3.2 3B (INT4-AWQ, via TensorRT-LLM):
+
+  Weights (INT4)       ~1500 MB      3B × 0.5 bytes
+  KV cache (INT8)       ~110 MB      26 layers × 8 heads × 128 dim × 2048 ctx
+  Activation buffers    ~200 MB      Attention + FFN intermediates
+  Workspace             ~100 MB
+  ──────────────────────────────────────────────────
+  Total               ~1910 MB      Fits, but consumes ~2 GB of 5.5 GB available
+```
+
+### Workspace Memory — The Hidden Consumer
+
+TensorRT tries multiple convolution algorithms during build and picks the fastest. Faster algorithms often need more workspace. You control the trade-off:
+
+```cpp
+config->setMemoryPoolLimit(MemoryPoolType::kWORKSPACE, 64 << 20);  // 64 MB max
+// Larger workspace = TensorRT can try faster algorithms
+// Smaller workspace = less memory used, possibly slower algorithms
+```
+
+**Jetson recommendation:** Set workspace to 64–128 MB. Going higher rarely helps on Orin Nano's smaller SMs.
+
+### Activation Memory Reuse
+
+TensorRT reuses activation buffers across layers. Layer 5's output buffer can be reused for Layer 10's output if Layer 5's data is no longer needed.
+
+```
+Layer 1 → [Buffer A] → Layer 2 → [Buffer B] → Layer 3 → [Buffer A] (reused!)
+                                                           ↑
+                                              Layer 1's data no longer needed
+```
+
+This is why TensorRT uses far less memory than naive PyTorch inference (which keeps all intermediate tensors alive until backward pass).
+
+### Inspecting TensorRT Memory Usage
+
+```python
+import tensorrt as trt
+
+# After building engine
+engine = runtime.deserialize_cuda_engine(engine_data)
+
+# Check memory
+print(f"Device memory: {engine.device_memory_size / 1024**2:.1f} MB")
+print(f"Layers: {engine.num_layers}")
+print(f"Max batch: {engine.max_batch_size}")
+
+# Per-layer memory (advanced)
+inspector = engine.create_engine_inspector()
+print(inspector.get_engine_information(trt.LayerInformationFormat.JSON))
+```
+
+---
+
+## 14. Multi-Model and Multi-Engine Inference
+
+Production Jetson systems often run multiple AI models simultaneously: object detection + classification + tracking, or detection + segmentation + LLM.
+
+### Memory Planning for Multi-Model Pipelines
+
+```
+Example: Autonomous robot vision pipeline
+
+  Camera → YOLOv8-N (detect) → ResNet-18 (classify) → DeepSORT (track)
+                  ↓                     ↓                    ↓
+              ~30 MB               ~25 MB                ~15 MB
+              GPU + DLA            GPU                   CPU
+
+Pipeline memory budget:
+  Model weights:      30 + 25 + 15         = ~70 MB
+  Activation buffers: 12 + 8 + 5           = ~25 MB
+  Workspace:          30 + 20 + 0          = ~50 MB
+  Camera buffers:     4 frames × 3 MB      = ~12 MB
+  ───────────────────────────────────────────────────
+  Total AI pipeline:                        ~157 MB
+
+  + OS/kernel/CMA/CUDA overhead:           ~2500 MB
+  ───────────────────────────────────────────────────
+  Remaining from 8 GB:                     ~5343 MB  ← plenty of room
+```
+
+### GPU + DLA Split — Maximum Throughput
+
+Running detection on DLA while classification runs on GPU achieves overlap — both engines execute in parallel on the same DRAM:
+
+```
+Timeline (overlapped):
+
+  Frame N:   │ DLA: YOLO detect ──────│
+             │ GPU: (idle)            │ GPU: ResNet classify ──│
+             │                         │                        │
+  Frame N+1: │                    DLA: YOLO detect ──────│     │
+             │                         │ GPU: ResNet classify ──│
+
+DLA and GPU read different parts of DRAM simultaneously.
+Memory controller arbitrates bandwidth between them.
+```
+
+**Key constraint:** DLA and GPU compete for the same ~51 GB/s DRAM bandwidth. If both are bandwidth-saturated, total throughput drops. Monitor with `tegrastats`:
+
+```bash
+tegrastats --interval 500
+# Look for: GR3D_FREQ (GPU utilization), EMC_FREQ (memory clock)
+# If EMC is at 100%, you're bandwidth-limited — reduce model size or batch
+```
+
+### Multi-Engine TensorRT Contexts
+
+```cpp
+// Load two engines
+auto det_engine = runtime->deserializeCudaEngine(det_data, det_size);
+auto cls_engine = runtime->deserializeCudaEngine(cls_data, cls_size);
+
+// Create execution contexts (share GPU, separate state)
+auto det_ctx = det_engine->createExecutionContext();
+auto cls_ctx = cls_engine->createExecutionContext();
+
+// Run on separate CUDA streams for overlap
+cudaStream_t det_stream, cls_stream;
+cudaStreamCreate(&det_stream);
+cudaStreamCreate(&cls_stream);
+
+det_ctx->enqueueV2(det_bindings, det_stream, nullptr);
+cls_ctx->enqueueV2(cls_bindings, cls_stream, nullptr);
+
+// Both execute concurrently if resources allow
+cudaStreamSynchronize(det_stream);
+cudaStreamSynchronize(cls_stream);
+```
+
+---
+
+## 15. LLM Memory Patterns on Unified Architecture
+
+LLMs have unique memory patterns that interact with Jetson's unified architecture differently than vision models.
+
+### Autoregressive Decode — The Memory Access Pattern
+
+```
+Prefill phase (process entire prompt):
+  All tokens processed in parallel
+  Memory pattern: large GEMM (batch = prompt_length × hidden_dim)
+  Bandwidth usage: HIGH (loading full weight matrices)
+  Compute utilization: GOOD (large batch amortizes weight loading)
+
+Decode phase (generate one token at a time):
+  One token generated per step
+  Memory pattern: skinny GEMV (batch=1 × hidden_dim)
+  Bandwidth usage: HIGH (still load full weight matrices for 1 token!)
+  Compute utilization: TERRIBLE (~1% — almost all time spent loading weights)
+
+This is why LLM decode is severely memory-bandwidth-bound on Jetson.
+```
+
+### Weight Loading Dominates on Jetson
+
+```
+Llama 3.2 3B INT4 decode — one token:
+
+  Weight loading: 1.5 GB read from DRAM
+  Computation:    3B × 2 FLOPs = 6 GFLOP
+  Time to load:   1.5 GB / 51 GB/s = ~29 ms
+  Time to compute: 6 GFLOP / 40 TOPS = ~0.15 ms
+  ─────────────────────────────────────────────
+  Decode time:    ~30 ms per token → ~33 tokens/sec
+
+  Compute utilization: 0.15 / 29 = 0.5%
+
+  → 99.5% of time is waiting for DRAM to deliver weights
+  → Faster compute (more CUDA cores) would not help
+  → Only bandwidth helps: smaller weights (INT4 > INT8 > FP16)
+```
+
+**This is fundamentally different from server GPUs:**
+
+```
+H100 with same model:
+  Time to load:   1.5 GB / 3350 GB/s = ~0.45 ms
+  → 33 tokens/sec → 2,200 tokens/sec (bandwidth difference)
+
+Jetson Orin Nano is ~65× slower for LLM decode purely due to bandwidth.
+This is not fixable by software — it's physics.
+```
+
+### KV Cache in Unified Memory — The Advantage
+
+On discrete GPUs, KV cache lives in GPU VRAM. If you need CPU post-processing of attention patterns (for debugging, interpretability), you must copy back over PCIe.
+
+On Jetson, KV cache is in the same DRAM — CPU can inspect it directly:
+
+```cpp
+// Allocate KV cache with cudaMallocHost (zero-copy on Jetson)
+float* kv_cache;
+cudaMallocHost(&kv_cache, kv_cache_size);
+
+// GPU writes during attention
+attention_kernel<<<grid, block>>>(q, k, v, kv_cache, ...);
+cudaDeviceSynchronize();
+
+// CPU can read KV cache directly — no copy!
+for (int l = 0; l < num_layers; l++) {
+    printf("Layer %d, head 0, token 0: K=%.3f\n",
+           l, kv_cache[l * kv_stride]);
+}
+```
+
+### LLM Memory Growth During Conversation
+
+```
+KV cache grows with each generated token:
+
+Token 1:    Model (1.5 GB) + KV (0.05 MB) = 1500 MB
+Token 100:  Model (1.5 GB) + KV (5.3 MB)  = 1505 MB
+Token 1000: Model (1.5 GB) + KV (53 MB)   = 1553 MB
+Token 2048: Model (1.5 GB) + KV (109 MB)  = 1609 MB
+Token 4096: Model (1.5 GB) + KV (218 MB)  = 1718 MB
+Token 8192: Model (1.5 GB) + KV (436 MB)  = 1936 MB  ← danger zone on 8 GB
+
+Monitor continuously:
+  tegrastats --interval 1000 | grep -oP 'RAM \d+/\d+MB'
+```
+
+Set a hard context limit in production to prevent OOM:
+
+```bash
+# llama.cpp: cap context to prevent OOM
+./llama-cli -m model.gguf -c 2048 --memory-f32 0  # INT8 KV cache
+```
+
+---
+
+## 16. Inference Memory Optimization Strategies
+
+### 16.1 Quantization Impact on Memory
+
+Quantization is the single most effective memory optimization — every bit saved is bandwidth saved:
+
+```
+Same model, different precisions — memory and tokens/sec:
+
+  Precision   Size     DRAM reads/token   Est. tokens/sec
+  ─────────────────────────────────────────────────────────
+  FP32        12 GB    12 GB/token        won't fit
+  FP16         6 GB    6 GB/token         ~8 tok/s
+  INT8         3 GB    3 GB/token         ~17 tok/s
+  INT4         1.5 GB  1.5 GB/token       ~33 tok/s
+  INT3         1.1 GB  1.1 GB/token       ~45 tok/s (quality degrades)
+
+  Tokens/sec scales almost linearly with quantization level
+  because decode is 99%+ memory-bandwidth-bound.
+```
+
+### 16.2 Weight Layout for Bandwidth
+
+How weights are stored in memory affects bandwidth utilization:
+
+```
+Row-major (default):
+  Weight matrix [4096 × 4096] stored as 4096 rows of 4096 elements
+  For batch=1 GEMV: read entire matrix row by row
+  Memory access: sequential → good for DRAM burst reads ✓
+
+Blocked layout (TensorRT-LLM):
+  Matrix split into tiles that fit in SM shared memory
+  Each tile loaded once, used for multiple output elements
+  Better reuse → fewer total DRAM reads ✓
+
+Interleaved quantized layout:
+  INT4 weights packed 2 per byte, interleaved for Tensor Core alignment
+  Dequantize in registers during compute → no extra bandwidth ✓
+```
+
+TensorRT and llama.cpp handle layout optimization automatically. If writing custom kernels, layout matters enormously.
+
+### 16.3 Shared Memory Tiling for AI Kernels
+
+The same tiling principle from CUDA Section 3 applies to all AI kernels on Jetson:
+
+```
+Attention kernel without tiling:
+  For each output element:
+    Load Q row from DRAM (4096 × 2 bytes = 8 KB)
+    Load K column from DRAM (context × 2 bytes)
+    Compute dot product
+    Load V column from DRAM
+    Accumulate
+  Total DRAM: O(seq² × d) — quadratic in sequence length
+
+Attention kernel with tiling (FlashAttention):
+  Load Q tile (64 × 128) into shared memory
+  For each K/V tile:
+    Load K tile into shared memory
+    Load V tile into shared memory
+    Compute partial attention in shared memory
+    Accumulate in registers
+  Write final output to DRAM
+  Total DRAM: O(seq × d) — linear! (tiles reused within shared memory)
+```
+
+On Orin Nano with 48 KB shared memory per SM, typical tile sizes:
+- Attention: Q tile 32×64, K/V tile 32×64
+- GEMM: 64×64 tile (INT4 weights + FP16 activations)
+- Convolution: 16×16 output tile
+
+### 16.4 DMA-BUF for AI Vision Pipelines
+
+The zero-copy path from camera to AI model is the most efficient pipeline on Jetson:
+
+```
+Optimal AI vision pipeline (zero-copy throughout):
+
+  Camera → ISP → [DMA-BUF] → GPU preprocess → [same buffer] → TensorRT
+                    ↑                                              ↓
+              CMA allocation                              Detection output
+              (done once at startup)                      in pinned memory
+                                                               ↓
+                                                          CPU post-process
+                                                          (direct access, no copy)
+
+  Total copies: ZERO
+  Total DRAM bandwidth: only what compute needs (no wasted copy traffic)
+```
+
+Compare with naive pipeline:
+```
+  Camera → ISP → memcpy → CPU buffer → cudaMemcpy → GPU buffer → TensorRT → cudaMemcpy → CPU
+  Total copies: 3 (each wastes ~3–12 MB × 30 FPS of bandwidth)
+  Wasted bandwidth: ~360 MB/s for 1080p — 0.7% of total 51 GB/s
+  For 4K: ~1.4 GB/s wasted — 2.7% of total bandwidth
+
+  On bandwidth-starved Jetson, every percent counts.
+```
+
+### 16.5 Multi-Model Memory Sharing Patterns
+
+When running multiple AI models, share buffers where possible:
+
+```cpp
+// Pre-allocate one buffer for the largest input
+size_t max_input_size = std::max({yolo_input_size, resnet_input_size, seg_input_size});
+void* shared_input;
+cudaMallocHost(&shared_input, max_input_size);  // pinned, zero-copy
+
+// Reuse for all models (they run sequentially)
+preprocess_for_yolo(camera_frame, shared_input);
+yolo_ctx->enqueueV2({shared_input, yolo_output}, stream, nullptr);
+
+preprocess_for_resnet(crop, shared_input);  // reuse same buffer
+resnet_ctx->enqueueV2({shared_input, resnet_output}, stream, nullptr);
+```
+
+**Memory saved:** instead of 3 separate input buffers (3 × 3 MB = 9 MB), use 1 × 3 MB = 3 MB. This adds up quickly with multiple models and multiple cameras.
+
+---
+
+## 17. OP-TEE and Secure Memory
 
 Orin Nano supports ARM TrustZone with two execution worlds:
 
@@ -814,7 +1221,7 @@ Applications use the OP-TEE client library (`libteec`) to call Trusted Applicati
 
 ---
 
-## 14. Multi-Camera Memory Planning
+## 18. Multi-Camera Memory Planning
 
 Production Jetson systems often run 2–6 cameras simultaneously. Memory planning is critical.
 
@@ -863,7 +1270,7 @@ For production systems:
 
 ---
 
-## 15. Performance Monitoring and Profiling
+## 19. Performance Monitoring and Profiling
 
 ### tegrastats
 
@@ -940,7 +1347,7 @@ cat /sys/kernel/debug/dma_buf/bufinfo
 
 ---
 
-## 16. Production Debug Checklist
+## 20. Production Debug Checklist
 
 When camera or inference randomly fails after hours of operation:
 
@@ -1001,7 +1408,7 @@ If temperature exceeds limits, the system throttles clocks. This can cause infer
 
 ---
 
-## 17. Common Production Issues and Solutions
+## 21. Common Production Issues and Solutions
 
 ### CMA Exhaustion
 
@@ -1064,7 +1471,7 @@ If temperature exceeds limits, the system throttles clocks. This can cause infer
 
 ---
 
-## 18. References
+## 22. References
 
 * [NVIDIA Jetson Linux Developer Guide](https://docs.nvidia.com/jetson/archives/r36.4/DeveloperGuide/) — official documentation covering boot, memory, drivers
 * [Jetson Orin Nano Datasheet](https://developer.nvidia.com/embedded/jetson-orin-nano) — hardware specifications
