@@ -441,7 +441,234 @@ zram compresses pages in memory — ~2:1 ratio for model weights. A 6 GB model o
 
 ---
 
-## 8. Complete Optimization Checklist
+## 8. Kernel-Level Optimization — Where the Real Gains Are
+
+Sections 1–7 cover model-level and system-level optimizations. This section goes deeper — into the **GPU kernels themselves**. This is where cloud platforms like RightNow Forge and RunInfra achieve their 3–7× speedups over baseline inference.
+
+### 8.1 The GPU Utilization Problem
+
+Most AI inference wastes 80%+ of available GPU cycles:
+
+```
+Typical unoptimized LLM inference on GPU:
+
+SM·00░·····█░░░░·····█░░░░·····█░     █ = compute
+SM·01····██░░░·····██░░░·····██░░     ░ = memory I/O (waiting for DRAM)
+SM·02···█░░░░·····█░░░░·····█░░░░     · = idle (nothing scheduled)
+SM·03·██░░░·····██░░░·····██░░░··
+  ~16% SM utilization
+
+After kernel optimization:
+
+SM·00██·█████░·█████░████████████     Same hardware, 5× more useful work
+SM·01░░████████████████·██████·██
+SM·02██████████··█████░██████░███
+SM·03███·█████░░████████████████·
+  ~88% SM utilization
+```
+
+**Why this happens:** Default PyTorch/ONNX kernels are generic — they work on any GPU but optimize for none. Each operation (attention, norm, quantized GEMM) launches a separate kernel, reads from DRAM, computes, writes back. The GPU spends most of its time waiting for memory.
+
+**On Jetson this is even worse:** 51 GB/s shared bandwidth means the GPU is starved for data nearly all the time. Kernel optimization directly determines tokens/sec.
+
+### 8.2 The Three Levels of Kernel Optimization
+
+```
+Level 1: Operator Fusion (easiest, biggest win)
+  Combine multiple operations into one kernel → fewer DRAM round-trips
+  Example: RMSNorm + residual add + SwiGLU → one kernel, one read, one write
+
+Level 2: Hardware-Specific Tuning (moderate difficulty)
+  Tune tile sizes, thread block dimensions, shared memory usage for YOUR specific GPU
+  Example: Orin Nano Ampere SM has different optimal tile size than H100 Hopper SM
+
+Level 3: Custom Kernel Generation (hardest, maximum performance)
+  Write or generate Triton/CUDA kernels specifically for your model + GPU + precision
+  Example: INT4 dequantize-fused-GEMM kernel for Ampere with 128-thread blocks
+```
+
+### 8.3 Profiling — Find the Bottleneck First
+
+**Never optimize blind.** Profile to find which kernels consume the most time:
+
+```bash
+# On Jetson: profile with Nsight Systems
+nsys profile --trace=cuda,nvtx -o llm_profile ./llama-cli -m model.gguf -ngl 99 -p "test"
+
+# Analyze the trace
+nsys stats llm_profile.nsys-rep
+
+# Example output (typical LLM breakdown):
+# Kernel                          Time%    Time       Calls
+# ─────────────────────────────────────────────────────────
+# attention_fwd                   41.2%    18.4ms     26      ← #1 bottleneck
+# quantized_gemm_w4a16           22.8%    10.2ms     78
+# rmsnorm_kernel                  14.1%     6.3ms     52
+# silu_mul_kernel                  8.3%     3.7ms     26
+# rotary_embedding                 5.1%     2.3ms     52
+# others                           8.5%     3.8ms     ...
+```
+
+**On Jetson, attention dominates even more** than on server GPUs because the memory-bandwidth cost of loading Q, K, V from DRAM is proportionally higher.
+
+### 8.4 Triton Kernels — Writing Custom Optimized Ops
+
+Triton is NVIDIA's Python-based GPU kernel language. It's much easier than raw CUDA and generates near-optimal code.
+
+**Example: Fused RMSNorm + Residual Add (common LLM bottleneck):**
+
+```python
+import triton
+import triton.language as tl
+
+@triton.jit
+def fused_rmsnorm_residual_kernel(
+    X_ptr, Residual_ptr, Weight_ptr, Out_ptr,
+    N: tl.constexpr, eps: tl.constexpr,
+    BLOCK_SIZE: tl.constexpr
+):
+    """RMSNorm(X + Residual) * Weight — one kernel, one DRAM read, one write."""
+    row = tl.program_id(0)
+    offsets = tl.arange(0, BLOCK_SIZE)
+    mask = offsets < N
+
+    # Load X and Residual (one DRAM read each)
+    x = tl.load(X_ptr + row * N + offsets, mask=mask, other=0.0)
+    r = tl.load(Residual_ptr + row * N + offsets, mask=mask, other=0.0)
+
+    # Fused: add residual + compute RMS norm + scale by weight
+    h = x + r                                          # residual add
+    mean_sq = tl.sum(h * h, axis=0) / N               # variance
+    rrms = 1.0 / tl.sqrt(mean_sq + eps)               # reciprocal RMS
+    w = tl.load(Weight_ptr + offsets, mask=mask, other=1.0)
+    out = h * rrms * w                                 # normalize + scale
+
+    # One DRAM write
+    tl.store(Out_ptr + row * N + offsets, out, mask=mask)
+```
+
+**Without fusion:** 3 separate kernels (residual add, RMSNorm, weight multiply) = 6 DRAM accesses.
+**With fusion:** 1 kernel = 2 DRAM accesses. **3× less memory traffic.**
+
+### 8.5 Autokernel — Automated Kernel Generation
+
+[RightNow Autokernel](https://github.com/RightNow-AI/autokernel) automates the process of generating optimized Triton/CUDA kernels for specific GPU hardware:
+
+```bash
+# Install autokernel
+pip install autokernel
+
+# Generate optimized kernels for your model + GPU
+autokernel optimize \
+    --model "Llama-3.2-3B" \
+    --gpu "orin-nano" \
+    --precision "int4" \
+    --output ./optimized_kernels/
+```
+
+**What autokernel does:**
+1. **Profiles** your model to find the slowest kernels (attention, GEMM, norm)
+2. **Generates** Triton kernel variants with different tile sizes, thread configurations
+3. **Benchmarks** all variants on your specific GPU
+4. **Selects** the fastest configuration
+5. **Verifies** numerical correctness against reference implementation
+
+**The key insight:** optimal kernel parameters differ dramatically between GPUs:
+
+| Parameter | H100 (Hopper) | A100 (Ampere) | Orin Nano (Ampere) |
+|-----------|--------------|---------------|-------------------|
+| Best GEMM tile | 256×128 | 128×128 | **64×64** (smaller SMs) |
+| Thread block | 256 threads | 256 threads | **128 threads** (fewer warps) |
+| Shared mem usage | 164 KB | 164 KB | **48 KB** (less per SM) |
+| Optimal batch | 64+ | 32+ | **1–4** (memory limited) |
+
+A kernel tuned for H100 can be **2–3× slower** on Orin Nano than a kernel tuned for Orin Nano specifically.
+
+### 8.6 RightNow Forge — Enterprise Kernel Optimization
+
+[RightNow Forge](https://www.rightnowai.co/forge) is the enterprise platform that automates the full kernel optimization pipeline:
+
+```
+Input:  model = "Llama-3.2-3B"
+        gpu = "Jetson Orin Nano"
+        baseline = "llama.cpp default"
+
+Forge pipeline:
+  1. Profile all kernels on target GPU
+  2. Identify bottlenecks:
+     ▲ attention       41% of total → generate FlashAttention variant for Ampere
+     ▲ quantized GEMM  23% of total → generate INT4 dequant-fused GEMM
+     ▲ rmsnorm         14% of total → generate fused RMSNorm+residual
+  3. Compile optimized Triton kernels for Orin Nano SM
+  4. Verify correctness (bit-accurate vs reference)
+  5. Output: drop-in replacement kernels
+
+Result:
+  TTFT (Time to First Token): 320ms → 42ms (7.6× faster)
+  Throughput: 15 tok/s → 45 tok/s (3× faster)
+  SM utilization: 16% → 72%
+```
+
+### 8.7 Manual Kernel Optimization Checklist
+
+If you're writing your own optimized kernels (Phase 5F territory), here's the priority order for Jetson:
+
+```
+Priority 1: Reduce DRAM traffic (Jetson's #1 bottleneck)
+  □ Fuse consecutive elementwise ops (norm + add + activation)
+  □ Fuse dequantize into GEMM (don't write dequantized weights to DRAM)
+  □ Use FlashAttention (fuse Q×K + softmax + ×V into one kernel)
+  □ Compute in registers/shared memory, write final result once
+
+Priority 2: Maximize Tensor Core utilization
+  □ Use WMMA/MMA instructions for matrix multiply (not scalar CUDA cores)
+  □ Pad matrices to multiples of 16 for Tensor Core alignment
+  □ Keep data in FP16/INT8 format that Tensor Cores consume directly
+
+Priority 3: Tune for Orin Nano's specific SM
+  □ Smaller tile sizes (64×64 vs 128×128 on server GPUs)
+  □ Fewer threads per block (128 vs 256 — fewer warps available)
+  □ Account for 48 KB shared memory limit per SM
+  □ Fewer SMs (16 on Orin Nano vs 132 on H100) — fewer blocks in flight
+
+Priority 4: Minimize kernel launch overhead
+  □ Fuse small kernels into larger ones
+  □ Use CUDA graphs to batch kernel launches
+  □ Pre-allocate all buffers (no cudaMalloc during inference)
+```
+
+### 8.8 CUDA Graphs — Eliminate Launch Overhead
+
+Each CUDA kernel launch has ~5–10 µs overhead. An LLM forward pass with 100+ kernel launches wastes ~1 ms just on launch overhead. CUDA graphs capture the entire sequence and replay it in one call:
+
+```cpp
+// Capture the inference graph once
+cudaGraph_t graph;
+cudaStreamBeginCapture(stream, cudaStreamCaptureModeGlobal);
+
+// All kernel launches are recorded, not executed
+attention_kernel<<<grid, block, 0, stream>>>(q, k, v, out);
+rmsnorm_kernel<<<grid, block, 0, stream>>>(out, norm_out);
+ffn_kernel<<<grid, block, 0, stream>>>(norm_out, ffn_out);
+// ... all layers ...
+
+cudaStreamEndCapture(stream, &graph);
+cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
+
+// Replay the entire forward pass with ONE launch
+for (int token = 0; token < max_tokens; token++) {
+    update_input_pointers(token);  // update KV cache pointers
+    cudaGraphLaunch(instance, stream);
+    cudaStreamSynchronize(stream);
+}
+// Launch overhead: ~5µs total instead of ~1ms
+```
+
+TensorRT-LLM uses CUDA graphs internally. llama.cpp has experimental CUDA graph support.
+
+---
+
+## 9. Complete Optimization Checklist
 
 ```
 Before deployment — run through this checklist:
@@ -466,6 +693,13 @@ Before deployment — run through this checklist:
   □ Or TensorRT-LLM engine compiled for target batch/context
   □ FlashAttention enabled
 
+□ Kernel Optimization
+  □ Profile with nsys to find top 3 bottleneck kernels
+  □ Fused ops enabled (RMSNorm+residual, SwiGLU, rotary)
+  □ CUDA graphs enabled for decode loop (reduce launch overhead)
+  □ Tile sizes appropriate for Orin Nano SM (64×64, not 256×128)
+  □ Consider autokernel/Forge for automated kernel tuning
+
 □ System Configuration
   □ nvpmodel set to appropriate power mode
   □ jetson_clocks to lock frequencies
@@ -481,7 +715,7 @@ Before deployment — run through this checklist:
 
 ---
 
-## 9. Benchmark Reference
+## 10. Benchmark Reference
 
 Expected performance on Orin Nano 8 GB (15W mode, Q4_K_M, llama.cpp):
 
@@ -497,7 +731,7 @@ Expected performance on Orin Nano 8 GB (15W mode, Q4_K_M, llama.cpp):
 
 ---
 
-## 10. Projects
+## 11. Projects
 
 | # | Project | What you learn |
 |---|---------|---------------|
@@ -509,10 +743,14 @@ Expected performance on Orin Nano 8 GB (15W mode, Q4_K_M, llama.cpp):
 | 6 | **Power vs performance** | Benchmark same model at 7W, 15W, 25W (if Orin NX). Plot tokens/sec vs power. Calculate tokens/joule |
 | 7 | **Context length scaling** | Measure tokens/sec at context 512, 1024, 2048, 4096. Plot. Identify where KV cache pressure causes degradation |
 | 8 | **Production chatbot** | Build a REST API serving Llama 3.2 3B on Jetson using llama.cpp server mode. Measure P50/P95 latency under concurrent requests |
+| 9 | **Nsight profile analysis** | Profile llama.cpp inference with `nsys`. Identify top 3 kernels by time. Calculate SM utilization. Find memory-bound vs compute-bound kernels |
+| 10 | **Fused RMSNorm Triton kernel** | Write the fused RMSNorm+residual kernel from Section 8.4. Benchmark against unfused PyTorch version. Measure DRAM traffic reduction |
+| 11 | **Autokernel on Jetson** | Use autokernel to generate optimized kernels for a small model on Orin Nano. Compare throughput before/after. Document which kernels changed |
+| 12 | **CUDA graphs** | Wrap the decode loop of a simple transformer in a CUDA graph. Measure kernel launch overhead before/after. Target: <10 µs total launch per token |
 
 ---
 
-## 11. Resources
+## 12. Resources
 
 | Resource | What it covers |
 |----------|---------------|
@@ -525,6 +763,11 @@ Expected performance on Orin Nano 8 GB (15W mode, Q4_K_M, llama.cpp):
 | [Speculative Decoding paper](https://arxiv.org/abs/2302.01318) | Original speculative decoding paper |
 | [vLLM paper (PagedAttention)](https://arxiv.org/abs/2309.06180) | KV cache memory management (server reference) |
 | [Orin Nano Memory Architecture](../../1.%20Nvidia%20Jetson%20Platform/Orin-Nano-Memory-Architecture/Guide.md) | Unified memory deep dive (this roadmap) |
+| [RightNow Autokernel](https://github.com/RightNow-AI/autokernel) | Open-source automated GPU kernel optimization |
+| [RightNow Forge](https://www.rightnowai.co/forge) | Enterprise kernel optimization platform (profile → generate → verify) |
+| [Triton Language](https://triton-lang.org/) | Python-based GPU kernel language (easier than CUDA) |
+| [CUDA Graphs Programming Guide](https://docs.nvidia.com/cuda/cuda-c-programming-guide/#cuda-graphs) | Capture and replay kernel sequences for reduced launch overhead |
+| [RunInfra](https://www.runinfra.com/) | Cloud LLM optimization platform (reference for techniques) |
 
 ---
 
