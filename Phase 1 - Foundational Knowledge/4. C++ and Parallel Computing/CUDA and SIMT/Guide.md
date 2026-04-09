@@ -270,14 +270,34 @@ not its job: memory loads/stores (load-store units), scheduling (warp scheduler)
 
 FMA (`fused multiply-add`) is the dominant operation in AI workloads — it performs `a×b+c` in one instruction with a single rounding step, which is both faster and more numerically accurate than separate mul + add.
 
-Threads run as a warp of 32. The 128 FP32 cores process all 32 threads of a warp in parallel (128 ÷ 32 = 4 warps' worth of FP32 ops can be in-flight simultaneously across the cores):
+Threads run in warps of 32. One warp issues one instruction and all 32 threads execute it in parallel across 32 CUDA cores. The SM has 128 cores total, which aligns with the 4 schedulers:
 
 ```
-instruction: C[i] = A[i] * B[i] + D[i]   (FMA for all 32 threads)
+4 schedulers × 1 warp × 32 threads = 128 threads issuing FP32 per cycle
+                                   = 128 CUDA cores fully occupied at peak
+
+instruction: C[i] = A[i] * B[i] + D[i]   (FMA, warp of 32 threads)
                  │
     ┌────────────┼─────────────┐
-    T0→core 0   T1→core 1  ...  T31→core 31   ← all execute same cycle
+    T0→core 0   T1→core 1  ...  T31→core 31   ← one warp, 32 cores, same cycle
 ```
+
+**Important — resident warps vs active warps:**
+
+```
+Resident warps (H100):  up to 64 per SM  (2048 threads ÷ 32)
+                             ↑
+          all held in registers, ready to schedule at any time
+
+Active warps per cycle:  4  (one per scheduler)
+                             ↑
+          the 4 currently issuing instructions this clock cycle
+
+CUDA cores are NOT statically assigned to warps.
+Any warp can use any cores — the scheduler dynamically routes each cycle.
+```
+
+Think of it as a flow, not a fixed assignment: the 64 resident warps are a pool the scheduler draws from every cycle, routing whichever 4 are ready into the 128 cores. The large resident pool is what enables latency hiding — while 4 warps execute, 60 others are waiting on memory or dependencies, ready to replace any that stall.
 
 **Dual-issue — when two instructions issue in one cycle:**
 
