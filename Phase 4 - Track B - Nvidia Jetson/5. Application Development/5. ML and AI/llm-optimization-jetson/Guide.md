@@ -6,6 +6,184 @@
 
 ---
 
+## Pre-Flight: System Check Before Starting
+
+Before any LLM work, verify your Jetson's software stack. **JetPack version determines which CUDA, TensorRT, and cuDNN versions you have** — and which LLM tools are compatible.
+
+### Quick System Audit (copy-paste this)
+
+```bash
+#!/bin/bash
+echo "═══════════════════════════════════════════════"
+echo "  Jetson System Audit for LLM Deployment"
+echo "═══════════════════════════════════════════════"
+
+echo ""
+echo "▸ JetPack / L4T version:"
+cat /etc/nv_tegra_release 2>/dev/null || echo "  (not found — check dpkg)"
+dpkg-query --show nvidia-l4t-core 2>/dev/null | awk '{print "  L4T:", $2}'
+
+echo ""
+echo "▸ CUDA version:"
+nvcc --version 2>/dev/null | grep release || echo "  nvcc not found"
+
+echo ""
+echo "▸ TensorRT version:"
+dpkg -l | grep tensorrt | head -1 | awk '{print " ", $3}'
+
+echo ""
+echo "▸ cuDNN version:"
+dpkg -l | grep cudnn | head -1 | awk '{print " ", $3}'
+
+echo ""
+echo "▸ Python version:"
+python3 --version
+
+echo ""
+echo "▸ Total RAM:"
+free -m | awk '/Mem:/ {print "  " $2 " MB total"}'
+echo "▸ Free RAM:"
+free -m | awk '/Mem:/ {print "  " $7 " MB available"}'
+
+echo ""
+echo "▸ CMA allocation:"
+grep Cma /proc/meminfo | awk '{print "  " $0}'
+
+echo ""
+echo "▸ GPU info:"
+cat /sys/devices/17000000.ga10b/devfreq/17000000.ga10b/cur_freq 2>/dev/null \
+    | awk '{print "  GPU freq: " $1/1000000 " MHz"}'
+
+echo ""
+echo "▸ Power mode:"
+sudo nvpmodel -q 2>/dev/null | head -2 | sed 's/^/  /'
+
+echo ""
+echo "▸ Disk space:"
+df -h / | tail -1 | awk '{print "  Root: " $4 " free of " $2}'
+df -h /dev/nvme0n1p1 2>/dev/null | tail -1 | awk '{print "  NVMe: " $4 " free of " $2}'
+
+echo ""
+echo "▸ Thermal:"
+cat /sys/devices/virtual/thermal/thermal_zone*/temp 2>/dev/null | head -3 \
+    | awk '{print "  Zone: " $1/1000 "°C"}'
+
+echo "═══════════════════════════════════════════════"
+```
+
+**Example output (Orin Nano Super, JetPack 6.1):**
+
+```
+═══════════════════════════════════════════════
+  Jetson System Audit for LLM Deployment
+═══════════════════════════════════════════════
+
+▸ JetPack / L4T version:
+  # R36 (release), REVISION: 4.0
+  L4T: 36.4.0-20241031080721
+
+▸ CUDA version:
+  Cuda compilation tools, release 12.6, V12.6.77
+
+▸ TensorRT version:
+  10.3.0.30-1+cuda12.6
+
+▸ cuDNN version:
+  9.3.0.75-1+cuda12.6
+
+▸ Python version:
+  Python 3.10.12
+
+▸ Total RAM:
+  7633 MB total
+▸ Free RAM:
+  5814 MB available
+
+▸ CMA allocation:
+  CmaTotal:      786432 kB
+  CmaFree:       654321 kB
+
+▸ GPU info:
+  GPU freq: 624 MHz
+
+▸ Power mode:
+  NV Power Mode: MAXN
+  Power Mode: 25W
+
+▸ Disk space:
+  Root: 42G free of 100G
+
+▸ Thermal:
+  Zone: 38.5°C
+
+═══════════════════════════════════════════════
+```
+
+### JetPack → CUDA → TensorRT Compatibility Matrix
+
+This matrix determines which LLM tools work on your Jetson:
+
+| JetPack | L4T | CUDA | TensorRT | cuDNN | Python | llama.cpp | Ollama | TRT-LLM |
+|---------|-----|------|----------|-------|--------|-----------|--------|---------|
+| **6.1** | R36.4 | **12.6** | **10.3** | 9.3 | 3.10 | Yes | Yes | Yes (0.15+) |
+| **6.0** | R36.3 | **12.2** | **8.6** | 8.9 | 3.10 | Yes | Yes | Yes (0.9+) |
+| 5.1.3 | R35.5 | 11.4 | 8.5 | 8.6 | 3.8 | Yes | Yes | Limited |
+| 5.1.1 | R35.3 | 11.4 | 8.5 | 8.6 | 3.8 | Yes | Older | No |
+| 5.0.2 | R35.1 | 11.4 | 8.4 | 8.4 | 3.8 | Yes | No | No |
+
+> **Recommendation:** Use **JetPack 6.1** (R36.4) for LLM work. It has CUDA 12.6, TensorRT 10.3, and full TensorRT-LLM support. If you're on JetPack 5.x, consider upgrading — the CUDA 12.x ecosystem (llama.cpp, Ollama, PyTorch 2.x) is significantly better.
+
+### Pre-Flight Checklist
+
+```
+Before deploying any LLM on Jetson:
+
+□ JetPack version
+  □ JetPack 6.0+ for TensorRT-LLM
+  □ JetPack 5.1+ minimum for llama.cpp / Ollama
+
+□ Available memory
+  □ Run: free -m → note "available" column
+  □ Expect ~5.5–6 GB free on stock Orin Nano Super 8 GB
+  □ If < 5 GB: disable GUI (sudo systemctl set-default multi-user.target)
+  □ If < 4 GB: reduce CMA, disable unnecessary services
+
+□ Storage
+  □ NVMe recommended (models are 1–5 GB each)
+  □ SD card works but slower model loading
+  □ At least 20 GB free for models + build cache
+
+□ Power mode
+  □ sudo nvpmodel -m 0  (MAXN = 25W for Orin Nano Super)
+  □ sudo jetson_clocks   (lock to max frequency)
+
+□ Thermal
+  □ Active cooling attached (fan or heatsink with fan)
+  □ Ambient temperature < 35°C for sustained workloads
+  □ Monitor: tegrastats --interval 1000
+```
+
+### Disable GUI to Free ~500 MB RAM
+
+For headless LLM deployment, disable the desktop environment:
+
+```bash
+# Switch to text-only mode (saves ~500 MB RAM)
+sudo systemctl set-default multi-user.target
+sudo reboot
+
+# To re-enable GUI later:
+sudo systemctl set-default graphical.target
+sudo reboot
+
+# Verify RAM freed:
+free -m   # "available" should increase by ~500 MB
+```
+
+This single change can be the difference between a 3B model fitting comfortably and running out of memory.
+
+---
+
 ## 0. The Optimization Stack — Cloud vs Jetson
 
 Cloud platforms like RunInfra, Together AI, and Fireworks AI deploy LLMs using a layered optimization stack. Every technique has a Jetson equivalent — but the priorities are reversed because Jetson is severely memory-bandwidth-bound rather than compute-bound.
