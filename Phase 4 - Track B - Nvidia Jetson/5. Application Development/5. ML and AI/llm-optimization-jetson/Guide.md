@@ -133,32 +133,149 @@ Llama-3.2-3B-Instruct-Q4_K_M.gguf
 
 ---
 
-## 2. Model Selection — Choose What Fits
+## 2. Model Selection — The Complete Landscape
 
 The most important "optimization" is choosing the right model. A well-quantized small model beats a poorly-fitting large model every time.
 
-### 2.1 Models That Fit on Orin Nano 8 GB
+### 2.1 Full Model Catalog (Q4_K_M Quantization, Orin Nano Super 8 GB)
 
-| Model | Params | INT4 size | Context | Tokens/sec (est.) | Use case |
-|-------|--------|-----------|---------|-------------------|----------|
-| **Llama 3.2 1B** | 1B | ~0.6 GB | 128K | ~30–40 | Lightweight chat, classification |
-| **Llama 3.2 3B** | 3B | ~1.5 GB | 128K | ~15–25 | General chat, summarization |
-| **Phi-3 Mini** | 3.8B | ~1.9 GB | 4K/128K | ~12–20 | Reasoning, code |
-| **Gemma 2 2B** | 2B | ~1.0 GB | 8K | ~20–30 | Multilingual, general |
-| **Qwen 2.5 3B** | 3B | ~1.5 GB | 32K | ~15–25 | Chinese + English |
-| **StableLM 2 1.6B** | 1.6B | ~0.8 GB | 4K | ~25–35 | Compact, fast |
-| **TinyLlama 1.1B** | 1.1B | ~0.6 GB | 2K | ~35–45 | Ultra-lightweight |
+All values at Q4_K_M — a 4-bit mixed-precision quantization that reduces memory by ~75% with minimal quality loss.
 
-### 2.2 Models That DON'T Fit (Without Extreme Tricks)
+**Tier 1 — Runs comfortably (< 3 GB, room for long context + KV cache)**
 
-| Model | Params | INT4 size | Why it doesn't fit |
-|-------|--------|-----------|-------------------|
-| Llama 3.1 8B | 8B | ~4.0 GB | Leaves <1 GB for KV cache + OS |
-| Mistral 7B | 7B | ~3.5 GB | Tight, possible with short context |
-| Qwen 2.5 7B | 7B | ~3.5 GB | Same — barely possible |
-| Llama 70B | 70B | ~35 GB | Impossible on any Jetson |
+| Model | Params | Q4_K_M size | Context | Gen. tok/s (est.) | Best for |
+|-------|--------|-------------|---------|-------------------|----------|
+| **TinyLlama 1.1B** | 1.1B | 0.6 GB | 2K | ~65 | Ultra-lightweight, draft model for speculative decoding |
+| **Llama 3.2 1B** | 1.3B | 0.7 GB | 128K | ~55 | Lightweight chat, classification, tool calling |
+| **StableLM 2 1.6B** | 1.6B | 0.9 GB | 4K | ~45 | Compact, fast edge assistant |
+| **Gemma 3 1B** | 1B | 0.6 GB | 32K | ~60 | Multilingual, Google ecosystem |
+| **Gemma 2 2B** | 2.6B | 1.5 GB | 8K | ~35 | Multilingual, general purpose |
+| **Qwen 3 1.7B** | 1.7B | 1.0 GB | 32K | ~50 | Chinese + English, thinking mode |
+| **SmolLM2 1.7B** | 1.7B | 1.0 GB | 8K | ~50 | Hugging Face, compact, well-trained |
+| **Llama 3.2 3B** | 3.2B | 1.8 GB | 128K | ~25 | General chat, summarization, tool use |
+| **Qwen 2.5 3B** | 3B | 1.7 GB | 32K | ~28 | Bilingual general purpose |
 
-> **7B models on 8 GB Jetson:** Technically possible with INT4 + 512-token context + minimal OS footprint, but impractical for production. Use Orin NX 16 GB or AGX Orin 64 GB for 7B+ models.
+**Tier 2 — Fits but tight (3–4.5 GB, shorter context recommended)**
+
+| Model | Params | Q4_K_M size | Context | Gen. tok/s (est.) | Best for |
+|-------|--------|-------------|---------|-------------------|----------|
+| **Phi-4 Mini** | 3.8B | 2.3 GB | 4K/128K | ~20 | Reasoning, math, code |
+| **Phi-3 Mini** | 3.8B | 2.2 GB | 4K/128K | ~20 | Reasoning, code |
+| **Qwen 3 4B** | 4B | 2.4 GB | 32K | ~18 | Thinking + non-thinking modes |
+| **Gemma 3 4B** | 4B | 2.5 GB | 128K | ~17 | Vision + language (multimodal) |
+| **Llama 3.3 8B** | 8B | 4.6 GB | 128K | ~10 | General purpose (needs short ctx) |
+| **Mistral 7B v0.3** | 7B | 4.1 GB | 32K | ~11 | Chat, function calling |
+| **Qwen 3 8B** | 8B | 4.9 GB | 32K | ~9 | Bilingual, thinking mode |
+
+**Tier 3 — Barely fits (4.5+ GB, heavily constrained)**
+
+| Model | Params | Q4_K_M size | Max ctx | Gen. tok/s (est.) | Notes |
+|-------|--------|-------------|---------|-------------------|-------|
+| **Llama 3.1 8B** | 8B | 4.7 GB | 512–1K | ~9 | Functional but cramped |
+| **Mistral Nemo 12B** | 12B | 7.0 GB | 256 | ~5 | Needs Q3_K or Q2_K to fit |
+| **Phi-4 14B** | 14B | 8.4 GB | — | Won't fit | Use Orin NX 16 GB |
+
+> **Rule of thumb:** Model Q4_K_M size + 2.5 GB (OS/CMA/CUDA) + KV cache must be < 8 GB. For Tier 2 models, cap context at 1–2K tokens. For Tier 3, consider Q3_K_M or Q2_K quantization.
+
+### 2.2 Models That Need Larger Jetson Hardware
+
+For reference — what runs on bigger Jetson modules:
+
+| Model | Params | Q4_K_M | Min Jetson module | Notes |
+|-------|--------|--------|-------------------|-------|
+| Phi-4 14B | 14B | 8.4 GB | **Orin NX 16 GB** | Good reasoning |
+| Qwen 2.5 Coder 14B | 14B | 8.6 GB | **Orin NX 16 GB** | Code generation |
+| Mistral Small 24B | 24B | 14 GB | **AGX Orin 32 GB** | Strong general purpose |
+| DeepSeek-R1 Distill 32B | 32B | 19 GB | **AGX Orin 32 GB** | Reasoning chains |
+| Llama 3.3 70B | 70B | 42 GB | **AGX Orin 64 GB** | Near-GPT-4 quality |
+| Qwen 3 235B (MoE) | 235B | ~60 GB | **Multi-GPU / cloud** | 22B active params |
+| DeepSeek V3 671B (MoE) | 671B | ~380 GB | **Multi-GPU cluster** | 37B active params |
+
+### 2.3 Latest Models Worth Watching (2025–2026)
+
+The edge LLM landscape moves fast. Models to evaluate as they release:
+
+| Model family | Why it matters for Jetson |
+|-------------|--------------------------|
+| **Qwen 3 (0.6B–235B)** | Thinking + non-thinking modes, great small variants (1.7B, 4B) |
+| **Gemma 3 (1B–27B)** | Multimodal (vision+text), good 1B and 4B for edge |
+| **Phi-4 Mini (3.8B)** | Microsoft's strong reasoning at small size |
+| **Llama 4 Scout/Maverick** | MoE architecture — active params may fit edge |
+| **SmolLM2 (135M–1.7B)** | Hugging Face's ultra-compact series |
+| **MiMo (series)** | Xiaomi's edge-optimized multilingual models |
+| **DeepSeek-R1 Distill (1.5B–70B)** | Distilled reasoning — 1.5B variant fits easily |
+| **Nemotron Nano (series)** | NVIDIA's own edge-optimized models |
+
+### 2.4 Choosing the Right Model — Decision Flowchart
+
+```
+What's your use case?
+│
+├── Simple classification / extraction / tool calling
+│   └── Llama 3.2 1B or Qwen 3 1.7B  (< 1 GB, ~50+ tok/s)
+│
+├── General chat / assistant
+│   └── Llama 3.2 3B or Gemma 2 2B  (1.5–1.8 GB, ~25–35 tok/s)
+│
+├── Reasoning / math / code
+│   └── Phi-4 Mini 3.8B or Qwen 3 4B  (2.3–2.5 GB, ~18–20 tok/s)
+│
+├── Multimodal (image + text)
+│   └── Gemma 3 4B  (2.5 GB, supports image input)
+│
+├── Bilingual (Chinese + English)
+│   └── Qwen 3 4B or Qwen 2.5 3B  (1.7–2.4 GB)
+│
+├── Code generation
+│   └── Phi-4 Mini or Qwen 2.5 Coder 3B  (if available at 3B)
+│
+├── Maximum quality (willing to accept slower speed)
+│   └── Llama 3.3 8B Q4_K_M with 1K context  (4.6 GB, ~10 tok/s)
+│
+└── Need long context (8K+ tokens)
+    └── Llama 3.2 3B (128K native) or Gemma 3 1B (32K)
+        Cap actual context to fit KV cache budget
+```
+
+### 2.5 Ollama on Jetson — Easiest Deployment
+
+[Ollama](https://ollama.com) runs natively on Jetson with CUDA support:
+
+```bash
+# Install Ollama on Jetson
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull and run a model (automatically selects Q4_K_M)
+ollama pull llama3.2:3b
+ollama run llama3.2:3b
+
+# Or for smaller/faster:
+ollama pull qwen3:1.7b
+ollama run qwen3:1.7b
+
+# Serve as API (compatible with OpenAI format)
+ollama serve &
+curl http://localhost:11434/v1/chat/completions \
+  -d '{"model": "llama3.2:3b", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+**Ollama advantages on Jetson:**
+- Automatic CUDA detection and GPU offloading
+- Built-in model management (pull, delete, list)
+- OpenAI-compatible API endpoint
+- Handles quantization automatically
+- One-command install, no Python dependencies
+
+```bash
+# Check GPU utilization while running
+tegrastats --interval 1000
+
+# List downloaded models and sizes
+ollama list
+
+# Remove a model to free space
+ollama rm llama3.2:3b
+```
 
 ---
 
