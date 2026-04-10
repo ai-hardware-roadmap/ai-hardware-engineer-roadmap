@@ -584,14 +584,66 @@ Warp size:                  32  (always)
 
 ### 4.3 Thread Block Clusters (Compute Capability 9.0+ / Hopper)
 
-Hopper adds a new level between grid and block: **clusters**.
+Hopper adds a new level between grid and block: **clusters** — a group of thread blocks that are guaranteed to run on neighbouring SMs simultaneously and can cooperate directly.
 
 ![Grid of clusters](../../../Assets/images/grid-of-clusters.png)
 
 *Thread Block Clusters: multiple blocks scheduled simultaneously on the same GPC, sharing distributed shared memory. Source: NVIDIA*
 
+**Before clusters** — blocks are independent:
+
+```
+Grid
+├── Block 0 → SM 5   (wherever the scheduler puts it)
+├── Block 1 → SM 71  (no control over placement)
+├── Block 2 → SM 12
+└── Block 3 → SM 99
+Communication between blocks: global memory only (~400 cycles) ❌
+Synchronization between blocks: impossible without kernel relaunch ❌
+```
+
+**With clusters** — blocks form coordinated teams:
+
+```
+Grid
+├── Cluster 0
+│   ├── Block 0 → SM 0  ← guaranteed on neighbouring SMs
+│   ├── Block 1 → SM 1  ← can share memory directly
+│   ├── Block 2 → SM 2  ← can synchronize
+│   └── Block 3 → SM 3
+├── Cluster 1
+│   ├── Block 4 → SM 4
+│   └── ...
+```
+
+**Three new capabilities:**
+
+| Capability | Before clusters | With clusters |
+|-----------|----------------|---------------|
+| Cross-block sync | Impossible | `cluster.sync()` barrier |
+| Cross-block memory | Global memory only (~400 cycles) | **Distributed Shared Memory** (~30 cycles) |
+| Co-scheduling | No guarantee | **Guaranteed on neighbouring SMs** |
+
+#### Launching with Clusters
+
 ```cpp
-// Launch with clusters (Hopper, compute capability 9.0)
+// Hopper cluster launch (compute capability 9.0+)
+__global__ void __cluster_dims__(2, 1, 1) my_kernel(float* data) {
+    // This kernel runs with 2 blocks per cluster
+    // Access cluster info:
+    namespace cg = cooperative_groups;
+    auto cluster = cg::this_cluster();
+
+    unsigned int cluster_rank = cluster.block_rank();  // 0 or 1 in this cluster
+    unsigned int cluster_size = cluster.num_blocks();   // 2
+
+    // ... do work ...
+
+    // Synchronize all blocks in the cluster
+    cluster.sync();  // ← impossible without clusters!
+}
+
+// Alternative: runtime configuration
 cudaLaunchConfig_t config = {};
 config.gridDim = grid;
 config.blockDim = block;
@@ -605,7 +657,323 @@ config.numAttrs = 1;
 cudaLaunchKernelEx(&config, my_kernel, args...);
 ```
 
-Threads in a cluster can access **distributed shared memory** — the shared memory of all blocks in the cluster — enabling much larger on-chip data exchange without going to global memory.
+#### Distributed Shared Memory (DSM)
+
+This is the most powerful cluster feature. Blocks in a cluster can read/write each other's shared memory directly — no global memory round-trip.
+
+```
+Without DSM:
+  Block 0 (SM 0):  shared mem = 228 KB   ← only Block 0 can access
+  Block 1 (SM 1):  shared mem = 228 KB   ← only Block 1 can access
+  Exchange data:   Block 0 → global mem → Block 1  (400+ cycles)
+
+With DSM (cluster of 4 blocks):
+  Block 0 (SM 0):  shared mem = 228 KB ─┐
+  Block 1 (SM 1):  shared mem = 228 KB  ├─ ALL blocks see ALL 912 KB
+  Block 2 (SM 2):  shared mem = 228 KB  │  via distributed shared memory
+  Block 3 (SM 3):  shared mem = 228 KB ─┘
+  Exchange data:   Block 0 → DSM → Block 1  (~30 cycles via SM-to-SM interconnect)
+```
+
+Effective shared memory per cluster: **4 × 228 KB = 912 KB** — enough to hold much larger tiles.
+
+```cpp
+__global__ void __cluster_dims__(4, 1, 1) dsm_kernel(float* data) {
+    namespace cg = cooperative_groups;
+    auto cluster = cg::this_cluster();
+
+    __shared__ float tile[TILE_SIZE];
+
+    // Each block loads its own tile
+    load_tile(tile, data, blockIdx.x);
+
+    cluster.sync();  // ensure all blocks have loaded
+
+    // NOW: Block 0 can read Block 1's shared memory!
+    unsigned int target_block = (cluster.block_rank() + 1) % cluster.num_blocks();
+    float* remote_tile = cluster.map_shared_rank(tile, target_block);
+
+    // remote_tile points to the OTHER block's shared memory
+    // Access it at ~30 cycles (vs ~400 for global memory)
+    float val = remote_tile[threadIdx.x];
+}
+```
+
+#### DSM Latency Comparison
+
+| Memory | Latency | Bandwidth | Scope |
+|--------|---------|-----------|-------|
+| Registers | 0 cycles | Unlimited | Per-thread |
+| Shared memory (local) | ~5 cycles | ~128 B/cycle/SM | Per-block |
+| **Distributed Shared Memory** | **~30 cycles** | **~32 B/cycle/SM** | **Per-cluster** |
+| L2 cache | ~100 cycles | ~12 TB/s total | All SMs |
+| Global (HBM) | ~400 cycles | ~3.35 TB/s | All SMs |
+
+DSM is ~13× faster than global memory. Not as fast as local shared memory, but fast enough to enable cross-block cooperation without the global memory penalty.
+
+#### Cluster Size Constraints
+
+| Cluster size | Total shared mem | Use case |
+|-------------|-----------------|----------|
+| 1 block (no cluster) | 228 KB | Default, backwards compatible |
+| 2 blocks | 456 KB | Small cross-block cooperation |
+| **4 blocks** | **912 KB** | **Sweet spot for attention tiling** |
+| 8 blocks | 1824 KB | Large tiles, high SM occupancy cost |
+| 16 blocks (max) | 3648 KB | Rare, requires many free SMs |
+
+**Trade-off:** larger clusters reserve more SMs → fewer clusters can run simultaneously → potential occupancy loss. Typically 2–8 blocks per cluster is optimal.
+
+### 4.4 Tiling — The Universal GPU Optimization
+
+Tiling is the single most important optimization pattern in GPU computing. Every high-performance AI kernel (matmul, attention, convolution) is fundamentally a tiled algorithm.
+
+**The core idea:** break a large problem into small tiles that fit in fast on-chip memory (shared memory / registers), compute on each tile, then move to the next.
+
+```
+Without tiling:                          With tiling:
+
+  For each output element:                For each tile:
+    Read inputs from global memory          Load tile into shared memory (1 read)
+    Compute                                 Compute on tile (many reuses)
+    Write output to global memory           Load next tile
+                                            Write final output (1 write)
+  Every element = separate DRAM access
+  = SLOW                                  Each value loaded once, used many times
+                                          = FAST
+```
+
+**Why it works — data reuse:**
+
+```
+Tiled matmul: C = A × B,  tile size T = 16
+
+Without tiling:
+  Each C[i,j] reads A[i, 0..N] and B[0..N, j] from DRAM
+  Total reads: 2 × N per output element
+  For N=4096: 8192 DRAM reads per element ❌
+
+With tiling:
+  Load 16×16 tile of A into shared memory → reused by 16 threads
+  Load 16×16 tile of B into shared memory → reused by 16 threads
+  Total DRAM reads per element: 2 × N/T = 2 × 4096/16 = 512
+  That's 16× fewer DRAM reads ✓
+
+  With T=32:  256× reduction
+  With T=64:  4096× reduction (limited by shared memory size)
+```
+
+**Thread block = tile:**
+
+```
+One thread block handles one output tile.
+Threads cooperatively load data into shared memory.
+Each thread computes one element of the output tile.
+
+Block (16×16 = 256 threads)
+  ├── Threads 0–15:   load row 0 of tile A, row 0 of tile B
+  ├── Threads 16–31:  load row 1...
+  ├── ...
+  └── __syncthreads() → all data in shared memory → compute
+```
+
+This is why block size, shared memory size, and tile size are so tightly coupled.
+
+**Tiling hierarchy on modern GPUs:**
+
+```
+Level 0: Register tiling
+  Each thread holds a small tile (e.g., 4×4) in registers
+  Fastest: 0 cycles, unlimited bandwidth
+  Used by: CUTLASS, cuBLAS inner loops
+
+Level 1: Shared memory tiling (per block)
+  Thread block loads tile into shared memory (48–228 KB)
+  ~5 cycles, shared among threads in block
+  Used by: standard tiled matmul, FlashAttention
+
+Level 2: Distributed shared memory tiling (per cluster, Hopper)
+  Cluster of blocks shares DSM (up to ~1 MB)
+  ~30 cycles, shared among blocks in cluster
+  Used by: Hopper-optimized FlashAttention, large attention tiles
+
+Level 3: L2 cache tiling
+  Multiple blocks' access patterns designed to hit L2 (40–50 MB)
+  ~100 cycles, shared across all SMs
+  Used by: persistent kernels, stream-K GEMM
+```
+
+### 4.5 Tiling for AI Workloads
+
+Every AI operation maps to a tiled computation. Understanding this mapping is the bridge from CUDA programming to AI accelerator design.
+
+#### Matrix Multiply (GEMM) — The Foundation
+
+```
+C[M×N] = A[M×K] × B[K×N]
+
+Tile: each block computes a TILE_M × TILE_N output tile
+
+  ┌────────────────────┐         ┌────────────────────┐
+  │ A                  │         │ B                  │
+  │ ┌──────┐           │         │ ┌──────┐           │
+  │ │Tile A│→ load to  │         │ │Tile B│→ load to  │
+  │ │TILE_M│  shared   │         │ │TILE_K│  shared   │
+  │ │×     │  memory   │         │ │×     │  memory   │
+  │ │TILE_K│           │         │ │TILE_N│           │
+  │ └──────┘           │         │ └──────┘           │
+  └────────────────────┘         └────────────────────┘
+
+  Output: C[TILE_M × TILE_N] = Σ_k (TileA × TileB)
+
+  Iterate over K dimension in chunks of TILE_K.
+  Each iteration: 1 load from DRAM, many multiplies from shared memory.
+```
+
+**This is exactly what cuBLAS and CUTLASS do** — with additional optimizations: double-buffering (load next tile while computing current), register tiling (each thread handles a 4×4 sub-tile), and Tensor Core wmma instructions.
+
+#### Attention — FlashAttention Tiling
+
+Attention is the bottleneck of every transformer. FlashAttention solves it with tiling:
+
+```
+Standard attention (materializes full matrix):
+
+  S = Q × K^T           (seq × seq matrix — huge!)
+  P = softmax(S)         (still seq × seq)
+  O = P × V              (output)
+
+  Memory: O(seq²) — for seq=4096, that's 64 MB in FP16
+  Problem: doesn't fit in shared memory, tons of DRAM traffic
+
+FlashAttention (tiled, never materializes full matrix):
+
+  For each Q tile (TILE_Q rows of Q):
+    For each K/V tile (TILE_KV columns of K, rows of V):
+      Load Q tile into shared memory
+      Load K tile into shared memory
+      S_tile = Q_tile × K_tile^T           (small: TILE_Q × TILE_KV)
+      P_tile = online_softmax(S_tile)       (computed incrementally!)
+      Load V tile into shared memory
+      O_tile += P_tile × V_tile            (accumulate in registers)
+    Write O_tile to global memory
+
+  Memory: O(seq) — only tiles in shared memory at any time
+  DRAM traffic: ~4× less than standard attention
+```
+
+```
+FlashAttention data flow through memory:
+
+  Global memory (HBM)
+        │
+        ├── Load Q tile ──────►  Shared memory
+        ├── Load K tile ──────►  Shared memory
+        │                            │
+        │                       Compute S = Q × K^T
+        │                       (stays in registers)
+        │                            │
+        │                       Compute softmax(S)
+        │                       (online, incremental)
+        │                            │
+        ├── Load V tile ──────►  Shared memory
+        │                            │
+        │                       Compute O += P × V
+        │                       (accumulate in registers)
+        │                            │
+        └── Write O tile ◄──── Registers
+                                (only final output touches DRAM)
+```
+
+**Why FlashAttention is so important on Jetson:** Jetson's 51 GB/s bandwidth is the bottleneck. FlashAttention reduces DRAM traffic by ~4× for attention, which directly translates to ~4× faster attention.
+
+#### Convolution — im2col + GEMM Tiling
+
+CNNs use the same tiling through a clever trick: im2col converts convolution into matrix multiplication, then cuBLAS tiled GEMM handles it:
+
+```
+Input image: [batch × channels × height × width]
+Kernel: [out_channels × in_channels × kH × kW]
+
+im2col: unfold image patches into a matrix
+  Each patch (kH × kW × channels) becomes one column
+  Result: [patch_size × num_patches] matrix
+
+Now: convolution = matrix multiply (patches × kernels)
+  → cuBLAS tiled GEMM → Tensor Cores → maximum throughput
+```
+
+#### Tensor Parallelism — Tiling Across GPUs
+
+For models too large for one GPU (or one Jetson), tensor parallelism splits weight matrices across devices:
+
+```
+Single GPU:
+  Y = X × W                    (W is too large for one GPU)
+
+Tensor parallel (4 GPUs):
+  W split column-wise: W = [W₀ | W₁ | W₂ | W₃]
+
+  GPU 0: Y₀ = X × W₀
+  GPU 1: Y₁ = X × W₁          ← each GPU computes partial output
+  GPU 2: Y₂ = X × W₂
+  GPU 3: Y₃ = X × W₃
+
+  All-gather: Y = [Y₀ | Y₁ | Y₂ | Y₃]   ← combine over NVLink/PCIe
+```
+
+On Jetson, tensor parallelism isn't applicable (single GPU), but the concept maps directly to the GPU+DLA split:
+
+```
+Jetson "parallelism":
+  DLA: runs conv/pool layers (subset of model)
+  GPU: runs attention/custom layers
+
+  Same output buffer shared via unified memory — zero-copy handoff
+  Both engines consume bandwidth from the same 51 GB/s pipe
+```
+
+#### How Clusters Enable Bigger Attention Tiles (Hopper)
+
+Standard FlashAttention is limited by one block's shared memory (~228 KB). With clusters:
+
+```
+Standard (1 block, 228 KB shared mem):
+  Q tile: 64 tokens × 128 dims × 2 bytes = 16 KB
+  K tile: 64 tokens × 128 dims × 2 bytes = 16 KB
+  V tile: 64 tokens × 128 dims × 2 bytes = 16 KB
+  Workspace: ~50 KB
+  Total: ~98 KB  (fits in 228 KB ✓)
+
+Cluster of 4 blocks (912 KB distributed shared mem):
+  Q tile: 256 tokens × 128 dims × 2 bytes = 64 KB
+  K tile: 256 tokens × 128 dims × 2 bytes = 64 KB
+  V tile: 256 tokens × 128 dims × 2 bytes = 64 KB
+  Workspace: ~200 KB
+  Total: ~392 KB  (needs cluster DSM ✓)
+
+  Bigger tiles = more data reuse = fewer DRAM reads = faster
+  4× larger tiles → up to 4× less memory traffic
+```
+
+This is why Hopper FlashAttention-3 is significantly faster than Ampere FlashAttention-2 — it's not just faster Tensor Cores, it's **bigger tiles via clusters**.
+
+### 4.6 The Tiling Mental Model
+
+```
+Level              Unit            Fast memory        Tile size
+──────────────────────────────────────────────────────────────────
+Thread             registers       registers          2×2 – 8×8
+Warp               warp shuffles   register file      32-wide
+Block              thread block    shared memory      16×16 – 64×64
+Cluster (Hopper)   block cluster   distributed SM     64×64 – 256×256
+SM array           all SMs         L2 cache           entire matrix dimension
+Multi-GPU          GPUs            NVLink/PCIe        tensor parallel split
+
+Each level follows the same principle:
+  1. Load data into the fast memory at this level
+  2. Reuse it as many times as possible
+  3. Only go to the next (slower) level when this level is exhausted
+```
 
 ---
 
