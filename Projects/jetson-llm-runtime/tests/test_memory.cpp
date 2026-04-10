@@ -1,0 +1,36 @@
+// test_memory.cpp — Memory subsystem tests
+
+#include "jllm_memory.h"
+#include <cassert>
+#include <cstdio>
+
+int main() {
+    // Test 1: probe system memory
+    auto budget = jllm::probe_system_memory();
+    assert(budget.total_mb > 0);
+    assert(budget.free_mb() > 0);
+    budget.print();
+    printf("PASS: probe_system_memory\n");
+
+    // Test 2: OOM guard
+    jllm::OOMGuard guard(256);
+    assert(guard.real_free_mb() > 0);
+    printf("Free: %lld MB\n", guard.real_free_mb());
+    printf("PASS: OOMGuard\n");
+
+    // Test 3: scratch pool
+    jllm::ScratchPool scratch;
+    assert(scratch.init(64 * 1024 * 1024));  // 64 MB
+    void* a = scratch.get(1024);
+    void* b = scratch.get(2048);
+    assert(a != nullptr && b != nullptr);
+    assert(a != b);
+    assert(scratch.used() == 1024 + 2048 + 256*2);  // aligned to 256
+    scratch.reset();
+    assert(scratch.used() == 0);
+    scratch.destroy();
+    printf("PASS: ScratchPool\n");
+
+    printf("\nAll memory tests passed.\n");
+    return 0;
+}
