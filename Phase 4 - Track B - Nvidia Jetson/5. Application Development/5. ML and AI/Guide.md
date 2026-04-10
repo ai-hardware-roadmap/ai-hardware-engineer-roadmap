@@ -34,6 +34,7 @@
 | [small-object-detection-jetson/](small-object-detection-jetson/Guide.md) | **Project:** Small object detection on Jetson — full walkthrough using VisDrone2019-DET, YOLOv8, best practices, and DeepStream deployment |
 | [non-contact-monitoring-edge/](non-contact-monitoring-edge/Guide.md) | **Project:** Non-contact monitoring — RGB/Depth + thermal fusion, 0.8–3 Hz micro-fluctuation extraction (EVM, bandpass), edge deployment, BLE/MQTT IoT |
 | [llm-optimization-jetson/](llm-optimization-jetson/Guide.md) | **Guide:** LLM optimization on Jetson — quantization (AWQ/GGUF), model selection, KV cache management, FlashAttention, TensorRT-LLM, speculative decoding, memory budgeting |
+| [jetson-llm-runtime/](jetson-llm-runtime/Guide.md) | **Project:** Memory-first LLM runtime — fork llama.cpp, add Jetson memory manager, Orin-tuned CUDA kernels, power-aware inference, OpenAI-compatible API |
 
 ---
 
