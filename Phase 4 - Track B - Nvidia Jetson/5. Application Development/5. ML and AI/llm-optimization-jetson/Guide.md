@@ -2,7 +2,7 @@
 
 **Parent:** [ML and AI](../Guide.md)
 
-> **Goal:** Take the optimization techniques used by cloud LLM platforms (vLLM, TensorRT-LLM, RunInfra, etc.) and adapt them to the extreme constraints of Jetson Orin Nano 8 GB — 51 GB/s bandwidth, shared memory, 15–40W power.
+> **Goal:** Take the optimization techniques used by cloud LLM platforms (vLLM, TensorRT-LLM, RunInfra, etc.) and adapt them to the extreme constraints of Jetson Orin Nano Super 8 GB — 102 GB/s bandwidth, 67 TOPS GPU + ~10 TOPS DLA ≈ 77 TOPS total, shared memory, 7–25W power.
 
 ---
 
@@ -22,7 +22,7 @@ Cloud GPU (H100 80GB, 3,350 GB/s, 989 TFLOPS):
   │ 7. Tensor Parallelism (multi-GPU)          │ ← scale beyond 1 GPU
   └─────────────────────────────────────────────┘
 
-Jetson Orin Nano 8GB (51 GB/s, 40 TOPS):
+Jetson Orin Nano Super 8GB (102 GB/s, 67 TOPS GPU + ~10 TOPS DLA ≈ 77 TOPS):
   ┌─────────────────────────────────────────────┐
   │ 1. Quantization (INT4/INT8) ★★★★★          │ ← MANDATORY: model must fit in 5 GB
   │ 2. Model Selection ★★★★★                    │ ← choose models that fit (≤3B params)
@@ -243,7 +243,7 @@ FlashAttention-2 (fused):
   Total DRAM traffic: ~1× the minimum → 4× less bandwidth used
 ```
 
-On Jetson's 51 GB/s bandwidth, this is the difference between 10 tokens/sec and 25 tokens/sec.
+On Jetson Orin Nano Super's 102 GB/s bandwidth, this is the difference between 20 tokens/sec and 50 tokens/sec.
 
 ### 4.2 FlashAttention on Jetson
 
@@ -469,7 +469,7 @@ SM·03███·█████░░██████████████
 
 **Why this happens:** Default PyTorch/ONNX kernels are generic — they work on any GPU but optimize for none. Each operation (attention, norm, quantized GEMM) launches a separate kernel, reads from DRAM, computes, writes back. The GPU spends most of its time waiting for memory.
 
-**On Jetson this is even worse:** 51 GB/s shared bandwidth means the GPU is starved for data nearly all the time. Kernel optimization directly determines tokens/sec.
+**On Jetson this matters even more:** 102 GB/s shared bandwidth (vs 3,350 GB/s on H100) means the GPU is frequently starved for data. Kernel optimization directly determines tokens/sec.
 
 ### 8.2 The Three Levels of Kernel Optimization
 
@@ -717,17 +717,17 @@ Before deployment — run through this checklist:
 
 ## 10. Benchmark Reference
 
-Expected performance on Orin Nano 8 GB (15W mode, Q4_K_M, llama.cpp):
+Expected performance on Orin Nano Super 8 GB (25W mode, Q4_K_M, llama.cpp):
 
 | Model | Params | GGUF size | Prompt eval | Generation | Context |
 |-------|--------|-----------|-------------|-----------|---------|
-| TinyLlama 1.1B | 1.1B | 0.6 GB | ~120 tok/s | ~40 tok/s | 2048 |
-| Llama 3.2 1B | 1.3B | 0.7 GB | ~100 tok/s | ~35 tok/s | 2048 |
-| Gemma 2 2B | 2.6B | 1.5 GB | ~50 tok/s | ~20 tok/s | 2048 |
-| Llama 3.2 3B | 3.2B | 1.8 GB | ~40 tok/s | ~15 tok/s | 2048 |
-| Phi-3 Mini 3.8B | 3.8B | 2.2 GB | ~30 tok/s | ~12 tok/s | 2048 |
+| TinyLlama 1.1B | 1.1B | 0.6 GB | ~200 tok/s | ~65 tok/s | 2048 |
+| Llama 3.2 1B | 1.3B | 0.7 GB | ~170 tok/s | ~55 tok/s | 2048 |
+| Gemma 2 2B | 2.6B | 1.5 GB | ~85 tok/s | ~35 tok/s | 2048 |
+| Llama 3.2 3B | 3.2B | 1.8 GB | ~65 tok/s | ~25 tok/s | 2048 |
+| Phi-3 Mini 3.8B | 3.8B | 2.2 GB | ~50 tok/s | ~20 tok/s | 2048 |
 
-> These are estimates. Actual performance depends on power mode, thermal design, context length, and prompt content. Always benchmark your specific configuration.
+> These are estimates for Orin Nano Super at 25W. The ~1.7× improvement over the original Orin Nano comes from 102 GB/s bandwidth (vs 68 GB/s) and higher clock speeds. Actual performance depends on power mode, thermal design, context length, and prompt content. Always benchmark your specific configuration.
 
 ---
 

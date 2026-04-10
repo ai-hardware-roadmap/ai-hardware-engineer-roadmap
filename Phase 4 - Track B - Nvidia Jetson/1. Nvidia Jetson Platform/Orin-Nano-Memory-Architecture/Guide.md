@@ -57,16 +57,16 @@ Problem: every byte must cross PCIe (64 GB/s bottleneck)
   cudaMemcpy(h_ptr, d_ptr, size, cudaMemcpyDeviceToHost);  ← mandatory, slow
 ```
 
-### Jetson (Orin Nano / Orin NX / AGX Orin)
+### Jetson (Orin Nano Super / Orin NX / AGX Orin)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                           T234 SoC                                      │
+│                     T234 SoC (Orin Nano Super)                          │
 │                                                                         │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐  │
 │  │  CPU     │  │  GPU     │  │  DLA     │  │  ISP/VI  │  │ NVENC  │  │
 │  │  A78AE   │  │  Ampere  │  │          │  │  Camera  │  │ NVDEC  │  │
-│  │  6 cores │  │  1024    │  │  10 TOPS │  │          │  │        │  │
+│  │  6 cores │  │  1024    │  │ ~10 TOPS │  │          │  │        │  │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘  └───┬────┘  │
 │       │             │             │             │             │        │
 │       └─────────────┴─────────────┴─────────────┴─────────────┘        │
@@ -79,7 +79,7 @@ Problem: every byte must cross PCIe (64 GB/s bottleneck)
                                │
                     ┌──────────┴──────────┐
                     │  8 GB LPDDR5        │
-                    │  ~51 GB/s bandwidth │
+                    │  ~102 GB/s bandwidth │
                     │  SHARED by ALL      │
                     └─────────────────────┘
 
@@ -96,7 +96,7 @@ No PCIe. No copy. CPU, GPU, DLA, camera ALL access the SAME physical memory.
 | **Managed memory** | Page migration over PCIe (very slow) | Page migration in same DRAM (fast) |
 | **Camera → GPU** | Camera→RAM→PCIe→VRAM (3 copies) | Camera→DRAM→GPU reads same DRAM (**0 copies**) |
 | **Memory capacity** | CPU: 512 GB + GPU: 192 GB (separate) | **8 GB total** (shared by everything) |
-| **Bandwidth** | CPU: 100 GB/s, GPU: 3,350 GB/s (separate) | **~51 GB/s shared** (everyone competes) |
+| **Bandwidth** | CPU: 100 GB/s, GPU: 3,350 GB/s (separate) | **~102 GB/s shared** (everyone competes) |
 
 ### The Three Programming Implications
 
@@ -123,11 +123,11 @@ read_results_on_cpu(shared);                   // CPU reads GPU output
 ```
 
 **2. Memory bandwidth is your bottleneck — not compute.**
-Discrete H100: 3,350 GB/s HBM → 989 TFLOPS. Jetson Orin Nano: 51 GB/s LPDDR5 → 40 TOPS. The compute-to-bandwidth ratio is dramatically different:
+Discrete H100: 3,350 GB/s HBM → 989 TFLOPS. Jetson Orin Nano Super: 102 GB/s LPDDR5 → 67 TOPS (GPU) + ~10 TOPS (DLA) ≈ 77 TOPS total. The compute-to-bandwidth ratio is dramatically different:
 
 ```
-H100 ridge point:   989 TFLOPS / 3,350 GB/s ≈ 295 FLOP/byte
-Orin Nano ridge point: 40 TOPS / 51 GB/s ≈ 0.78 OP/byte
+H100 ridge point:         989 TFLOPS / 3,350 GB/s ≈ 295 FLOP/byte
+Orin Nano Super ridge:    67 TOPS / 102 GB/s ≈ 0.66 OP/byte
 
 → Almost EVERYTHING is memory-bound on Jetson.
 → Tiling, data reuse, and INT8 quantization are not optional — they're mandatory.
@@ -186,7 +186,7 @@ What are you allocating?
     └── cudaMalloc (standard, fastest)
 ```
 
-> **Key mindset shift:** On discrete GPU, you think "minimize PCIe transfers." On Jetson, you think "minimize total DRAM bandwidth consumption" — because CPU, GPU, camera, and display all share the same ~51 GB/s pipe.
+> **Key mindset shift:** On discrete GPU, you think "minimize PCIe transfers." On Jetson, you think "minimize total DRAM bandwidth consumption" — because CPU, GPU, camera, and display all share the same ~102 GB/s pipe.
 
 ---
 
@@ -918,7 +918,7 @@ DLA and GPU read different parts of DRAM simultaneously.
 Memory controller arbitrates bandwidth between them.
 ```
 
-**Key constraint:** DLA and GPU compete for the same ~51 GB/s DRAM bandwidth. If both are bandwidth-saturated, total throughput drops. Monitor with `tegrastats`:
+**Key constraint:** DLA and GPU compete for the same ~102 GB/s DRAM bandwidth. If both are bandwidth-saturated, total throughput drops. Monitor with `tegrastats`:
 
 ```bash
 tegrastats --interval 500
@@ -981,12 +981,12 @@ Llama 3.2 3B INT4 decode — one token:
 
   Weight loading: 1.5 GB read from DRAM
   Computation:    3B × 2 FLOPs = 6 GFLOP
-  Time to load:   1.5 GB / 51 GB/s = ~29 ms
-  Time to compute: 6 GFLOP / 40 TOPS = ~0.15 ms
+  Time to load:   1.5 GB / 102 GB/s = ~14.7 ms
+  Time to compute: 6 GFLOP / 67 TOPS = ~0.09 ms
   ─────────────────────────────────────────────
-  Decode time:    ~30 ms per token → ~33 tokens/sec
+  Decode time:    ~15 ms per token → ~67 tokens/sec
 
-  Compute utilization: 0.15 / 29 = 0.5%
+  Compute utilization: 0.09 / 14.7 = 0.6%
 
   → 99.5% of time is waiting for DRAM to deliver weights
   → Faster compute (more CUDA cores) would not help
@@ -998,9 +998,9 @@ Llama 3.2 3B INT4 decode — one token:
 ```
 H100 with same model:
   Time to load:   1.5 GB / 3350 GB/s = ~0.45 ms
-  → 33 tokens/sec → 2,200 tokens/sec (bandwidth difference)
+  → ~2,200 tokens/sec (bandwidth difference)
 
-Jetson Orin Nano is ~65× slower for LLM decode purely due to bandwidth.
+Jetson Orin Nano Super is ~33× slower for LLM decode purely due to bandwidth.
 This is not fixable by software — it's physics.
 ```
 
@@ -1147,7 +1147,7 @@ Compare with naive pipeline:
 ```
   Camera → ISP → memcpy → CPU buffer → cudaMemcpy → GPU buffer → TensorRT → cudaMemcpy → CPU
   Total copies: 3 (each wastes ~3–12 MB × 30 FPS of bandwidth)
-  Wasted bandwidth: ~360 MB/s for 1080p — 0.7% of total 51 GB/s
+  Wasted bandwidth: ~360 MB/s for 1080p — 0.35% of total 102 GB/s
   For 4K: ~1.4 GB/s wasted — 2.7% of total bandwidth
 
   On bandwidth-starved Jetson, every percent counts.
