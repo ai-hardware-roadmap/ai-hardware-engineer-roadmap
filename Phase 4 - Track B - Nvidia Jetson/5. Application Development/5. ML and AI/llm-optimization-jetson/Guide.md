@@ -202,9 +202,44 @@ The edge LLM landscape moves fast. Models to evaluate as they release:
 | **Phi-4 Mini (3.8B)** | Microsoft's strong reasoning at small size |
 | **Llama 4 Scout/Maverick** | MoE architecture — active params may fit edge |
 | **SmolLM2 (135M–1.7B)** | Hugging Face's ultra-compact series |
-| **MiMo (series)** | Xiaomi's edge-optimized multilingual models |
+| **Step 3.5 Flash (196B MoE, 11B active)** | StepFun's open-source MoE reasoning model — only 11B active per token (fits Jetson!), 262K context, speed-optimized |
+| **MiMo-V2-Pro (1T+ MoE)** | Xiaomi's flagship — agentic scenarios, OpenClaw-compatible, 1M context, approaches Opus-4.6 quality. Too large for Jetson directly, but **distilled/smaller MiMo variants** are edge targets |
+| **MiMo (series, 1.5B–7B)** | Xiaomi's edge-optimized models — MiMo-7B has strong math/code benchmarks, 1.5B fits Jetson easily |
 | **DeepSeek-R1 Distill (1.5B–70B)** | Distilled reasoning — 1.5B variant fits easily |
 | **Nemotron Nano (series)** | NVIDIA's own edge-optimized models |
+
+#### MoE Models — Why Active Parameters Matter for Jetson
+
+MoE (Mixture of Experts) models activate only a fraction of their total parameters per token. This changes the memory math:
+
+```
+Dense model (Llama 3.2 3B):
+  Total params = Active params = 3B
+  Q4_K_M size: 1.8 GB  (must load ALL weights per token)
+  Memory bandwidth per token: 1.8 GB
+
+MoE model (Step 3.5 Flash 196B, 11B active):
+  Total params: 196B → Q4_K_M: ~110 GB  (won't fit in 8 GB!)
+  BUT active params per token: 11B → needs ~6.5 GB of the 110 GB
+
+  Challenge: even though only 11B are active, the FULL 110 GB model
+  must be in memory because different tokens may route to different experts.
+  → MoE models need the full weight set loaded, not just active params.
+
+  For Jetson: MoE only helps if the TOTAL model fits.
+  Step 3.5 Flash (110 GB) → won't fit on 8 GB Jetson
+  A hypothetical MoE with 16B total / 4B active → would fit and be fast!
+```
+
+**MoE models that could work on Jetson (if available in small total size):**
+
+| Model | Total params | Active params | Q4_K_M total | Fits 8 GB? |
+|-------|-------------|---------------|-------------|------------|
+| Mixtral 8x0.5B (hypothetical) | 4B | 0.5B | ~2.4 GB | Yes |
+| Llama 4 Scout small variant | TBD | TBD | TBD | Watch for small MoE releases |
+| Step Flash distilled | TBD | TBD | TBD | If StepFun releases smaller variant |
+
+The real edge MoE opportunity: models with **<8B total parameters** and **<2B active** — giving dense-model memory footprint with large-model routing quality. This is an active research area.
 
 ### 2.4 Choosing the Right Model — Decision Flowchart
 
