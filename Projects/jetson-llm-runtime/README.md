@@ -60,30 +60,26 @@ Existing runtimes are not designed for 8 GB unified memory:
 | **Tests** | test_memory, test_kernels, test_model_load | ~280 | ✅ Memory, 5 kernel tests, 8 model load tests |
 | **Total** | **30 files** | **~4,200** | |
 
-### Known Bugs (🐛 — fix on Jetson hardware)
+### All Bugs Fixed (✅)
 
-| # | Bug | Location | Impact | Fix |
-|---|-----|----------|--------|-----|
-| 1 | **GGUF KV skip may miscalculate offsets** | `model.cpp` parse_tensor_infos() | Tensor data pointers may be wrong → garbage output | Test with real GGUF, verify first tensor offset matches file layout |
-| 2 | **Residual connection not chained** | `decode.cpp` transformer_layer() | Attention output and FFN output residuals not accumulated correctly: should be `x = residual + attn_out` then `x2 = x + ffn_out` | Add explicit residual add kernels between attention and FFN |
-| 3 | **Embedding memcpy direction** | `decode.cpp` decode_step() | `tok_embd` is in mmap'd host memory, `cudaMemcpyAsync` uses DeviceToDevice | Change to `cudaMemcpyHostToDevice` or let unified memory handle it |
-| 4 | **Missing include** | `decode.cpp` | Calls `munmap()` without `#include <sys/mman.h>` | Add include |
-| 5 | **CUDA graph skeleton** | `decode.cpp` build_cuda_graph() | Graph capture body is empty — no actual kernels captured | Implement after verifying decode loop works without graph |
-| 6 | **Attention output accumulator simplified** | `attention.cu` | `acc[d % 4]` loses data when head_dim > 4 × blockDim | Use proper register-tiled accumulator per output dimension |
-| 7 | **No FP32 logit GEMV** | `decode.cpp` decode_step() | Uses FP16 GEMV for logits then converts — should use FP32 output for numerical stability | Add gemv_q4_fp32out kernel variant |
-| 8 | **Tokenizer greedy encode is O(V×L)** | `tokenizer.cpp` encode() | Slow for large vocab (128K) — linear scan per character | Build hash map of token→id at load time |
+| # | Bug | Fix applied |
+|---|-----|-------------|
+| 1 | GGUF KV skip miscalculated offsets | Rewrote with exact GGUF type sizes via `gguf_scalar_size()` helper; arrays of scalars skip in one `fseek` |
+| 2 | Residual connection not chained | Added `vec_add()` kernel: `x2 = x + attn_proj`, then `x = x2 + ffn_out` |
+| 3 | Embedding memcpy wrong direction | Changed to `cudaMemcpyDefault` (works for both host mmap and device memory) |
+| 4 | Missing `<sys/mman.h>` include | Added `#include <sys/mman.h>` |
+| 5 | CUDA graph body empty | Implemented full graph capture: all transformer layers + final norm + logit projection |
+| 6 | Attention accumulator `acc[d%4]` | Replaced with per-dimension `s_out[head_dim]` in shared memory |
+| 7 | FP16 logits, no FP32 | Added `fp16_to_fp32()` GPU kernel; convert on device before D2H copy |
+| 8 | Tokenizer O(V×L) scan | Added `token_to_id_` hash map + `max_token_len_` for O(max_len) longest-match |
 
-### Not Yet Implemented (📋)
+### Remaining Enhancements (📋 — nice-to-have, not blockers)
 
 | Feature | Priority | Effort | Notes |
 |---------|----------|--------|-------|
-| Fix bugs #1–4 | **Critical** | 1 day | Required for first tokens to flow |
-| Fix bug #6 (attention accumulator) | **Critical** | 1 day | Wrong output without this |
-| Fix bugs #5, #7, #8 | Medium | 1 day | Performance + correctness |
 | Streaming SSE in server | Medium | 0.5 day | Server currently returns full response |
-| CUDA graph for decode | Low | 1 day | ~1ms saving per forward pass |
-| Chat template formatting | Low | 0.5 day | `<|user|>...<|assistant|>` wrapping |
-| Multi-turn conversation KV reuse | Low | 1 day | Don't re-prefill system prompt |
+| Chat template formatting | Medium | 0.5 day | `<|user|>...<|assistant|>` wrapping |
+| Multi-turn conversation KV reuse | Medium | 1 day | Don't re-prefill system prompt |
 | INT8 KV scale storage in cache | Low | 0.5 day | Per-head scales for dequant |
 | Tensor Core WMMA for prefill GEMM | Low | 2 days | Batch matmul for prompt processing |
 | systemd service file | Low | 0.5 day | Auto-start on boot |
@@ -92,30 +88,26 @@ Existing runtimes are not designed for 8 GB unified memory:
 
 ```
 v0.1 — First Tokens (on real Jetson)
-  □ Fix bugs #1–4 (build + run without crash)
-  □ Fix bug #6 (correct attention output)
-  □ test_model_load passes with real GGUF
-  □ Generate coherent text from Llama 3.2 3B Q4_K_M
+  ✅ All 8 bugs fixed
+  □ Build on Jetson (cmake + make)
+  □ test_model_load passes with TinyLlama 1.1B GGUF
+  □ Generate coherent text
 
 v0.2 — Benchmark Baseline
   □ bench.sh produces tok/s numbers
   □ profile.sh identifies top 3 kernel bottlenecks
   □ Compare against stock llama.cpp (same model, same hardware)
-  □ Fix bug #7 (FP32 logits)
-  □ Fix bug #8 (tokenizer hash map)
 
 v0.3 — Performance Target
   □ >20% faster than stock llama.cpp on decode
-  □ CUDA graph for decode loop
-  □ Streaming SSE in server
+  □ CUDA graph replay verified working
   □ Memory-stable over 1000+ tokens (no growth)
 
 v0.4 — Production Ready
-  □ Chat template support
+  □ Chat template support + streaming SSE
   □ Multi-turn conversation
-  □ systemd service for auto-start
-  □ 24-hour stability test (no OOM, no crash, no thermal shutdown)
-  □ Document tested models + performance table
+  □ 24-hour stability test
+  □ Documented performance table across models
 ```
 
 ## Build

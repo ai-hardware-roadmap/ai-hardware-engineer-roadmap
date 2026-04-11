@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <unordered_map>
 
 namespace jllm {
 
@@ -193,6 +194,11 @@ struct Tokenizer {
     std::vector<int> encode(const std::string& text) const;
     std::string decode(int token_id) const;
     std::string decode(const std::vector<int>& ids) const;
+
+private:
+    std::unordered_map<std::string, int> token_to_id_;  // O(1) lookup
+    std::vector<int> sorted_by_len_;                     // longest-first order
+    int max_token_len_ = 0;
 };
 
 // ── Sampling ─────────────────────────────────────────────────────────────

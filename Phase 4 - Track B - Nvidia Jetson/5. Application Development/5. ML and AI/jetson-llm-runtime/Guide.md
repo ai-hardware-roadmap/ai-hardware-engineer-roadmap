@@ -65,20 +65,22 @@ The gap: **no existing runtime is designed around the 8 GB unified memory constr
 | **Scripts** | setup_jetson.sh, bench.sh, profile.sh | ✅ Ready |
 | **Tests** | test_memory (3), test_kernels (5), test_model_load (8) | ✅ Ready |
 
-### Known Bugs (8 total — fix during hardware testing)
+### All Bugs Fixed (✅)
 
-| # | Bug | Severity |
-|---|-----|----------|
-| 1 | GGUF KV skip may miscalculate tensor offsets | Critical |
-| 2 | Residual connection not properly chained between attention and FFN | Critical |
-| 3 | Embedding memcpy uses wrong direction (DeviceToDevice vs HostToDevice) | Critical |
-| 4 | Missing `<sys/mman.h>` include in decode.cpp | Critical |
-| 5 | CUDA graph capture body is empty (skeleton only) | Medium |
-| 6 | Attention accumulator `acc[d % 4]` loses data for head_dim > 4 | Critical |
-| 7 | Logits use FP16 GEMV then convert (should be FP32 output) | Medium |
-| 8 | Tokenizer encode is O(V×L) — needs hash map | Low |
+All 8 known bugs have been fixed in the codebase:
 
-Bugs #1–4 and #6 must be fixed for first tokens to flow. All are fixable in ~1–2 days on real hardware.
+| # | Bug | Fix |
+|---|-----|-----|
+| 1 | GGUF offset miscalculation | Exact type sizes via `gguf_scalar_size()` helper |
+| 2 | Residual not chained | Added `vec_add()` kernel between attention and FFN |
+| 3 | Wrong memcpy direction | `cudaMemcpyDefault` (works for unified + discrete) |
+| 4 | Missing include | Added `#include <sys/mman.h>` |
+| 5 | Empty CUDA graph | Full graph capture with all transformer layers |
+| 6 | Broken attention accumulator | Per-dimension `s_out[head_dim]` in shared memory |
+| 7 | No FP32 logits | Added `fp16_to_fp32()` GPU conversion kernel |
+| 8 | Slow tokenizer O(V×L) | Hash map `token_to_id_` + longest-match-first |
+
+**Code is ready to build and test on Jetson hardware.**
 
 ---
 
@@ -86,8 +88,8 @@ Bugs #1–4 and #6 must be fixed for first tokens to flow. All are fixable in ~1
 
 ```
 v0.1 — First Tokens
-  ○ Fix bugs #1–4, #6
-  ○ test_model_load passes with TinyLlama 1.1B GGUF
+  ✅ All 8 bugs fixed
+  ○ Build on Jetson, test_model_load passes
   ○ Generate coherent text
 
 v0.2 — Benchmark Baseline

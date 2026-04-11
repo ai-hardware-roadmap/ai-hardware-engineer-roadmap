@@ -104,11 +104,36 @@ bool Tokenizer::load_from_gguf(const std::string& path) {
     }
 
     fclose(f);
-    fprintf(stderr, "[tokenizer] vocab=%zu, bos=%d, eos=%d\n", vocab.size(), bos_id, eos_id);
+
+    // BUG #8 FIX: build hash map for O(1) token lookup instead of O(V) linear scan
+    token_to_id_.clear();
+    token_to_id_.reserve(vocab.size());
+    for (int i = 0; i < (int)vocab.size(); i++) {
+        token_to_id_[vocab[i]] = i;
+    }
+
+    // Build sorted-by-length index for greedy longest-match
+    sorted_by_len_.clear();
+    sorted_by_len_.reserve(vocab.size());
+    for (int i = 0; i < (int)vocab.size(); i++) {
+        if (!vocab[i].empty())
+            sorted_by_len_.push_back(i);
+    }
+    std::sort(sorted_by_len_.begin(), sorted_by_len_.end(),
+              [this](int a, int b) { return vocab[a].size() > vocab[b].size(); });
+
+    // Precompute max token length for early termination
+    max_token_len_ = 0;
+    for (const auto& t : vocab)
+        max_token_len_ = std::max(max_token_len_, (int)t.size());
+
+    fprintf(stderr, "[tokenizer] vocab=%zu, bos=%d, eos=%d, max_token_len=%d\n",
+            vocab.size(), bos_id, eos_id, max_token_len_);
     return !vocab.empty();
 }
 
-// Simple greedy longest-match encode (not full BPE, but functional)
+// BUG #8 FIX: O(max_token_len) per position instead of O(V)
+// Uses hash map for exact match + early termination by length
 std::vector<int> Tokenizer::encode(const std::string& text) const {
     std::vector<int> tokens;
     tokens.push_back(bos_id);
@@ -118,14 +143,15 @@ std::vector<int> Tokenizer::encode(const std::string& text) const {
         int best_id = -1;
         size_t best_len = 0;
 
-        // Greedy: find longest matching token starting at pos
-        for (int id = 0; id < (int)vocab.size(); id++) {
-            const auto& tok = vocab[id];
-            if (tok.size() > best_len && tok.size() <= text.size() - pos) {
-                if (text.compare(pos, tok.size(), tok) == 0) {
-                    best_id = id;
-                    best_len = tok.size();
-                }
+        // Try longest match first, decreasing length
+        int try_len = std::min(max_token_len_, (int)(text.size() - pos));
+        for (int len = try_len; len >= 1; len--) {
+            std::string candidate = text.substr(pos, len);
+            auto it = token_to_id_.find(candidate);
+            if (it != token_to_id_.end()) {
+                best_id = it->second;
+                best_len = len;
+                break;  // longest match found — stop
             }
         }
 
@@ -133,13 +159,12 @@ std::vector<int> Tokenizer::encode(const std::string& text) const {
             tokens.push_back(best_id);
             pos += best_len;
         } else {
-            // Unknown byte — encode as byte fallback
-            // Most GGUF tokenizers have byte tokens like <0x41>
+            // Byte fallback
             char byte_tok[8];
             snprintf(byte_tok, sizeof(byte_tok), "<0x%02X>", (unsigned char)text[pos]);
-            for (int id = 0; id < (int)vocab.size(); id++) {
-                if (vocab[id] == byte_tok) { tokens.push_back(id); break; }
-            }
+            auto it = token_to_id_.find(byte_tok);
+            if (it != token_to_id_.end())
+                tokens.push_back(it->second);
             pos++;
         }
     }

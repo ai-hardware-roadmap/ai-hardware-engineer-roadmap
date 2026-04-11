@@ -279,34 +279,66 @@ static int64_t parse_tensor_infos(const std::string& path,
     fread(&n_tensors, 8, 1, f);
     fread(&n_kv, 8, 1, f);
 
-    // Skip metadata KV pairs (we already parsed them in load_gguf_config)
+    // BUG #1 FIX: skip metadata KV pairs using exact GGUF type sizes
+    // GGUF value types (from gguf spec):
+    //   0=UINT8  1=INT8  2=UINT16 3=INT16 4=UINT32 5=INT32
+    //   6=FLOAT32 7=BOOL 8=STRING 9=ARRAY 10=UINT64 11=INT64 12=FLOAT64
+
+    // Helper: size of a scalar GGUF value type
+    auto gguf_scalar_size = [](uint32_t type) -> int {
+        switch (type) {
+            case 0: case 1: case 7: return 1;   // uint8, int8, bool
+            case 2: case 3:         return 2;   // uint16, int16
+            case 4: case 5: case 6: return 4;   // uint32, int32, float32
+            case 10: case 11: case 12: return 8; // uint64, int64, float64
+            default: return 0;                   // string, array — variable
+        }
+    };
+
     for (uint64_t i = 0; i < n_kv; i++) {
         uint64_t key_len;
         fread(&key_len, 8, 1, f);
-        fseek(f, key_len, SEEK_CUR);
+        fseek(f, key_len, SEEK_CUR);  // skip key string
 
         uint32_t vtype;
         fread(&vtype, 4, 1, f);
 
-        switch (vtype) {
-            case 0: case 1: case 7: fseek(f, 1, SEEK_CUR); break;
-            case 2: case 3: fseek(f, 2, SEEK_CUR); break;
-            case 4: case 5: case 6: fseek(f, 4, SEEK_CUR); break;
-            case 10: case 11: case 12: fseek(f, 8, SEEK_CUR); break;
-            case 8: {
-                uint64_t slen; fread(&slen, 8, 1, f); fseek(f, slen, SEEK_CUR); break;
-            }
-            case 9: {
-                uint32_t atype; uint64_t alen;
-                fread(&atype, 4, 1, f); fread(&alen, 8, 1, f);
+        int scalar_sz = gguf_scalar_size(vtype);
+        if (scalar_sz > 0) {
+            // Fixed-size scalar type — skip exact bytes
+            fseek(f, scalar_sz, SEEK_CUR);
+        } else if (vtype == 8) {
+            // String: 8-byte length prefix + string data
+            uint64_t slen;
+            fread(&slen, 8, 1, f);
+            fseek(f, slen, SEEK_CUR);
+        } else if (vtype == 9) {
+            // Array: 4-byte element type + 8-byte count + elements
+            uint32_t atype;
+            uint64_t alen;
+            fread(&atype, 4, 1, f);
+            fread(&alen, 8, 1, f);
+
+            int elem_sz = gguf_scalar_size(atype);
+            if (elem_sz > 0) {
+                // Array of fixed-size scalars — skip all at once
+                fseek(f, (long)(alen * elem_sz), SEEK_CUR);
+            } else if (atype == 8) {
+                // Array of strings — must read each length
                 for (uint64_t a = 0; a < alen; a++) {
-                    if (atype == 8) { uint64_t sl; fread(&sl, 8, 1, f); fseek(f, sl, SEEK_CUR); }
-                    else if (atype <= 7) fseek(f, (atype <= 1 ? 1 : atype <= 3 ? 2 : 4), SEEK_CUR);
-                    else fseek(f, 4, SEEK_CUR);
+                    uint64_t sl;
+                    fread(&sl, 8, 1, f);
+                    fseek(f, sl, SEEK_CUR);
                 }
-                break;
+            } else {
+                // Nested array (rare) — skip with best guess
+                fprintf(stderr, "[gguf] WARNING: nested array type %u, skipping\n", atype);
+                for (uint64_t a = 0; a < alen; a++)
+                    fseek(f, 8, SEEK_CUR);
             }
-            default: fseek(f, 8, SEEK_CUR);
+        } else {
+            fprintf(stderr, "[gguf] WARNING: unknown value type %u at KV %lu\n", vtype, i);
+            fseek(f, 8, SEEK_CUR);  // best guess
         }
     }
 
