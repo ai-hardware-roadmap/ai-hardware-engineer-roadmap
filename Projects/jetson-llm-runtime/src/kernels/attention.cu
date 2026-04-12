@@ -43,14 +43,8 @@ __global__ void flash_attention_decode_kernel(
         s_out[d] = 0.0f;
     __syncthreads();
 
-    // Load Q into registers (each thread loads its portion)
-    // For head_dim=128, blockDim=128: each thread owns 1 Q element
-    float my_q[2] = {0.0f, 0.0f};  // max 2 dims per thread (head_dim ≤ 256)
-    int n_per_thread = (head_dim + blockDim.x - 1) / blockDim.x;
-    for (int j = 0; j < n_per_thread && tid * n_per_thread + j < head_dim; j++) {
-        int d = tid * n_per_thread + j;
-        my_q[j] = __half2float(q[head * head_dim + d]);
-    }
+    // Q is read directly from global memory in the dot product loop below.
+    // (No register pre-load needed — Q is small and stays in L1 cache.)
 
     float running_max = -FLT_MAX;
     float running_sum = 0.0f;

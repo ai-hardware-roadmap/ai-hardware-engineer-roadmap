@@ -70,8 +70,8 @@ void print_jetson_info(const JetsonInfo& info) {
         "╠══════════════════════════════════════╣\n"
         "║ L4T:    %-10s  CUDA: %d.%d       ║\n"
         "║ SMs:    %-3d         Cores: %-5d     ║\n"
-        "║ RAM:    %-5lld MB    CMA: %-4lld MB    ║\n"
-        "║ NVMe:   %-5lld MB free               ║\n"
+        "║ RAM:    %-5ld MB    CMA: %-4ld MB    ║\n"
+        "║ NVMe:   %-5ld MB free               ║\n"
         "╚══════════════════════════════════════╝\n",
         info.l4t_version, info.cuda_major, info.cuda_minor,
         info.gpu_sm_count, info.gpu_cuda_cores,

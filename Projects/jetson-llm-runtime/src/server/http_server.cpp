@@ -151,7 +151,6 @@ static void handle_client(int client, Engine& engine) {
 
     // Parse method and path
     std::string method, path;
-    sscanf(buf, "%*s", buf);  // skip
     if (request.substr(0, 3) == "GET") {
         method = "GET";
         size_t sp = request.find(' ', 4);
