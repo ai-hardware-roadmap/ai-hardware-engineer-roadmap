@@ -2313,7 +2313,97 @@ cudaEventDestroy(stop);
 
 ---
 
-## 12. CUDA Graphs
+## 12. How It All Connects — The GPU Performance Stack
+
+Sections 12–19 cover many GPU features. Before diving in, here's how they all fit together as **four layers of GPU performance**, from top (CPU-side) to bottom (hardware limits):
+
+```
+Layer 1: CPU ↔ GPU Scheduling
+  ┌─────────────────────────────────────────────────────┐
+  │  CUDA Graphs (§13)         — remove CPU launch overhead      │
+  │  Streams (§11)             — overlap copy + compute          │
+  │  Automatic Scalability (§19) — same code, any GPU size       │
+  └─────────────────────────────────────────────────────┘
+                              │
+Layer 2: Kernel Memory Efficiency
+  ┌─────────────────────────────────────────────────────┐
+  │  Tiled Matmul (§15)        — load once, reuse TILE× times   │
+  │  Reduction (§14)           — collapse N values in log(N) steps│
+  │  Shared Memory (§9)        — on-chip staging, bank conflicts │
+  │  Coalesced Access (§8)     — minimize DRAM transactions      │
+  └─────────────────────────────────────────────────────┘
+                              │
+Layer 3: Intra-Warp Efficiency
+  ┌─────────────────────────────────────────────────────┐
+  │  Warp Shuffle (§10.5)      — register-to-register, no memory│
+  │  Warp Reduction (§10.6-8)  — 5-step sum, no shared memory   │
+  │  Warp Vote (§10.9)         — ballot/all/any for branching    │
+  │  Branchless/Predication (§7.2) — avoid warp divergence       │
+  └─────────────────────────────────────────────────────┘
+                              │
+Layer 4: Hardware Accelerators
+  ┌─────────────────────────────────────────────────────┐
+  │  Tensor Cores (§16)        — 16×16 matrix in one instruction │
+  │  Thread Block Clusters (§4.3) — distributed shared memory   │
+  │  Cooperative Groups (§18)  — flexible sync at any granularity│
+  │  Dynamic Parallelism (§17) — GPU launches GPU (niche)        │
+  └─────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌──────────────────────────────┐
+              │  Roofline Limit (§20)         │
+              │  Performance = min(           │
+              │    compute peak,             │
+              │    memory bandwidth × AI     │
+              │  )                            │
+              │  You can't exceed this —     │
+              │  only get closer to it.      │
+              └──────────────────────────────┘
+```
+
+**How to use this stack when debugging performance:**
+
+```
+Is your kernel slow?
+│
+├── Step 1: Is CPU the bottleneck?
+│   └── Yes → CUDA Graphs (§13). Eliminates ~5 µs/launch overhead.
+│        Graphs don't make GPU faster — they make CPU overhead disappear.
+│
+├── Step 2: Is it memory-bound?
+│   └── Yes → Tiling (§15). Load once from DRAM, reuse 16–128× from shared memory.
+│        Every DRAM read you eliminate = direct speedup.
+│        Check coalescing (§8): thread N must access address N.
+│
+├── Step 3: Is synchronization the bottleneck?
+│   └── Yes → Warp shuffles (§10.5) replace __syncthreads + shared memory.
+│        Shuffle = 1 cycle, register-only. Shared mem = 5 cycles + sync.
+│        Block reduction → warp shuffle first, ONE shared mem step (§10.7).
+│
+├── Step 4: Is warp divergence hurting?
+│   └── Yes → Branchless arithmetic (§7.2). Ternary → compiler emits SEL.
+│        Sort input data so adjacent threads take same path.
+│
+├── Step 5: Is compute underutilized?
+│   └── Yes → Tensor Cores (§16). One MMA instruction = 16×16×16 FMAs.
+│        WMMA fragments must be 16-aligned. Use cuBLAS for automatic TC.
+│
+└── Step 6: Still slow?
+    └── Roofline (§20). Calculate arithmetic intensity.
+         If AI < ridge point → bandwidth-limited → quantize, fuse, batch.
+         If AI > ridge point → compute-limited → more Tensor Cores, wider tiles.
+         You cannot exceed the roofline — only approach it.
+```
+
+**Key insight:** most AI kernels are memory-bound (left of the roofline ridge). This means:
+- Tiling and data reuse (Layer 2) give the biggest speedups
+- Warp shuffles (Layer 3) save shared memory bandwidth
+- Tensor Cores (Layer 4) only help when you're compute-bound (large batches, prefill)
+- CUDA Graphs (Layer 1) help when many small kernels dominate
+
+---
+
+## 13. CUDA Graphs
 
 For workloads that repeat the same sequence of kernels and transfers, CUDA graphs eliminate per-launch CPU overhead by capturing and replaying the entire execution graph.
 
@@ -2350,7 +2440,7 @@ cudaGraphDestroy(graph);
 
 ---
 
-## 13. Parallel Reduction — Complete Example
+## 14. Parallel Reduction — Complete Example
 
 Reduction is the canonical shared memory + sync pattern.
 
@@ -2412,7 +2502,7 @@ float gpu_sum(const float* d_in, int N) {
 
 ---
 
-## 14. Tiled Matrix Multiply — Shared Memory Optimization
+## 15. Tiled Matrix Multiply — Shared Memory Optimization
 
 ```cpp
 #define TILE_SIZE 16
@@ -2466,7 +2556,7 @@ Tiled matmul with TILE=16:
 
 ---
 
-## 15. Tensor Cores
+## 16. Tensor Cores
 
 Tensor Cores are dedicated matrix-multiply-accumulate units introduced in Volta (CC 7.0). They operate on small matrix tiles in a single instruction.
 
@@ -2508,7 +2598,7 @@ In practice: use `cuBLAS` or `cuDNN` — they use Tensor Cores automatically whe
 
 ---
 
-## 16. Dynamic Parallelism
+## 17. Dynamic Parallelism
 
 Kernels can launch other kernels from the GPU (no CPU round-trip required):
 
@@ -2532,7 +2622,7 @@ Requires compute capability 3.5+. Adds latency per launch. Best for irregular re
 
 ---
 
-## 17. Cooperative Groups
+## 18. Cooperative Groups
 
 Cooperative groups let you express sync and reduction at any granularity — warp, block, multi-block, or grid.
 
@@ -2567,7 +2657,7 @@ __global__ void grid_sync_kernel(float* data) {
 
 ---
 
-## 18. Automatic Scalability
+## 19. Automatic Scalability
 
 CUDA programs scale automatically across different GPU sizes. The same grid runs on a GPU with 4 SMs or 144 SMs — the runtime schedules blocks to available SMs.
 
@@ -2579,7 +2669,7 @@ This is why you write for **maximum parallelism** and let the hardware decide �
 
 ---
 
-## 19. Performance Optimization Checklist
+## 20. Performance Optimization Checklist
 
 ### Step 1 — Profile First
 
@@ -2633,7 +2723,7 @@ __global__ void my_kernel(float* data, int N) { ... }
 
 ---
 
-## 20. Compute Capability Quick Reference
+## 21. Compute Capability Quick Reference
 
 | Arch | CC | GPU Examples | FP16 TC | BF16 | FP8 | TMA | Clusters |
 |------|----|--------------|---------|------|-----|-----|---------|
@@ -2660,7 +2750,7 @@ __global__ void my_kernel(float* data, int N) { ... }
 
 ---
 
-## 21. Suggested Projects (in order)
+## 22. Suggested Projects (in order)
 
 | # | Project | Key Skills |
 |---|---------|-----------|
