@@ -112,14 +112,19 @@ void gemv_q4(half* y, const void* W_q4, const half* scales, const half* x,
     gemv_q4k_kernel<<<grid, block, 0, stream>>>(
         y, (const block_q4_K*)W_q4, x, M, K);
 
-    // Debug: print first GEMV output (only once)
-    static bool first = true;
-    if (first) {
+    // Debug: print first GEMV output from host (only once)
+    static int dbg_count = 0;
+    if (dbg_count < 3) {
         cudaStreamSynchronize(stream);
-        debug_print_half<<<1, 1, 0, stream>>>(y, M, "gemv_q4");
-        debug_print_half<<<1, 1, 0, stream>>>(x, K, "gemv_x_in");
-        cudaStreamSynchronize(stream);
-        first = false;
+        half h_y[8], h_x[8];
+        cudaMemcpy(h_y, y, 8 * sizeof(half), cudaMemcpyDeviceToHost);
+        cudaMemcpy(h_x, x, 8 * sizeof(half), cudaMemcpyDeviceToHost);
+        fprintf(stderr, "[GEMV #%d] M=%d K=%d out: ", dbg_count, M, K);
+        for (int i = 0; i < 8 && i < M; i++) fprintf(stderr, "%.4f ", __half2float(h_y[i]));
+        fprintf(stderr, " | in: ");
+        for (int i = 0; i < 8; i++) fprintf(stderr, "%.4f ", __half2float(h_x[i]));
+        fprintf(stderr, "\n");
+        dbg_count++;
     }
 }
 
