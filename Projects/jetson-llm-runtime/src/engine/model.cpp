@@ -479,7 +479,8 @@ bool load_and_map_weights(const std::string& path, void** blob, int64_t* blob_si
             else if (strstr(ti.name, "ffn_down.weight")) lw.w_down = ptr;
             else if (strstr(ti.name, "attn_norm.weight")) {
                 lw.rms_attn = ptr;
-                lw.rms_type = (ti.type == 0) ? 0 : 1;  // 0=F32, 1=F16
+                lw.rms_type = (ti.type == 0) ? 0 : 1;
+                if (layer == 0) fprintf(stderr, "[model] blk.0.attn_norm type=%d offset=%lu\n", ti.type, ti.offset);
             }
             else if (strstr(ti.name, "ffn_norm.weight")) {
                 lw.rms_ffn = ptr;
