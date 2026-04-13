@@ -477,17 +477,26 @@ bool load_and_map_weights(const std::string& path, void** blob, int64_t* blob_si
             else if (strstr(ti.name, "ffn_gate.weight")) lw.w_gate = ptr;
             else if (strstr(ti.name, "ffn_up.weight"))   lw.w_up = ptr;
             else if (strstr(ti.name, "ffn_down.weight")) lw.w_down = ptr;
-            else if (strstr(ti.name, "attn_norm.weight")) lw.rms_attn = (const half*)ptr;
-            else if (strstr(ti.name, "ffn_norm.weight"))  lw.rms_ffn = (const half*)ptr;
+            else if (strstr(ti.name, "attn_norm.weight")) {
+                lw.rms_attn = ptr;
+                lw.rms_type = (ti.type == 0) ? 0 : 1;  // 0=F32, 1=F16
+            }
+            else if (strstr(ti.name, "ffn_norm.weight")) {
+                lw.rms_ffn = ptr;
+                lw.rms_type = (ti.type == 0) ? 0 : 1;
+            }
             else continue;
             mapped++;
         }
         else if (strcmp(ti.name, "token_embd.weight") == 0) {
-            mw->tok_embd = (const half*)ptr;
+            mw->tok_embd = ptr;
+            mw->embd_type = (ti.type == 0) ? 0 : 1;  // 0=F32, 1=F16
+            fprintf(stderr, "[model] token_embd type=%d (%s)\n", ti.type, ti.type==0?"F32":"Q/F16");
             mapped++;
         }
         else if (strcmp(ti.name, "output_norm.weight") == 0) {
-            mw->output_norm = (const half*)ptr;
+            mw->output_norm = ptr;
+            fprintf(stderr, "[model] output_norm type=%d (%s)\n", ti.type, ti.type==0?"F32":"Q/F16");
             mapped++;
         }
         else if (strcmp(ti.name, "output.weight") == 0) {

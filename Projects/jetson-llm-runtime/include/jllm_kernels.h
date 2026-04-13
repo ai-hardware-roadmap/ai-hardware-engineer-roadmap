@@ -59,10 +59,11 @@ void fused_rmsnorm_residual(
     half*          output,
     const half*    x,
     const half*    residual,
-    const half*    weight,     // norm weight [hidden_dim]
+    const void*    weight,     // norm weight [hidden_dim] — FP32 or FP16
     int            rows,
     int            hidden_dim,
     float          eps,
+    bool           weight_fp32,// true if weight is float*, false if half*
     cudaStream_t   stream
 );
 

@@ -75,7 +75,7 @@ static void test_fused_norm() {
     cudaMemcpy(d_res, ones.data(), dim * sizeof(half), cudaMemcpyHostToDevice);
     cudaMemcpy(d_w,   ones.data(), dim * sizeof(half), cudaMemcpyHostToDevice);
 
-    jllm::fused_rmsnorm_residual(d_out, d_x, d_res, d_w, rows, dim, 1e-6f, 0);
+    jllm::fused_rmsnorm_residual(d_out, d_x, d_res, d_w, rows, dim, 1e-6f, false, 0);
     cudaDeviceSynchronize();
 
     std::vector<half> res(dim);

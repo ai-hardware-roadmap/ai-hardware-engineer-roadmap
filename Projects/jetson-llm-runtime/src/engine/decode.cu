@@ -164,7 +164,8 @@ void Engine::transformer_layer(int layer, int pos, half* x) {
     //    (x is the residual — don't modify it yet)
     half* zero_buf = (half*)scratch_.get(H * sizeof(half));
     cudaMemsetAsync(zero_buf, 0, H * sizeof(half), stream_);
-    fused_rmsnorm_residual(normed, x, zero_buf, lw.rms_attn, 1, H, 1e-5f, stream_);
+    bool norm_fp32 = (lw.rms_type == 0);  // 0=F32, 1=F16
+    fused_rmsnorm_residual(normed, x, zero_buf, lw.rms_attn, 1, H, 1e-5f, norm_fp32, stream_);
 
     // 2. QKV projections
     gemv_q4(q_buf, lw.wq, lw.sq, normed, config_.n_heads * config_.head_dim, H, 32, stream_);
@@ -202,7 +203,7 @@ void Engine::transformer_layer(int layer, int pos, half* x) {
     // ── FFN block ────────────────────────────────────────────
 
     // 8. Pre-FFN RMSNorm: normed2 = RMSNorm(x2) * weight
-    fused_rmsnorm_residual(normed2, x2, zero_buf, lw.rms_ffn, 1, H, 1e-5f, stream_);
+    fused_rmsnorm_residual(normed2, x2, zero_buf, lw.rms_ffn, 1, H, 1e-5f, norm_fp32, stream_);
 
     // 9. Gate and up projections
     gemv_q4(gate_buf, lw.w_gate, lw.s_gate, normed2, I, H, 32, stream_);
@@ -225,10 +226,26 @@ int Engine::decode_step(int pos) {
 
     half* x = (half*)scratch_.get(H * sizeof(half));
 
-    // Embedding lookup
-    // BUG #3 FIX: use cudaMemcpyDefault — works for both host (mmap) and device memory
-    const half* embd = model_weights_.tok_embd + last_token_ * H;
-    cudaMemcpyAsync(x, embd, H * sizeof(half), cudaMemcpyDefault, stream_);
+    // Embedding lookup — handle F32 or F16 embeddings
+    if (model_weights_.embd_type == 0) {
+        // F32 embeddings: copy to scratch as F32 then convert to F16
+        float* x_f32 = (float*)scratch_.get(H * sizeof(float));
+        const float* embd = (const float*)model_weights_.tok_embd + last_token_ * H;
+        cudaMemcpyAsync(x_f32, embd, H * sizeof(float), cudaMemcpyDefault, stream_);
+        // Convert F32 → F16 on GPU
+        fp16_to_fp32(nullptr, nullptr, 0, stream_);  // dummy — need fp32_to_fp16
+        // For now: CPU-side conversion (embeddings are small: 2048 × 4 = 8 KB)
+        cudaStreamSynchronize(stream_);
+        float h_embd[4096];  // max hidden_dim
+        memcpy(h_embd, embd, H * sizeof(float));
+        half h_x[4096];
+        for (int i = 0; i < H; i++) h_x[i] = __float2half(h_embd[i]);
+        cudaMemcpyAsync(x, h_x, H * sizeof(half), cudaMemcpyDefault, stream_);
+    } else {
+        // F16 embeddings: direct copy
+        const half* embd = (const half*)model_weights_.tok_embd + last_token_ * H;
+        cudaMemcpyAsync(x, embd, H * sizeof(half), cudaMemcpyDefault, stream_);
+    }
 
     // All transformer layers
     for (int l = 0; l < config_.n_layers; l++) {
@@ -239,7 +256,7 @@ int Engine::decode_step(int pos) {
     half* normed = (half*)scratch_.get(H * sizeof(half));
     half* zero = (half*)scratch_.get(H * sizeof(half));
     cudaMemsetAsync(zero, 0, H * sizeof(half), stream_);
-    fused_rmsnorm_residual(normed, x, zero, model_weights_.output_norm, 1, H, 1e-5f, stream_);
+    fused_rmsnorm_residual(normed, x, zero, model_weights_.output_norm, 1, H, 1e-5f, true, stream_);
 
     // Logits: FP16 GEMV then convert to FP32 on GPU (BUG #7 FIX)
     half*  logits_fp16 = (half*)scratch_.get(config_.vocab_size * sizeof(half));
@@ -298,7 +315,7 @@ void Engine::build_cuda_graph(int pos) {
     half* g_zero = (half*)scratch_.get(H * sizeof(half));
     cudaMemsetAsync(g_zero, 0, H * sizeof(half), stream_);
     fused_rmsnorm_residual(g_normed, graph_x, g_zero,
-                          model_weights_.output_norm, 1, H, 1e-5f, stream_);
+                          model_weights_.output_norm, 1, H, 1e-5f, true, stream_);
 
     // Capture logit projection + conversion
     half* g_logits_fp16 = (half*)scratch_.get(config_.vocab_size * sizeof(half));
@@ -371,8 +388,17 @@ GenStats Engine::generate(const std::string& prompt, const GenParams& params,
         last_token_ = prompt_tokens[i];
         int H = config_.hidden_dim;
         half* x = (half*)scratch_.get(H * sizeof(half));
-        const half* embd = model_weights_.tok_embd + last_token_ * H;
-        cudaMemcpyAsync(x, embd, H * sizeof(half), cudaMemcpyDefault, stream_);
+        // Embedding: F32 → convert, F16 → direct copy
+        if (model_weights_.embd_type == 0) {
+            const float* embd = (const float*)model_weights_.tok_embd + last_token_ * H;
+            float h_e[4096]; half h_x[4096];
+            memcpy(h_e, embd, H * sizeof(float));
+            for (int j = 0; j < H; j++) h_x[j] = __float2half(h_e[j]);
+            cudaMemcpyAsync(x, h_x, H * sizeof(half), cudaMemcpyDefault, stream_);
+        } else {
+            const half* embd = (const half*)model_weights_.tok_embd + last_token_ * H;
+            cudaMemcpyAsync(x, embd, H * sizeof(half), cudaMemcpyDefault, stream_);
+        }
         for (int l = 0; l < config_.n_layers; l++)
             transformer_layer(l, i, x);
     }

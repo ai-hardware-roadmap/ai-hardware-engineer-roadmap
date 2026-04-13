@@ -73,8 +73,9 @@ struct LayerWeights {
     const void* w_gate   = nullptr;
     const void* w_up     = nullptr;
     const void* w_down   = nullptr;
-    const half* rms_attn = nullptr;
-    const half* rms_ffn  = nullptr;
+    const void* rms_attn = nullptr;  // FP32 or FP16 depending on GGUF
+    const void* rms_ffn  = nullptr;  // FP32 or FP16 depending on GGUF
+    int rms_type = 0;                // 0=F32, 1=F16
     const half* sq       = nullptr;
     const half* sk       = nullptr;
     const half* sv       = nullptr;
@@ -85,8 +86,9 @@ struct LayerWeights {
 };
 
 struct ModelWeights {
-    const half*     tok_embd    = nullptr;
-    const half*     output_norm = nullptr;
+    const void*     tok_embd    = nullptr;   // F32 or F16
+    const void*     output_norm = nullptr;  // F32 or F16
+    int             embd_type   = 0;        // 0=F32, 1=F16
     const void*     output      = nullptr;
     const half*     s_output    = nullptr;
     LayerWeights*   layers      = nullptr;
