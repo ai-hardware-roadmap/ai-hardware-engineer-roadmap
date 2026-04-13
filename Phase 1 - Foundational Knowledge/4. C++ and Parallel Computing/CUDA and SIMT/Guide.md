@@ -1926,28 +1926,148 @@ Swizzling is used internally by CUTLASS and cuBLAS. For your own kernels, +1 pad
 
 ## 10. Synchronization
 
-### 10.1 Within a Block
+Three levels of synchronization, each with different scope and cost:
+
+| Function | Scope | Cost | When to use |
+|----------|-------|------|-------------|
+| `__syncthreads()` | Thread block (all threads) | High | After shared memory writes, before reads |
+| `__syncwarp()` | Warp (32 threads) | Low | Fast coordination within one warp |
+| `__syncwarp(mask)` | Sub-warp (selected lanes) | Very low | Divergent execution paths |
+
+### 10.1 `__syncthreads()` — Block-Wide Barrier
+
+All threads in a thread block must reach this point before any thread continues. The most common synchronization primitive in CUDA.
 
 ```cpp
-__syncthreads();          // barrier: all threads in block reach this before any continues
-__syncwarp();             // barrier: all threads in a warp (lighter, within one warp)
-__syncwarp(mask);         // barrier for a subset of warp lanes (mask = bitfield)
+__global__ void block_sync_example(float* input, float* output) {
+    __shared__ float shared[256];
+    int tid = threadIdx.x;
+    int idx = blockIdx.x * blockDim.x + tid;
+
+    // Step 1: every thread loads one element into shared memory
+    shared[tid] = input[idx];
+
+    // Step 2: BARRIER — wait for ALL threads to finish writing
+    __syncthreads();
+
+    // Step 3: now safe — all 256 values are in shared memory
+    // Thread 0 can read shared[255] because thread 255 has finished writing
+    if (tid == 0) {
+        float sum = 0.0f;
+        for (int i = 0; i < blockDim.x; i++)
+            sum += shared[i];
+        output[blockIdx.x] = sum;
+    }
+}
 ```
 
-> **`__syncthreads()` in conditional code is undefined behavior** if not all threads reach it:
-> ```cpp
-> // WRONG: some threads may not reach __syncthreads()
-> if (threadIdx.x < 16) {
->     smem[threadIdx.x] = data[threadIdx.x];
->     __syncthreads();   // ← UB: threads 16-31 never reach this
-> }
->
-> // CORRECT: syncthreads outside the conditional
-> smem[threadIdx.x] = (threadIdx.x < 16) ? data[threadIdx.x] : 0;
-> __syncthreads();       // all threads hit this
-> ```
+**Without `__syncthreads()`:** thread 0 might read `shared[200]` before thread 200 has written it → garbage result. The barrier guarantees all writes complete before any reads.
 
-### 10.2 Atomic Operations
+**Critical rule — `__syncthreads()` in conditional code is undefined behavior:**
+
+```cpp
+// WRONG: some threads may not reach __syncthreads()
+if (threadIdx.x < 16) {
+    smem[threadIdx.x] = data[threadIdx.x];
+    __syncthreads();   // ← UB: threads 16–31 never reach this → DEADLOCK
+}
+
+// CORRECT: barrier outside the conditional
+smem[threadIdx.x] = (threadIdx.x < 16) ? data[threadIdx.x] : 0;
+__syncthreads();       // all threads hit this — safe
+```
+
+### 10.2 `__syncwarp()` — Warp Barrier
+
+Synchronizes only the 32 threads in one warp. Faster than `__syncthreads()` because no cross-warp coordination needed.
+
+```cpp
+__global__ void warp_sync_example(int* data) {
+    int tid = threadIdx.x;
+    int lane = tid % 32;         // lane within warp
+
+    int val = data[tid];
+
+    // Warp-level computation
+    val += 1;
+
+    // Sync only this warp's 32 threads
+    __syncwarp();
+
+    // Now all 32 lanes in this warp have updated val
+    // Safe to use warp shuffle operations
+    int neighbor = __shfl_xor_sync(0xFFFFFFFF, val, 1);  // exchange with neighbor
+    data[tid] = val + neighbor;
+}
+```
+
+**When to use:** warp shuffle operations (`__shfl_sync`), warp vote (`__ballot_sync`), or any warp-cooperative algorithm where you need to ensure all lanes have finished a prior step.
+
+### 10.3 `__syncwarp(mask)` — Partial Warp Sync
+
+Synchronizes only the lanes specified by the bitmask. Avoids forcing inactive lanes to wait.
+
+```cpp
+__global__ void masked_sync_example(int* data) {
+    int tid = threadIdx.x;
+    int lane = tid % 32;
+
+    int val = data[tid];
+
+    bool active = (lane % 2 == 0);  // only even lanes participate
+
+    if (active) {
+        val += 10;  // only even lanes modify
+    }
+
+    // Mask: 0xAAAAAAAA = 10101010... (bits set for even lanes: 0, 2, 4, ...)
+    // Wait: 0x55555555 would be odd lanes
+    unsigned even_mask = 0x55555555;  // lanes 0, 2, 4, 6, ...
+    __syncwarp(even_mask);
+
+    if (active) {
+        data[tid] = val;  // only even lanes write — guaranteed they all finished
+    }
+}
+```
+
+**When to use:** branch-divergent algorithms where only some lanes are active (graph traversal, sparse matrix operations, conditional AI inference paths). Avoids the overhead of syncing lanes that aren't participating.
+
+### 10.4 Synchronization in Tiled Matmul (Real Pattern)
+
+The most common sync pattern in AI kernels — load tile, sync, compute, sync, repeat:
+
+```cpp
+__global__ void matmul_tiled(float* A, float* B, float* C, int N) {
+    __shared__ float As[TILE][TILE];
+    __shared__ float Bs[TILE][TILE];
+    float sum = 0.0f;
+
+    for (int t = 0; t < N / TILE; t++) {
+        // Phase 1: ALL threads cooperatively load one tile
+        As[threadIdx.y][threadIdx.x] = A[...];
+        Bs[threadIdx.y][threadIdx.x] = B[...];
+
+        __syncthreads();   // ← BARRIER 1: tile fully loaded before compute
+
+        // Phase 2: ALL threads compute using the loaded tile
+        for (int k = 0; k < TILE; k++)
+            sum += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+
+        __syncthreads();   // ← BARRIER 2: compute done before loading next tile
+    }
+    // Two barriers per tile iteration — load/compute/load/compute...
+    C[...] = sum;
+}
+```
+
+**Why two barriers per iteration:**
+- Barrier 1: ensures tile is fully loaded before any thread reads from it
+- Barrier 2: ensures all threads finished reading before the tile is overwritten with the next chunk
+
+Missing either barrier → race condition → wrong results (often intermittent, hard to debug).
+
+### 10.5 Atomic Operations
 
 ```cpp
 // Atomic add (global or shared memory)
