@@ -1678,6 +1678,103 @@ __global__ void transpose(float* out, const float* in, int width, int height) {
 }
 ```
 
+### 9.1 Shared Memory Is Actually Flat
+
+The GPU sees shared memory as one long line of addresses. When you declare `__shared__ float tile[32][32]`, the GPU doesn't know about "rows" and "columns" — it's just 1,024 consecutive floats.
+
+```
+What the GPU sees (flat):
+  smem[0]  smem[1]  smem[2]  ...  smem[31]  smem[32]  smem[33]  ...  smem[1023]
+  ├──────── Row 0 (32 elements) ──────────┤ ├──────── Row 1 ──────────────────┤
+
+What YOU see (2D grid):
+  Row 0:  smem[0]   smem[1]   smem[2]  ...  smem[31]
+  Row 1:  smem[32]  smem[33]  smem[34] ...  smem[63]
+  Row 2:  smem[64]  smem[65]  smem[66] ...  smem[95]
+
+Index formula:  flat_index = row × width + col
+```
+
+Banks are assigned by the flat index: `bank = flat_index % 32`.
+
+### 9.2 Why Column Access Causes Bank Conflicts
+
+When a warp of 32 threads reads one **row** (consecutive elements), each thread hits a different bank — no conflict:
+
+```
+Row access: thread i reads smem[row][i] = smem[row × 32 + i]
+
+  Thread 0 → index 0  → Bank 0
+  Thread 1 → index 1  → Bank 1
+  Thread 2 → index 2  → Bank 2
+  ...
+  Thread 31 → index 31 → Bank 31
+
+  All 32 banks hit once → no conflict ✓
+```
+
+But when threads read one **column** (same col, different rows), every thread hits the **same bank**:
+
+```
+Column access: thread i reads smem[i][col] = smem[i × 32 + col]
+
+  Width = 32 (no padding):
+  Thread 0 → index 0×32 + 0 = 0   → Bank 0 % 32 = 0
+  Thread 1 → index 1×32 + 0 = 32  → Bank 32 % 32 = 0  ← SAME BANK!
+  Thread 2 → index 2×32 + 0 = 64  → Bank 64 % 32 = 0  ← SAME BANK!
+  Thread 3 → index 3×32 + 0 = 96  → Bank 96 % 32 = 0  ← SAME BANK!
+
+  → 32-way bank conflict! Serialized to 32 sequential accesses.
+  → 32× slower than conflict-free access.
+```
+
+### 9.3 The +1 Padding Fix — Visually
+
+Adding one padding element per row changes the width from 32 to 33. Now column accesses hit different banks:
+
+```
+__shared__ float tile[32][32 + 1];   // width = 33
+
+Column access with padding:
+  Thread 0 → index 0×33 + 0 = 0   → Bank 0 % 32 = 0
+  Thread 1 → index 1×33 + 0 = 33  → Bank 33 % 32 = 1   ← different!
+  Thread 2 → index 2×33 + 0 = 66  → Bank 66 % 32 = 2   ← different!
+  Thread 3 → index 3×33 + 0 = 99  → Bank 99 % 32 = 3   ← different!
+
+  → All 32 threads hit different banks → no conflict ✓
+```
+
+**The complete picture:**
+
+```
+Without padding (width = 32):              With padding (width = 33):
+
+Col 0 access:                              Col 0 access:
+  Row 0: index  0 → Bank 0                  Row 0: index  0 → Bank 0
+  Row 1: index 32 → Bank 0  ← conflict!     Row 1: index 33 → Bank 1  ✓
+  Row 2: index 64 → Bank 0  ← conflict!     Row 2: index 66 → Bank 2  ✓
+  Row 3: index 96 → Bank 0  ← conflict!     Row 3: index 99 → Bank 3  ✓
+
+Col 5 access:                              Col 5 access:
+  Row 0: index  5 → Bank 5                  Row 0: index  5 → Bank 5
+  Row 1: index 37 → Bank 5  ← conflict!     Row 1: index 38 → Bank 6  ✓
+  Row 2: index 69 → Bank 5  ← conflict!     Row 2: index 71 → Bank 7  ✓
+  Row 3: index101 → Bank 5  ← conflict!     Row 3: index104 → Bank 8  ✓
+```
+
+**Cost of padding:** 1 extra float per row (128 bytes for 32 rows). Trivial cost, 32× speedup for column access. Always pad when your tile width is a multiple of 32.
+
+### 9.4 Bank Conflict Patterns Quick Reference
+
+| Access pattern | Bank conflict | Fix |
+|---------------|--------------|-----|
+| `smem[threadIdx.x]` (stride 1) | None | Already perfect |
+| `smem[threadIdx.x * 2]` (stride 2) | 2-way | Pad or remap |
+| `smem[threadIdx.x * 32]` (column, width 32) | 32-way (worst!) | +1 padding |
+| `smem[same_index]` (broadcast) | None | Hardware broadcasts |
+| `smem[row][threadIdx.x]` (row read) | None | Natural row-major |
+| `smem[threadIdx.x][col]` (column read) | 32-way | Declare as `[N][N+1]` |
+
 ---
 
 ## 10. Synchronization
