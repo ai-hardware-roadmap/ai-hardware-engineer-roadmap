@@ -20,7 +20,7 @@ namespace jllm {
 
 // ── GGUF magic and header ────────────────────────────────────────────────
 
-static constexpr uint32_t GGUF_MAGIC = 0x46475547;  // "GGUF" in little-endian
+static constexpr uint32_t GGUF_MAGIC = 0x46554747;  // "GGUF" as uint32 little-endian (bytes: G G U F)
 
 struct GGUFHeader {
     uint32_t magic;

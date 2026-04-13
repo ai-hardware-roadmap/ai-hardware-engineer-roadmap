@@ -23,7 +23,7 @@ bool Tokenizer::load_from_gguf(const std::string& path) {
     fread(&n_tensors, 8, 1, f);
     fread(&n_kv, 8, 1, f);
 
-    if (magic != 0x46475547) { fclose(f); return false; }
+    if (magic != 0x46554747) { fclose(f); return false; }
 
     // Scan metadata for tokenizer entries
     for (uint64_t i = 0; i < n_kv; i++) {
