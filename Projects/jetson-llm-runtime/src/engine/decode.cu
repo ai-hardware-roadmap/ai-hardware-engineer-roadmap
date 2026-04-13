@@ -264,12 +264,48 @@ void Engine::transformer_layer(int layer, int pos, half* x) {
 
     // ── Attention block ──────────────────────────────────────
 
+    // Debug: check x values before first norm
+    static int layer_dbg = 0;
+    if (layer_dbg < 1) {
+        cudaStreamSynchronize(stream_);
+        half h_x[8];
+        cudaMemcpy(h_x, x, 8 * sizeof(half), cudaMemcpyDeviceToHost);
+        fprintf(stderr, "[layer %d] x before norm: ", layer);
+        for (int i = 0; i < 8; i++) fprintf(stderr, "%.4f ", __half2float(h_x[i]));
+        fprintf(stderr, "\n");
+
+        // Also check norm weight
+        if (lw.rms_attn) {
+            float w_check[4];
+            bool nfp32 = (lw.rms_type == 0);
+            if (nfp32) {
+                memcpy(w_check, lw.rms_attn, 4 * sizeof(float));
+            } else {
+                half h_w[4];
+                memcpy(h_w, lw.rms_attn, 4 * sizeof(half));
+                for (int i = 0; i < 4; i++) w_check[i] = __half2float(h_w[i]);
+            }
+            fprintf(stderr, "[layer %d] norm weight (fp32=%d): %.4f %.4f %.4f %.4f\n",
+                    layer, nfp32, w_check[0], w_check[1], w_check[2], w_check[3]);
+        }
+        layer_dbg++;
+    }
+
     // 1. Pre-attention RMSNorm: normed = RMSNorm(x) * weight
-    //    (x is the residual — don't modify it yet)
     half* zero_buf = (half*)scratch_.get(H * sizeof(half));
     cudaMemsetAsync(zero_buf, 0, H * sizeof(half), stream_);
     bool norm_fp32 = (lw.rms_type == 0);  // 0=F32, 1=F16
     fused_rmsnorm_residual(normed, x, zero_buf, lw.rms_attn, 1, H, 1e-5f, norm_fp32, stream_);
+
+    // Debug: check normed output
+    if (layer_dbg <= 1 && layer == 0) {
+        cudaStreamSynchronize(stream_);
+        half h_n[8];
+        cudaMemcpy(h_n, normed, 8 * sizeof(half), cudaMemcpyDeviceToHost);
+        fprintf(stderr, "[layer %d] normed after RMSNorm: ", layer);
+        for (int i = 0; i < 8; i++) fprintf(stderr, "%.4f ", __half2float(h_n[i]));
+        fprintf(stderr, "\n");
+    }
 
     // 2. QKV projections
     gemv_q4(q_buf, lw.wq, lw.sq, normed, config_.n_heads * config_.head_dim, H, 32, stream_);
