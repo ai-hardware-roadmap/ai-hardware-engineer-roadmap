@@ -46,9 +46,9 @@
   box-shadow: 0 10px 34px rgba(2, 8, 23, 0.18);
 }
 
-.md-typeset img.stack-diagram {
+.md-typeset img[alt="AI Chip Stack Diagram"] {
   display: block;
-  width: min(1020px, 100%);
+  width: min(760px, 100%);
   max-width: 100%;
   margin: 1.2rem auto 1rem;
   border-radius: 18px;

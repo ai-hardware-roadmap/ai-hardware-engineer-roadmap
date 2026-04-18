@@ -61,7 +61,7 @@ This roadmap is organized around a few simple rules: start with a real setup pha
 
 A chip that runs AI isn't just silicon. It's **8 layers of technology** that must work together, from the model you write at the top to the physical system that gets manufactured at the bottom.
 
-![AI Chip Stack Diagram](Assets/images/ai-chip-stack-diagram.svg){ .stack-diagram }
+![AI Chip Stack Diagram](Assets/images/ai-chip-stack-diagram.svg)
 
 > **L1–L6:** Full hands-on projects throughout this curriculum.
 > **L7–L8:** Conceptual with guided labs (OpenROAD, TinyTapeout).
