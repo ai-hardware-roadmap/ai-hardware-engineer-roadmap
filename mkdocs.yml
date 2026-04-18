@@ -1,6 +1,6 @@
 site_name: AI Hardware Engineer Roadmap
 site_url: https://ai-hpc.github.io/ai-hardware-engineer-roadmap/
-site_description: Design a custom AI inference chip. 8 layers, 23 sub-layers, 5 phases.
+site_description: Design a custom AI inference chip. 5 phases, 8 layers, 23 sub-layers.
 site_author: ai-hpc
 repo_url: https://github.com/ai-hpc/ai-hardware-engineer-roadmap
 repo_name: ai-hpc/ai-hardware-engineer-roadmap
@@ -93,9 +93,11 @@ extra_css:
 nav:
   - Home: README.md
   - Roles & Market: Roles and Market Analysis.md
+  - Curriculum Authoring Guide: Curriculum-Authoring-Guide.md
 
   # ── Phase 1 ─────────────────────────────────────────────────
   - Phase 1 — Digital Foundations:
+    - Overview: Phase 1 - Foundational Knowledge/Guide.md
     - Digital Design:
       - Guide: Phase 1 - Foundational Knowledge/1. Digital Design and Hardware Description Languages/Guide.md
       - Fundamentals: Phase 1 - Foundational Knowledge/1. Digital Design and Hardware Description Languages/Digital Design Fundamentals/Guide.md
@@ -149,6 +151,7 @@ nav:
 
   # ── Phase 2 ─────────────────────────────────────────────────
   - Phase 2 — Embedded Systems:
+    - Overview: Phase 2 - Embedded Systems/Guide.md
     - Schematic & PCB: Phase 2 - Embedded Systems/1. Schematic Capture and PCB Design/Guide.md
     - Embedded Software: Phase 2 - Embedded Systems/2. Embedded Software/Guide.md
     - Embedded Linux:
@@ -298,6 +301,7 @@ nav:
 
   # ── Phase 5 ─────────────────────────────────────────────────
   - Phase 5 — Specialization:
+    - Overview: Phase 5 - Advanced Topics and Specialization/Guide.md
     - "A: GPU Infrastructure":
       - Guide: Phase 5 - Advanced Topics and Specialization/1. GPU Infrastructure/Guide.md
       - Nvidia GPU:

@@ -4,6 +4,8 @@
 
 **Layer mapping:** **L1** (Application & Framework) — this entire phase teaches you what AI chips compute.
 
+**Role targets:** ML Inference Engineer · Edge AI Engineer · Agentic AI Engineer · ML Engineer · AI Compiler Engineer
+
 **Prerequisites:** Phase 1 (Digital Foundations), Phase 2 (Embedded Systems).
 
 **What comes after:** Phase 4 Track A (FPGA), Track B (Jetson), Track C (ML Compiler).
@@ -102,6 +104,29 @@ This track teaches the **AI application and infrastructure workloads** — the d
 | LLM inference (KV-cache, batching) | L5: memory hierarchy, HBM bandwidth requirements |
 | Model computational graphs | L2: graph IR representation, fusion opportunities |
 | Training at scale (distributed) | L3: NCCL, multi-GPU runtime |
+
+---
+
+## What You Should Produce
+
+By the end of this phase, you should have at least:
+
+- one model-implementation or workload-intuition artifact from the core modules
+- one deployment- or optimization-oriented artifact from Track A or Track B
+- one short write-up connecting workload behavior to hardware constraints such as memory, latency, throughput, or precision
+
+Examples include a quantization comparison, a profiling note, a tinygrad trace, a RAG latency analysis, or a sensor-pipeline benchmark.
+
+---
+
+## Exit Criteria
+
+You are ready for Phase 4 when you can:
+
+- explain what your target workloads actually compute
+- identify whether a workload is dominated by compute, memory, batching, context length, or deployment constraints
+- connect model structure to compiler, runtime, or hardware implications
+- show at least one artifact that proves you did more than read about the workload
 
 ---
 

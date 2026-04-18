@@ -1,0 +1,80 @@
+# Phase 5: Advanced Topics and Specialization
+
+> *Go deep in one part of the stack until your work looks differentiated, not just broad.*
+
+**Layer mapping:** Depends on the track. This phase spans **L1 through L8**, but each specialization should stay coherent around one professional niche.
+
+**Role targets:** GPU Infrastructure Engineer · HPC Engineer · Robotics Engineer · Autonomous Vehicles Engineer · AI Accelerator Architect · Advanced Edge AI Engineer
+
+**Prerequisites:** one primary Phase 4 track completed to a project-capable level: [Xilinx FPGA](../Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/1.%20Xilinx%20FPGA%20Development/Guide.md), [NVIDIA Jetson](../Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/1.%20Nvidia%20Jetson%20Platform/Guide.md), or [ML Compiler](../Phase%204%20-%20Track%20C%20-%20ML%20Compiler%20and%20Graph%20Optimization/Guide.md), plus whichever earlier phases your track depends on most heavily.
+
+**What comes after:** Specialization is the endpoint of the curriculum. At this stage, the next step is usually a major portfolio project, open-source contribution, or role-specific job targeting.
+
+---
+
+## Why This Phase Exists
+
+Breadth gets you into the stack. Specialization is what makes you recognizable inside it.
+
+This phase exists so you can choose one area and go from:
+
+- “I understand the system”
+
+to
+
+- “I can do difficult, valuable work in this niche”
+
+That is the difference between a learner and a differentiated candidate.
+
+---
+
+## Phase Structure
+
+| Track | Focus | Best for | Guide |
+|------|-------|----------|-------|
+| **1. GPU Infrastructure** | multi-GPU systems, interconnects, distributed runtime, vendor ecosystems | cluster and infrastructure work | [Guide](1.%20GPU%20Infrastructure/Guide.md) |
+| **2. High Performance Computing** | CUDA-X libraries, performance engineering, large-scale acceleration | systems and performance roles | [Guide](2.%20High%20Performance%20Computing/Guide.md) |
+| **3. Edge AI** | efficient deployment, real-time constraints, edge optimization | edge deployment specialists | [Guide](3.%20Edge%20AI/Guide.md) |
+| **4. Robotics** | ROS 2, autonomy software, robot systems integration | robotics and embodied AI | [Guide](4.%20Robotics/Guide.md) |
+| **5. Autonomous Vehicles** | perception, safety, deployment, debugging real vehicle stacks | AV systems and applied autonomy | [Guide](5.%20Autonomous%20Vehicles/Guide.md) |
+| **6. AI Chip Design** | accelerator architecture, dataflow, custom compute design | architecture and chip-design paths | [Guide](6.%20AI%20Chip%20Design/Guide.md) |
+
+**Recommended rule:** pick one primary track first. Add a second track only when it strengthens your main specialization instead of diluting it.
+
+---
+
+## What You Should Produce
+
+Phase 5 should end with a project that is clearly role-shaped:
+
+- a multi-GPU or performance-engineering runbook
+- an edge deployment case study with hard constraints and metrics
+- a robotics or AV system analysis tied to real software stacks
+- an accelerator architecture note, prototype, or design-space study
+
+This phase should not end as a pile of bookmarks. It should end as evidence of specialization.
+
+---
+
+## Exit Criteria
+
+You are using this phase correctly when you can:
+
+- explain why your chosen specialization matters in the AI stack
+- show artifacts that are harder and narrower than your Phase 4 outputs
+- connect your specialization to real target roles and actual responsibilities
+- point to one body of work that represents your “signature direction”
+
+---
+
+## How To Choose A Track
+
+- Choose the track whose daily work you actually want, not the one that merely sounds prestigious.
+- Prefer the track that compounds what you already built in Phase 4.
+- Avoid trying to complete every specialization; depth matters more than total coverage here.
+
+---
+
+## Next
+
+Choose one specialization guide above and turn it into a flagship project.

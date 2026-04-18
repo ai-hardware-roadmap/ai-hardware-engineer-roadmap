@@ -6,6 +6,56 @@
 
 ---
 
+## How To Read This Data
+
+This page is decision support, not a labor-economics paper. Use it to narrow your direction inside the stack.
+
+### What the tables mean
+
+| Field | Meaning | How to use it |
+|-------|---------|---------------|
+| **Focus** | The core technical problem area of the sub-layer | Match this to the work you actually want to do |
+| **Typical Roles** | Common job titles that map to that sub-layer | Search for these titles when validating demand |
+| **Total Comp (Top Tier)** | Approximate total compensation for top-paying US employers | Use directionally, not as a guaranteed expectation |
+| **Remote / Hybrid / Onsite** | Approximate working-mode mix for that sub-layer | Helps filter paths based on lifestyle constraints |
+| **Trending / Market Notes** | Directional hiring signal or skill premium | Helps identify where the market is tightening or accelerating |
+
+### What this data is for
+
+Use it to answer four practical questions:
+
+1. Which part of the stack matches the kind of problems you want to solve?
+2. Which roles are compatible with your preferred work arrangement?
+3. Which adjacent sub-layer should you learn next to increase your value?
+4. Which roadmap phase should you prioritize based on that target role?
+
+### Interpretation rules
+
+- These are **directional ranges**, not exact market surveys.
+- Compensation reflects stronger employers and well-funded startups more than the median company.
+- Some titles overlap multiple sub-layers; use the work description, not just the title.
+- Higher pay usually means scarcer skills, lower remote flexibility, or both.
+
+---
+
+## How To Use This Page With The Roadmap
+
+Start by choosing one **primary sub-layer** and one **adjacent sub-layer**:
+
+- Example: `L1a Inference Optimization` + `L2c Kernel Engineering`
+- Example: `L4b Embedded Linux & BSP` + `L3b Linux Kernel & Drivers`
+- Example: `L5a Accelerator Architecture` + `L6a RTL Design`
+
+Then map those targets back to the roadmap:
+
+- **L1 / L2 roles:** prioritize [Phase 3](Phase%203%20-%20Artificial%20Intelligence/Guide.md) and the relevant Phase 4 track: [Xilinx FPGA](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/1.%20Xilinx%20FPGA%20Development/Guide.md), [NVIDIA Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/1.%20Nvidia%20Jetson%20Platform/Guide.md), or [ML Compiler](Phase%204%20-%20Track%20C%20-%20ML%20Compiler%20and%20Graph%20Optimization/Guide.md)
+- **L3 / L4 roles:** prioritize [Phase 1](Phase%201%20-%20Foundational%20Knowledge/Guide.md), [Phase 2](Phase%202%20-%20Embedded%20Systems/Guide.md), and selected Phase 4 tracks
+- **L5 / L6 roles:** prioritize [Phase 1](Phase%201%20-%20Foundational%20Knowledge/Guide.md), [Phase 4 Track A](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/1.%20Xilinx%20FPGA%20Development/Guide.md), and [Phase 5F](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/6.%20AI%20Chip%20Design/Guide.md)
+
+This makes the data actionable instead of just interesting.
+
+---
+
 ## Layer Map — 8 Layers, 23 Sub-Layers
 
 | Layer | Sub-Layer | Focus | Typical Roles |

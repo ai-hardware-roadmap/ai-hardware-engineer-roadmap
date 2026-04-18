@@ -1901,7 +1901,7 @@ nvidia-l4t-multimedia
 ### 15.2 Staged Rollout Strategy
 
 ```
-Phase 0: Lab Validation (pre-rollout)
+Stage 0: Lab Validation (pre-rollout)
   ───────────────────────────────
   Target:  5 internal test devices
   Duration: 48 hours

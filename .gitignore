@@ -3,3 +3,8 @@ Phase 4 - Track B - Nvidia Jetson/5. OpenClaw Assistant Box/openclaw-upstream/
 Phase 4 - Track B - Nvidia Jetson/5. OpenClaw Assistant Box/self-improving-agent/
 Phase 5 - Advanced Topics and Specialization/4. Autonomous Driving/agnos-builder/
 Phase 5 - Advanced Topics and Specialization/4. Autonomous Driving/agnos-kernel-sdm845/
+
+# Local docs build artifacts
+docs/
+_site/
+site/

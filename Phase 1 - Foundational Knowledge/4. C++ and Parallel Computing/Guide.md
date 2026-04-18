@@ -18,6 +18,38 @@ If you can't think in parallel, you can't design hardware that runs parallel wor
 
 ---
 
+## Learning Outcomes
+
+By the end of this module, you should be able to:
+
+- explain why modern AI systems are throughput-oriented rather than clock-speed-oriented
+- write and debug parallel code across SIMD, CPU multicore, and GPU execution models
+- reason about memory locality, synchronization, occupancy, and bandwidth bottlenecks
+- measure the difference between a correct implementation and a performant one
+- produce at least one portfolio artifact that demonstrates real low-level performance work
+
+---
+
+## How To Work This Module
+
+Do not treat this as five isolated reading sections. Work it as a sequence:
+
+1. Learn the execution model
+2. Implement a small kernel or parallel workload
+3. Measure speedup and identify the limiting bottleneck
+4. Write down what changed and why
+
+For every sub-track, finish with a visible artifact. Good outputs include:
+
+- vectorization benchmark tables
+- OpenMP scaling plots
+- Nsight screenshots
+- occupancy calculations
+- HIP porting notes
+- SYCL portability comparison notes
+
+---
+
 ## Part 1 — How Computing Became Parallel
 
 Before diving into code, understand the historical pressure that created the hardware you'll design.
@@ -86,6 +118,35 @@ Study these **in order**. Each builds on the previous.
 | 3 | **CUDA and SIMT** | NVIDIA GPU programming — thread hierarchy, memory spaces, tiling, streams, Tensor Cores, profiling | [Guide →](CUDA%20and%20SIMT/Guide.md) |
 | 4 | **ROCm and HIP** | AMD GPU programming — CDNA architecture, HIP API, HIPIFY porting, Matrix Cores, RCCL multi-GPU | [Guide →](ROCm%20and%20HIP/Guide.md) |
 | 5 | **OpenCL and SYCL** | Vendor-neutral compute — OpenCL platform model, SYCL modern C++, sub-groups, FPGA pipes | [Guide →](OpenCL%20and%20SYCL/Guide.md) |
+
+---
+
+## Build, Measure, Ship
+
+Use this completion rubric instead of stopping at "I read the guide."
+
+| Sub-track | Build | Measure | Ship |
+|-----------|-------|---------|------|
+| C++ and SIMD | vectorized math kernel | scalar vs SIMD speedup, cache behavior | short benchmark report |
+| OpenMP / oneTBB | multicore loop or pipeline | scaling across core counts, load imbalance | plot + notes on scheduling choice |
+| CUDA | at least one tiled GPU kernel | occupancy, memory throughput, kernel timeline | Nsight profile and tuned kernel |
+| ROCm / HIP | HIP port of a CUDA kernel | correctness + performance delta vs CUDA | portability notes |
+| OpenCL / SYCL | one portable parallel kernel | backend/device comparison | portability tradeoff summary |
+
+If you only complete one artifact in this whole module, make it the CUDA one.
+
+---
+
+## Exit Criteria
+
+You are ready to move on when you can do all of the following without guessing:
+
+- choose between SIMD, CPU threads, and GPU execution for a simple workload
+- explain the bottleneck of a kernel in terms of compute, memory, or synchronization
+- read a profiler output and identify one actionable optimization
+- connect kernel-level behavior to downstream AI workloads such as matmul, attention, or convolution
+
+That is the minimum bar for Phase 3 and Phase 4 to be useful.
 
 ---
 

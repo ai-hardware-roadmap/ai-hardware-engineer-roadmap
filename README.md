@@ -18,6 +18,8 @@ Every AI model — GPT, Stable Diffusion, your self-driving car — runs on **sp
 
 This is a **free, community-driven curriculum** that teaches you to do exactly that. It covers the full stack from the AI application at the top down to the chip design at the bottom — organized as a self-paced learning roadmap with guides, projects, and curated resources.
 
+This roadmap is organized around a few simple rules: start with a real setup phase, learn by building, measure what you build, and finish each module with a reusable output instead of passive notes.
+
 **You will learn to:**
 
 - Write GPU kernels and parallel code that runs at hardware speed
@@ -77,6 +79,9 @@ A chip that runs AI isn't just silicon. It's **8 layers of technology** that mus
 **Pick your entry point based on where you are today:**
 
 ```
+Everyone:
+  → Start with this README: choose a target role, verify your toolchain, and pick your first phase
+
 Coming from software / ML?
   → Start at Phase 1 (C++ and Parallel Computing) then Phase 3 (AI)
 
@@ -92,9 +97,28 @@ Targeting chip design?
 
 ---
 
-## The 5-Phase Curriculum
+## How To Use This Roadmap
 
-### Phase 1 — Digital Foundations
+This repository works best if every module follows a simple execution loop:
+
+1. Read the theory
+2. Build the subsystem or implementation
+3. Measure performance, power, correctness, or utilization
+4. Ship one reusable artifact
+
+That artifact might be a CUDA profile, TensorRT benchmark, device-tree patch, FPGA timing report, or architecture write-up. The point is to finish each block with proof of work, not just notes.
+
+Before you start Phase 1, make three decisions:
+
+1. Pick a target role or sub-layer from [Roles & Market Analysis](Roles%20and%20Market%20Analysis.md)
+2. Verify your core toolchain and hardware access plan
+3. Track your outputs in a simple project log: what you built, how you measured it, what failed, and what changed
+
+---
+
+## The 5 Phases
+
+### [Phase 1 — Digital Foundations](Phase%201%20-%20Foundational%20Knowledge/Guide.md)
 *Learn the language of hardware. Go from logic gates to writing GPU code.*
 
 | Module | What you'll learn |
@@ -106,7 +130,7 @@ Targeting chip design?
 
 ---
 
-### Phase 2 — Embedded Systems
+### [Phase 2 — Embedded Systems](Phase%202%20-%20Embedded%20Systems/Guide.md)
 *Get hands-on with real hardware: microcontrollers, sensors, and embedded Linux.*
 
 | Module | What you'll learn |
@@ -116,7 +140,7 @@ Targeting chip design?
 
 ---
 
-### Phase 3 — Artificial Intelligence
+### [Phase 3 — Artificial Intelligence](Phase%203%20-%20Artificial%20Intelligence/Guide.md)
 *Understand the AI workloads your hardware must run. Two tracks — pick one or both.*
 
 **Core (everyone does these):**
@@ -182,9 +206,14 @@ Targeting chip design?
 | [Compiler Fundamentals](Phase%204%20-%20Track%20C%20-%20ML%20Compiler%20and%20Graph%20Optimization/Guide.md) | How MLIR, TVM, and LLVM work; build a custom backend |
 | [DL Inference Optimization](Phase%204%20-%20Track%20C%20-%20ML%20Compiler%20and%20Graph%20Optimization/DL%20Inference%20Optimization/Guide.md) | Triton kernels, Flash-Attention, TensorRT-LLM, quantization |
 
+Start here:
+- [Track A — Xilinx FPGA](Phase%204%20-%20Track%20A%20-%20Xilinx%20FPGA/1.%20Xilinx%20FPGA%20Development/Guide.md)
+- [Track B — NVIDIA Jetson](Phase%204%20-%20Track%20B%20-%20Nvidia%20Jetson/1.%20Nvidia%20Jetson%20Platform/Guide.md)
+- [Track C — ML Compiler](Phase%204%20-%20Track%20C%20-%20ML%20Compiler%20and%20Graph%20Optimization/Guide.md)
+
 ---
 
-### Phase 5 — Specialization
+### [Phase 5 — Specialization](Phase%205%20-%20Advanced%20Topics%20and%20Specialization/Guide.md)
 *Go deep in one area. These tracks are ongoing and expand continuously.*
 
 | Track | What you'll specialize in | Guide |
@@ -226,6 +255,19 @@ Targeting chip design?
 ## Additional Resources
 
 - [**Roles & Market Analysis**](Roles%20and%20Market%20Analysis.md) — 23 sub-roles, salary data, job postings, remote %, hiring priorities
+- [**Curriculum Authoring Guide**](Curriculum-Authoring-Guide.md) — how to add new modules, labs, and projects without losing the repo's hardware-first focus
+
+---
+
+## Local Docs Build
+
+GitHub Actions prepares a temporary `docs/` directory before running MkDocs. To reproduce that workflow locally:
+
+```bash
+./scripts/build_docs_local.sh
+```
+
+This will mirror the publish pipeline, create a local `docs/` tree, and build the site into `_site/`.
 
 ---
 
