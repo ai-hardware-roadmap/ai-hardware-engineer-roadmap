@@ -1,0 +1,112 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="68" y1="44" x2="1138" y2="684" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#13203B"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#17233E"/>
+      <stop offset="1" stop-color="#0E172B"/>
+    </linearGradient>
+    <linearGradient id="phaseA" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#375DFB"/>
+      <stop offset="1" stop-color="#1FB6FF"/>
+    </linearGradient>
+    <linearGradient id="phaseB" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#16B364"/>
+      <stop offset="1" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="phaseC" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1200" height="720" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#020817" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect x="40" y="36" width="1120" height="648" rx="28" fill="url(#bg)"/>
+    <rect x="40.5" y="36.5" width="1119" height="647" rx="27.5" stroke="#35507D" stroke-opacity="0.45"/>
+  </g>
+
+  <rect x="72" y="72" width="126" height="34" rx="17" fill="#162544"/>
+  <text x="135" y="94" text-anchor="middle" fill="#9DB6FF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="0.08em">ROADMAP</text>
+
+  <text x="76" y="170" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="50" font-weight="800">Build the hardware</text>
+  <text x="76" y="226" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="50" font-weight="800">that runs AI</text>
+  <text x="76" y="274" fill="#C5D2F4" font-family="Inter, Arial, sans-serif" font-size="22">From CUDA kernels and Jetson deployment to compiler backends</text>
+  <text x="76" y="306" fill="#C5D2F4" font-family="Inter, Arial, sans-serif" font-size="22">and accelerator architecture.</text>
+
+  <rect x="76" y="352" width="132" height="42" rx="21" fill="#15284D"/>
+  <text x="142" y="378" text-anchor="middle" fill="#D8E4FF" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">8-layer stack</text>
+
+  <rect x="222" y="352" width="122" height="42" rx="21" fill="#143046"/>
+  <text x="283" y="378" text-anchor="middle" fill="#D8E4FF" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">5 phases</text>
+
+  <rect x="358" y="352" width="182" height="42" rx="21" fill="#3B2720"/>
+  <text x="449" y="378" text-anchor="middle" fill="#FFE4C4" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700">role-shaped tracks</text>
+
+  <rect x="76" y="432" width="462" height="96" rx="20" fill="url(#panel)" stroke="#2A406A"/>
+  <text x="104" y="466" fill="#8FB3FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.06em">YOU LEARN TO</text>
+  <text x="104" y="499" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="21">Write kernels, deploy edge AI, understand compilers,</text>
+  <text x="104" y="529" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="21">and reason about the chip beneath the model.</text>
+
+  <rect x="618" y="86" width="492" height="454" rx="28" fill="#0D172B" stroke="#2A406A"/>
+  <text x="654" y="132" fill="#8FB3FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.08em">THE CHIP STACK</text>
+
+  <rect x="654" y="164" width="420" height="42" rx="14" fill="#2E90FA"/>
+  <text x="676" y="191" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L1  AI APP AND FRAMEWORK</text>
+  <text x="980" y="191" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="16">PyTorch, ONNX, TensorRT</text>
+
+  <rect x="654" y="212" width="420" height="42" rx="14" fill="#3B82F6"/>
+  <text x="676" y="239" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L2  ML COMPILER</text>
+  <text x="948" y="239" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="16">MLIR, TVM, LLVM</text>
+
+  <rect x="654" y="260" width="420" height="42" rx="14" fill="#2563EB"/>
+  <text x="676" y="287" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L3  RUNTIME AND DRIVER</text>
+  <text x="951" y="287" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="16">CUDA runtime, kernel APIs</text>
+
+  <rect x="654" y="308" width="420" height="42" rx="14" fill="#16A34A"/>
+  <text x="676" y="335" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L4  FIRMWARE AND OS</text>
+  <text x="969" y="335" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="16">RTOS, BSP, bootloaders</text>
+
+  <rect x="654" y="356" width="420" height="42" rx="14" fill="#059669"/>
+  <text x="676" y="383" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L5  HARDWARE ARCHITECTURE</text>
+  <text x="955" y="383" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="16">dataflow, HBM, NoC</text>
+
+  <rect x="654" y="404" width="420" height="42" rx="14" fill="#CA8A04"/>
+  <text x="676" y="431" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L6  RTL AND LOGIC DESIGN</text>
+  <text x="957" y="431" fill="#1F2937" font-family="Inter, Arial, sans-serif" font-size="16">Verilog, FPGA, verification</text>
+
+  <rect x="654" y="452" width="420" height="42" rx="14" fill="#F97316"/>
+  <text x="676" y="479" fill="#FFF7ED" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L7  PHYSICAL IMPLEMENTATION</text>
+  <text x="958" y="479" fill="#FFF1E8" font-family="Inter, Arial, sans-serif" font-size="16">timing, place and route</text>
+
+  <rect x="654" y="500" width="420" height="42" rx="14" fill="#EF4444"/>
+  <text x="676" y="527" fill="#FFF5F5" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">L8  FABRICATION AND PACKAGING</text>
+  <text x="958" y="527" fill="#FFF1F2" font-family="Inter, Arial, sans-serif" font-size="16">foundry, packaging, yield</text>
+
+  <text x="654" y="570" fill="#C5D2F4" font-family="Inter, Arial, sans-serif" font-size="17">L1-L6 are covered hands-on across the roadmap.</text>
+  <text x="654" y="596" fill="#C5D2F4" font-family="Inter, Arial, sans-serif" font-size="17">L7-L8 are introduced with guided conceptual labs.</text>
+
+  <rect x="76" y="570" width="186" height="80" rx="20" fill="url(#phaseA)"/>
+  <text x="104" y="603" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.06em">PHASE 1</text>
+  <text x="104" y="631" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Foundations</text>
+
+  <rect x="276" y="570" width="186" height="80" rx="20" fill="url(#phaseB)"/>
+  <text x="304" y="603" fill="#042F1A" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.06em">PHASE 2</text>
+  <text x="304" y="631" fill="#062819" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Embedded</text>
+
+  <rect x="476" y="570" width="186" height="80" rx="20" fill="#1E293B" stroke="#2E90FA"/>
+  <text x="504" y="603" fill="#8FB3FF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.06em">PHASE 3</text>
+  <text x="504" y="631" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">AI Workloads</text>
+
+  <rect x="676" y="570" width="186" height="80" rx="20" fill="url(#phaseC)"/>
+  <text x="704" y="603" fill="#FFF7ED" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.06em">PHASE 4</text>
+  <text x="704" y="631" fill="#FFF7ED" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Deploy</text>
+
+  <rect x="876" y="570" width="234" height="80" rx="20" fill="#111827" stroke="#42526D"/>
+  <text x="904" y="603" fill="#A7B7D6" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.06em">PHASE 5</text>
+  <text x="904" y="631" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Specialize</text>
+</svg>

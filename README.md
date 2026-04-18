@@ -4,7 +4,7 @@
 
 **Learn to build the hardware that runs AI — from writing your first CUDA kernel to designing a custom AI chip.**
 
-![AI Hardware Engineer Roadmap](Assets/images/ai-hardware-engineer.png)
+![AI Hardware Engineer Roadmap](Assets/images/ai-hardware-roadmap-hero.svg)
 
 [📖 Read the full guide](https://ai-hpc.github.io/ai-hardware-engineer-roadmap/) · [⭐ Star this repo](https://github.com/ai-hpc/ai-hardware-engineer-roadmap)
 
@@ -31,43 +31,41 @@ This roadmap is organized around a few simple rules: start with a real setup pha
 
 ## Who is this for?
 
-| Background | What you'll get from this |
-|------------|--------------------------|
-| **Software engineer** wanting to go deeper into AI infrastructure | CUDA, parallel computing, ML compilers, GPU runtimes |
-| **ML / AI engineer** who wants to understand the hardware | How chips work, why quantization matters, how to optimize inference |
-| **Embedded / firmware engineer** moving into AI products | AI workloads, edge deployment, Jetson, sensor fusion |
-| **Computer science student** aiming at AI hardware roles | A structured curriculum from foundations to specialization |
-| **Hardware engineer** adding AI/software skills | Neural networks, CUDA, ML frameworks, model optimization |
+<div class="audience-grid">
+  <div class="audience-card">
+    <div class="card-tag">Software Engineer</div>
+    <h3>Move down-stack</h3>
+    <p>Learn CUDA, parallel execution, ML compilers, and runtime behavior instead of treating the GPU as a black box.</p>
+  </div>
+  <div class="audience-card">
+    <div class="card-tag">ML / AI Engineer</div>
+    <h3>Understand the hardware</h3>
+    <p>See why quantization, memory bandwidth, batching, and compiler decisions change model performance in practice.</p>
+  </div>
+  <div class="audience-card">
+    <div class="card-tag">Embedded / Firmware</div>
+    <h3>Ship edge AI systems</h3>
+    <p>Connect sensors, deployment stacks, BSP work, Jetson workflows, and real product constraints to AI workloads.</p>
+  </div>
+  <div class="audience-card">
+    <div class="card-tag">Computer Science Student</div>
+    <h3>Follow a structured path</h3>
+    <p>Use a role-shaped curriculum that goes from foundations to deployment to specialization without guessing the order.</p>
+  </div>
+  <div class="audience-card">
+    <div class="card-tag">Hardware Engineer</div>
+    <h3>Add software depth</h3>
+    <p>Layer neural networks, compilers, kernels, and model optimization on top of existing architecture or RTL skills.</p>
+  </div>
+</div>
 
 ---
 
 ## The AI Chip Stack — Explained Simply
 
-A chip that runs AI isn't just silicon. It's **8 layers of technology** that must work together. Think of it like a building: the foundation (silicon) holds up the floors above it (firmware, OS, drivers), which hold up the penthouse (your AI application).
+A chip that runs AI isn't just silicon. It's **8 layers of technology** that must work together, from the model you write at the top to the physical system that gets manufactured at the bottom.
 
-```
-  ┌─────────────────────────────────────┐
-  │  L1  AI App & Framework             │  ← PyTorch model, your code runs here
-  │  L2  ML Compiler                    │  ← turns model into chip instructions
-  │  L3  Runtime & Driver               │  ← OS talks to the GPU/chip
-  │  L4  Firmware & OS                  │  ← boots the device, manages resources
-  │  L5  Hardware Architecture          │  ← the chip's blueprint (systolic arrays, HBM)
-  │  L6  RTL & Logic Design             │  ← describes the chip in hardware language
-  │  L7  Physical Implementation        │  ← places transistors on silicon
-  │  L8  Fabrication & Packaging        │  ← the foundry makes the physical chip
-  └─────────────────────────────────────┘
-```
-
-| Layer | Plain English | Technologies |
-|:-----:|---------------|-------------|
-| **L1** | Where your AI model lives and runs | PyTorch, ONNX, TensorRT, MLOps |
-| **L2** | Translates the model into efficient chip instructions | MLIR, TVM, LLVM, Triton |
-| **L3** | The bridge between software and the chip | CUDA runtime, kernel drivers, APIs |
-| **L4** | The firmware that boots and controls the device | FreeRTOS, embedded Linux, bootloaders |
-| **L5** | How the chip is architected internally | Systolic arrays, HBM memory, NoC |
-| **L6** | Writing the chip's logic in hardware code | SystemVerilog, FPGA, verification |
-| **L7** | Physically placing circuits on a chip | Place & route, timing, EDA tools |
-| **L8** | Sending to a foundry and getting chips back | TSMC process, CoWoS, packaging |
+![AI Chip Stack Diagram](Assets/images/ai-chip-stack-diagram.svg){ .stack-diagram }
 
 > **L1–L6:** Full hands-on projects throughout this curriculum.
 > **L7–L8:** Conceptual with guided labs (OpenROAD, TinyTapeout).
@@ -78,22 +76,32 @@ A chip that runs AI isn't just silicon. It's **8 layers of technology** that mus
 
 **Pick your entry point based on where you are today:**
 
-```
-Everyone:
-  → Start with this README: choose a target role, verify your toolchain, and pick your first phase
-
-Coming from software / ML?
-  → Start at Phase 1 (C++ and Parallel Computing) then Phase 3 (AI)
-
-Coming from embedded / firmware?
-  → Start at Phase 1 (Computer Architecture) then Phase 2 (Embedded Systems)
-
-Already know CUDA and ML frameworks?
-  → Jump to Phase 4 (your track: FPGA, Jetson, or ML Compiler)
-
-Targeting chip design?
-  → Follow Phase 1 → 2 → 4A → 5F in order
-```
+<div class="entry-grid">
+  <div class="entry-card">
+    <div class="card-tag">Software / ML</div>
+    <h3>Start with performance and workloads</h3>
+    <p class="entry-path"><code>Phase 1 (C++ / Parallel) -&gt; Phase 3 -&gt; Phase 4C or 4B</code></p>
+    <p>Best if you already build models or infra and want to understand what the hardware is actually doing.</p>
+  </div>
+  <div class="entry-card">
+    <div class="card-tag">Embedded / Firmware</div>
+    <h3>Start with systems integration</h3>
+    <p class="entry-path"><code>Phase 1 (Architecture) -&gt; Phase 2 -&gt; Phase 4B</code></p>
+    <p>Best if you already know boards, boot flows, or RTOS work and want to move into edge AI products.</p>
+  </div>
+  <div class="entry-card">
+    <div class="card-tag">Already know CUDA</div>
+    <h3>Jump to deployment tracks</h3>
+    <p class="entry-path"><code>Phase 4A / 4B / 4C</code></p>
+    <p>Use the specialized tracks directly if kernels, framework internals, and profiling already feel familiar.</p>
+  </div>
+  <div class="entry-card">
+    <div class="card-tag">Chip Design Target</div>
+    <h3>Stay on the deep path</h3>
+    <p class="entry-path"><code>Phase 1 -&gt; Phase 2 -&gt; Phase 4A -&gt; Phase 5F</code></p>
+    <p>Best if your goal is accelerator architecture, FPGA prototyping, RTL implementation, or silicon-adjacent work.</p>
+  </div>
+</div>
 
 ---
 
