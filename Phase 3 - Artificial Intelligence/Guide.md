@@ -67,15 +67,39 @@ This track teaches the **perception and deployment workloads** that drive edge i
 
 > *For engineers heading to Phase 5 (HPC, GPU Infrastructure) or building AI applications that generate the inference demand your hardware serves.*
 
-This track teaches the **AI application and infrastructure workloads** — the demand side of the chip market.
+This track teaches the **AI application, infrastructure, and safety workloads** that sit on top of modern inference systems — the demand side of the chip market.
 
 | # | Module | What you learn | Leads to |
 |---|--------|---------------|----------|
-| **3** | [Agentic AI & GenAI](Track%20B%20-%20Agentic%20AI%20and%20ML%20Engineering/3.%20Agentic%20AI%20and%20GenAI/Guide.md) | LLM agents, RAG pipelines, tool use, multi-step reasoning, GenAI products | Phase 5A/B (GPU Infrastructure, HPC) |
-| **4** | [ML Engineering & MLOps](Track%20B%20-%20Agentic%20AI%20and%20ML%20Engineering/4.%20ML%20Engineering%20and%20MLOps/Guide.md) | Training pipelines, experiment tracking, model serving, CI/CD for models | Phase 5A/B (HPC, distributed training) |
-| **5** | [LLM Application Development](Track%20B%20-%20Agentic%20AI%20and%20ML%20Engineering/5.%20LLM%20Application%20Development/Guide.md) | Prompt engineering, fine-tuning, RAG architecture, evaluation, production deployment | L1d/L1e roles (highest job volume) |
+| **3** | [Agentic AI & GenAI](Track%20B%20-%20Agentic%20AI%20and%20ML%20Engineering/3.%20Agentic%20AI%20and%20GenAI/Guide.md) | LLM agents, RAG pipelines, tool use, multi-step reasoning, prompt-injection basics, GenAI products | Phase 5A/B (GPU Infrastructure, HPC) |
+| **4** | [ML Engineering & MLOps](Track%20B%20-%20Agentic%20AI%20and%20ML%20Engineering/4.%20ML%20Engineering%20and%20MLOps/Guide.md) | Training pipelines, experiment tracking, model serving, observability, CI/CD for models | Phase 5A/B (HPC, distributed training) |
+| **5** | [LLM Application Development](Track%20B%20-%20Agentic%20AI%20and%20ML%20Engineering/5.%20LLM%20Application%20Development/Guide.md) | Prompt engineering, fine-tuning, RAG architecture, evaluation, guardrails, moderation, PII controls, production deployment | L1d/L1e roles (highest job volume) |
 
-**Build:** RAG pipeline with vector search, agent with tool calling, fine-tune a small LLM, deploy model behind Triton/vLLM.
+**Build:** RAG pipeline with vector search, agent with tool calling, fine-tune a small LLM, deploy model behind Triton/vLLM, secure prompt gateway with moderation and redaction.
+
+---
+
+## Relevant Structure: Safe LLM Systems in Track B
+
+For Track B, safety is not a side note. It is part of the application architecture.
+
+- **Module 3B** teaches the threat model: prompt injection, tool misuse, document attacks, and unsafe retrieval context.
+- **Module 4B** teaches the operating model: policy gateways, logs, tracing, rollout controls, and production monitoring.
+- **Module 5B** teaches the enforcement model: content moderation, jailbreak detection, denied topics, PII redaction, output validation, and fallback behavior.
+
+Use a defense-in-depth pipeline:
+
+```text
+User input
+  -> Unicode normalization / sanitization
+  -> blocklists or denied-topic checks
+  -> moderation and jailbreak / prompt-injection classifiers
+  -> model with hardened system prompt and tool constraints
+  -> output moderation, validation, and PII redaction
+  -> logging, review, and threshold tuning
+```
+
+The exact policy depends on the product. Some systems block harmful or illegal requests. Others also block application-disallowed topics such as political persuasion, regulated advice, or competitor-sensitive content. The important point is to make policy enforcement explicit and measurable.
 
 ---
 
@@ -104,6 +128,7 @@ This track teaches the **AI application and infrastructure workloads** — the d
 | LLM inference (KV-cache, batching) | L5: memory hierarchy, HBM bandwidth requirements |
 | Model computational graphs | L2: graph IR representation, fusion opportunities |
 | Training at scale (distributed) | L3: NCCL, multi-GPU runtime |
+| Moderation, guardrails, and prompt shielding | L3/L4: serving topology, latency budget, sidecar services, and policy gateways |
 
 ---
 

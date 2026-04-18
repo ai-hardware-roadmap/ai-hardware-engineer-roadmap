@@ -53,6 +53,7 @@ Understanding these workloads helps L2 (compiler) and L5 (architecture) engineer
 * **What agents are:** LLM + tools + memory + planning loop
 * **Agent frameworks:** LangChain, LangGraph, CrewAI, AutoGen, Claude Agent SDK
 * **Tool use:** function calling, API integration, code execution
+* **Security boundaries:** prompt injection, tool abuse, least-privilege credentials, human approval for risky actions
 * **Memory:** conversation history, vector store retrieval, working memory
 * **Planning:** chain-of-thought, ReAct, tree-of-thought, self-reflection
 * **Multi-agent systems:** task decomposition, agent collaboration, orchestration
@@ -70,6 +71,7 @@ Understanding these workloads helps L2 (compiler) and L5 (architecture) engineer
 * **Vector stores:** FAISS, Chroma, Pinecone, Weaviate, Milvus
 * **Chunking strategies:** fixed-size, recursive, semantic, document-structure-aware
 * **Retrieval:** similarity search, hybrid (dense + sparse), re-ranking
+* **RAG security:** treat documents as untrusted input, screen uploads and retrieved chunks, defend against indirect prompt injection
 * **Evaluation:** faithfulness, relevance, hallucination detection
 
 **Projects:**
@@ -83,12 +85,13 @@ Understanding these workloads helps L2 (compiler) and L5 (architecture) engineer
 * **Prompt engineering:** system prompts, few-shot, chain-of-thought, output formatting
 * **Fine-tuning:** LoRA, QLoRA, full fine-tuning on domain data
 * **Evaluation:** automated metrics (ROUGE, BLEU), LLM-as-judge, human evaluation
-* **Guardrails:** output filtering, content safety, hallucination mitigation
+* **Guardrails:** input moderation, output filtering, content safety, prompt-injection defense, hallucination mitigation
 * **Production deployment:** API design, streaming, rate limiting, cost management
 
 **Projects:**
 1. Fine-tune a 7B model with QLoRA on a domain-specific dataset. Measure improvement vs base model.
 2. Deploy a GenAI application with streaming, safety guardrails, and cost tracking.
+3. Build a secure agent or RAG pipeline with prompt-attack detection, tool constraints, and output validation.
 
 ---
 

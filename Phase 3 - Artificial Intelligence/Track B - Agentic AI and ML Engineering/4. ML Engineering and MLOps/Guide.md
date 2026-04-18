@@ -53,11 +53,13 @@ ML engineers define the **training and serving workloads** that hardware must su
 * **Batching:** static batching, dynamic batching, continuous batching (for LLMs)
 * **Scaling:** horizontal (replicas), vertical (larger GPU), model parallelism for large models
 * **Monitoring:** latency percentiles (p50/p99), throughput (QPS), error rates, GPU utilization
+* **Policy gateways:** request filtering, moderation sidecars, auth, rate limits, safety traces
 * **A/B testing:** canary deployments, shadow mode, traffic splitting
 
 **Projects:**
 1. Deploy a model on Triton with dynamic batching. Load test and measure p50/p99 latency.
 2. Deploy an LLM on vLLM. Compare throughput with different batch sizes and quantization levels.
+3. Insert a moderation or policy gateway in front of a serving stack and measure the latency tradeoff.
 
 ---
 
@@ -66,6 +68,7 @@ ML engineers define the **training and serving workloads** that hardware must su
 * **CI/CD:** GitHub Actions / GitLab CI for model training, testing, deployment
 * **Container orchestration:** Docker, Kubernetes, NVIDIA GPU Operator
 * **Model testing:** unit tests for preprocessing, integration tests for inference, data drift detection
+* **Safety regression testing:** jailbreak suites, blocked-topic tests, prompt-attack replay, policy drift checks
 * **Feature stores:** Feast, Tecton — manage features for training and serving consistency
 * **Orchestration:** Kubeflow Pipelines, Apache Airflow, Prefect
 
