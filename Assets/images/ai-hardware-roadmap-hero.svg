@@ -88,11 +88,11 @@
   <text x="660" y="496" fill="#FFF5F5" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">L8  FAB AND PACKAGING</text>
   <text x="1070" y="496" text-anchor="end" fill="#FFF1F2" font-family="Inter, Arial, sans-serif" font-size="13.5">foundry, package, yield</text>
 
-  <rect x="640" y="518" width="186" height="28" rx="14" fill="#12213C" stroke="#28436F"/>
-  <text x="733" y="537" text-anchor="middle" fill="#CFE0FF" font-family="Inter, Arial, sans-serif" font-size="12.5" font-weight="700">L1-L6 HANDS-ON</text>
+  <rect x="664" y="518" width="186" height="28" rx="14" fill="#12213C" stroke="#28436F"/>
+  <text x="757" y="537" text-anchor="middle" fill="#CFE0FF" font-family="Inter, Arial, sans-serif" font-size="12.5" font-weight="700">L1-L6 HANDS-ON</text>
 
-  <rect x="838" y="518" width="202" height="28" rx="14" fill="#181E2C" stroke="#3E4A66"/>
-  <text x="939" y="537" text-anchor="middle" fill="#D5DCEE" font-family="Inter, Arial, sans-serif" font-size="12.5" font-weight="700">L7-L8 GUIDED LABS</text>
+  <rect x="862" y="518" width="202" height="28" rx="14" fill="#181E2C" stroke="#3E4A66"/>
+  <text x="963" y="537" text-anchor="middle" fill="#D5DCEE" font-family="Inter, Arial, sans-serif" font-size="12.5" font-weight="700">L7-L8 GUIDED LABS</text>
 
   <rect x="76" y="582" width="186" height="80" rx="20" fill="url(#phaseA)"/>
   <text x="104" y="615" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700" letter-spacing="0.06em">PHASE 1</text>
