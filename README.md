@@ -2,7 +2,7 @@
 
 ![AI Hardware Engineer Roadmap](Assets/images/ai-hardware-roadmap-hero.svg)
 
-[📖 Read the full guide](https://ai-hpc.github.io/ai-hardware-engineer-roadmap/) · [⭐ Star this repo](https://github.com/ai-hpc/ai-hardware-engineer-roadmap)
+[⭐ Star this repo](https://github.com/ai-hpc/ai-hardware-engineer-roadmap)
 
 </div>
 
@@ -10,48 +10,53 @@
 
 ## What is this?
 
-Every AI model — GPT, Stable Diffusion, your self-driving car — runs on **specialized hardware**. Someone has to build that hardware, write the software that drives it, and make the two work together efficiently.
+This repository is a **hardware-first roadmap** for people who want to become AI hardware engineers.
 
-This is a **free, community-driven curriculum** that teaches you to do exactly that. It covers the full stack from the AI application at the top down to the chip design at the bottom — organized as a self-paced learning roadmap with guides, projects, and curated resources.
+It sits in the gap between "I can use AI frameworks" and "I can explain how models map onto compilers, runtimes, boards, and chips." The repository connects the layers that are usually learned separately: digital design, computer architecture, operating systems, parallel programming, embedded systems, AI workloads, deployment, ML compilers, and accelerator design.
 
-This roadmap is organized around a few simple rules: start with a real setup phase, learn by building, measure what you build, and finish each module with a reusable output instead of passive notes.
+The goal is not to collect random resources or to teach generic AI in isolation. The goal is to build **cross-stack engineering judgment**: how workloads create bottlenecks, how software reaches hardware, and how to design, optimize, deploy, or debug AI systems close to the silicon.
 
-**You will learn to:**
+AI content in this repository exists to teach the workloads that hardware must serve. The center of gravity is still **hardware, systems, deployment, and performance**.
 
-- Write GPU kernels and parallel code that runs at hardware speed
-- Deploy AI models on real embedded hardware (NVIDIA Jetson, Xilinx FPGA)
-- Understand how ML compilers turn PyTorch into chip instructions
-- Read and reason about chip architecture — the way AI accelerators are designed
+**By the end, you should be able to:**
+
+- trace an AI workload from model code to compiler, runtime, and hardware behavior
+- write and profile performance-critical code, including GPU and parallel workloads
+- deploy AI on real embedded or programmable hardware such as Jetson and FPGA platforms
+- reason about memory, latency, throughput, precision, and architecture tradeoffs
 
 ---
 
 ## Who is this for?
 
+This repository is for engineers who want to move into **AI hardware work**, not just use AI tools at a high level.
+
+It is built for people crossing into a neighboring layer of the stack:
+- from software into performance, compilers, and hardware behavior
+- from ML into deployment, systems, and runtime constraints
+- from embedded into AI products and accelerator-backed inference
+- from hardware into workloads, compiler flow, and software integration
+
 <div class="audience-grid">
   <div class="audience-card">
-    <div class="card-tag">Software Engineer</div>
-    <h3>Move down-stack</h3>
-    <p>Learn CUDA, parallel execution, ML compilers, and runtime behavior instead of treating the GPU as a black box.</p>
+    <div class="card-tag">Software Engineer - From code to execution</div>
+    <p>You already write production software. This roadmap helps you understand what happens after a model or kernel hits the compiler, runtime, memory system, and accelerator.</p>
   </div>
   <div class="audience-card">
-    <div class="card-tag">ML / AI Engineer</div>
-    <h3>Understand the hardware</h3>
-    <p>See why quantization, memory bandwidth, batching, and compiler decisions change model performance in practice.</p>
+    <div class="card-tag">ML / AI Engineer - From models to systems</div>
+    <p>You already know training or inference at the framework level. This roadmap explains quantization, batching, graph lowering, deployment, and why hardware limits dominate real performance.</p>
   </div>
   <div class="audience-card">
-    <div class="card-tag">Embedded / Firmware</div>
-    <h3>Ship edge AI systems</h3>
-    <p>Connect sensors, deployment stacks, BSP work, Jetson workflows, and real product constraints to AI workloads.</p>
+    <div class="card-tag">Embedded / Firmware - From boards to AI devices</div>
+    <p>You already know RTOS, Linux, drivers, or bring-up. This roadmap adds Jetson, edge inference, sensor pipelines, BSP customization, and AI deployment on shipped systems.</p>
   </div>
   <div class="audience-card">
-    <div class="card-tag">Computer Science Student</div>
-    <h3>Follow a structured path</h3>
-    <p>Use a role-shaped curriculum that goes from foundations to deployment to specialization without guessing the order.</p>
+    <div class="card-tag">Computer Science Student - From fundamentals to a real niche</div>
+    <p>If you want a serious path into AI hardware, this roadmap gives you an order that makes sense: foundations first, then systems, then workloads, then deployment and specialization.</p>
   </div>
   <div class="audience-card">
-    <div class="card-tag">Hardware Engineer</div>
-    <h3>Add software depth</h3>
-    <p>Layer neural networks, compilers, kernels, and model optimization on top of existing architecture or RTL skills.</p>
+    <div class="card-tag">Hardware / RTL / FPGA - From architecture to full-stack relevance</div>
+    <p>You already understand logic, timing, RTL, FPGA, or architecture. This roadmap adds workload intuition, compilers, kernels, and deployment context so your hardware knowledge maps to real AI systems.</p>
   </div>
 </div>
 
@@ -59,41 +64,41 @@ This roadmap is organized around a few simple rules: start with a real setup pha
 
 ## AI Chip Stack
 
-A chip that runs AI isn't just silicon. It's **8 layers of technology** that must work together, from the model you write at the top to the physical system that gets manufactured at the bottom.
+This roadmap uses an **8-layer stack** to explain AI hardware work end to end. The point is not just to label layers. The point is to understand how decisions in one layer affect the others, from application code at the top to implementation and fabrication at the bottom.
 
 ![AI Chip Stack Diagram](Assets/images/ai-chip-stack-diagram.svg)
 
-> **L1–L6:** Full hands-on projects throughout this curriculum.
-> **L7–L8:** Conceptual with guided labs (OpenROAD, TinyTapeout).
+> **L1–L6:** Hands-on throughout this roadmap.
+> **L7–L8:** Included so the stack stays complete, with guided conceptual labs.
 
 ---
 
 ## Where Do I Start?
 
-**Pick your entry point based on where you are today:**
+Pick the path that matches both your current background and your target role. Most people should choose one primary entry path first, then branch out later.
 
 <div class="entry-grid">
   <div class="entry-card">
     <div class="card-tag">Software / ML</div>
-    <h3>Start with performance and workloads</h3>
+    <h3>Start with execution and performance</h3>
     <p class="entry-path"><code>Phase 1 (C++ / Parallel) -&gt; Phase 3 -&gt; Phase 4C or 4B</code></p>
-    <p>Best if you already build models or infra and want to understand what the hardware is actually doing.</p>
+    <p>Best if you already build models or infra and want to understand kernels, memory behavior, compiler lowering, and deployment constraints.</p>
   </div>
   <div class="entry-card">
     <div class="card-tag">Embedded / Firmware</div>
-    <h3>Start with systems integration</h3>
+    <h3>Start with systems and deployment</h3>
     <p class="entry-path"><code>Phase 1 (Architecture) -&gt; Phase 2 -&gt; Phase 4B</code></p>
-    <p>Best if you already know boards, boot flows, or RTOS work and want to move into edge AI products.</p>
+    <p>Best if you already know boards, RTOS, buses, or Linux bring-up and want to move into edge AI products.</p>
   </div>
   <div class="entry-card">
     <div class="card-tag">Already know CUDA</div>
-    <h3>Jump to deployment tracks</h3>
+    <h3>Jump to specialized tracks</h3>
     <p class="entry-path"><code>Phase 4A / 4B / 4C</code></p>
-    <p>Use the specialized tracks directly if kernels, framework internals, and profiling already feel familiar.</p>
+    <p>Go straight to FPGA, Jetson, or compiler work if profiling, kernels, and low-level performance already feel familiar.</p>
   </div>
   <div class="entry-card">
     <div class="card-tag">Chip Design Target</div>
-    <h3>Stay on the deep path</h3>
+    <h3>Follow the full hardware path</h3>
     <p class="entry-path"><code>Phase 1 -&gt; Phase 2 -&gt; Phase 4A -&gt; Phase 5F</code></p>
     <p>Best if your goal is accelerator architecture, FPGA prototyping, RTL implementation, or silicon-adjacent work.</p>
   </div>
@@ -103,20 +108,20 @@ A chip that runs AI isn't just silicon. It's **8 layers of technology** that mus
 
 ## How To Use This Roadmap
 
-This repository works best if every module follows a simple execution loop:
+Do not treat this repository like a book to finish once. Use it like a build-and-measure curriculum.
 
 1. Read the theory
 2. Build the subsystem or implementation
 3. Measure performance, power, correctness, or utilization
 4. Ship one reusable artifact
 
-That artifact might be a CUDA profile, TensorRT benchmark, device-tree patch, FPGA timing report, or architecture write-up. The point is to finish each block with proof of work, not just notes.
+The artifact matters as much as the reading. Good outputs include a CUDA profile, TensorRT benchmark, device-tree patch, FPGA timing report, compiler experiment, or architecture write-up. The point is to leave each block with evidence of engineering work, not just notes.
 
-Before you start Phase 1, make three decisions:
+Before you start, decide three things:
 
-1. Pick a target role or sub-layer from [Roles & Market Analysis](Roles%20and%20Market%20Analysis.md)
-2. Verify your core toolchain and hardware access plan
-3. Track your outputs in a simple project log: what you built, how you measured it, what failed, and what changed
+1. Which role or stack layer you are aiming at. Start with [Roles & Market Analysis](Roles%20and%20Market%20Analysis.md).
+2. What hardware and toolchain you can actually use.
+3. How you will track outputs, failures, measurements, and decisions.
 
 ---
 
@@ -277,7 +282,7 @@ This will mirror the publish pipeline, create a local `docs/` tree, and build th
 
 <div align="center" markdown="1">
 
-**A community-driven educational roadmap for AI hardware engineering.**
+**A hardware-first roadmap for people learning to build, deploy, and optimize AI systems close to the silicon.**
 
 [⭐ Star this repo](https://github.com/ai-hpc/ai-hardware-engineer-roadmap) if you find it useful — it helps others discover it.
 
