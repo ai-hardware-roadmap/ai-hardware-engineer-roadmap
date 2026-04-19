@@ -6,7 +6,9 @@
 >
 > **Primary hardware:** Jetson Orin Nano 8GB (P3767 module) on custom carrier
 
-**Previous:** [1. Nvidia Jetson Platform](../1.%20Nvidia%20Jetson%20Platform/Guide.md) · **Next:** [3. L4T Customization](../3.%20L4T%20Customization/Guide.md) · **Companion:** [3. L4T Customization](../3.%20L4T%20Customization/Guide.md) (BSP side of custom carriers)
+**Previous:** [1. Nvidia Jetson Platform](../1.%20Nvidia%20Jetson%20Platform/Guide.md) · **Next:** [3. L4T Customization](../3.%20L4T%20Customization/Guide.md) · **Companion:** [3. L4T Customization](../3.%20L4T%20Customization/Guide.md) (BSP side of custom carriers) · **Runtime companion:** [5.1 Peripheral Access](../5.%20Application%20Development/1.%20Peripheral%20Access/Guide.md)
+
+**Scope boundary:** this module owns **connector choice**, **schematics**, **routing**, **power**, and **pinmux planning** for a custom carrier. For runtime Linux access to GPIO, SPI, I2C, UART, CAN, USB, or storage on a running Jetson, use [5.1 Peripheral Access](../5.%20Application%20Development/1.%20Peripheral%20Access/Guide.md).
 
 ---
 
@@ -434,12 +436,12 @@ Place these in `Linux_for_Tegra/bootloader/generic/BCT/` and reference them in y
 ### Validation
 
 ```bash
-# On target — verify GPIO pin states
+# On target — verify the board came up with the expected pin and bus behavior
 sudo gpioinfo gpiochip0
-sudo gpioget gpiochip0 <line>
+sudo gpioget gpiochip0 43
 
 # Verify I2C bus detection
-sudo i2cdetect -y -r <bus>
+sudo i2cdetect -y -r 1
 
 # Verify SPI bus
 sudo spidev_test -D /dev/spidev0.0 -v
@@ -447,6 +449,8 @@ sudo spidev_test -D /dev/spidev0.0 -v
 # Verify UART
 sudo cat /dev/ttyTHS0  # (check for expected data)
 ```
+
+Use real line offsets and bus numbers from your target. For the runtime meaning of `gpiochip`, line offsets, and safe `libgpiod` usage, see [5.1 Peripheral Access](../5.%20Application%20Development/1.%20Peripheral%20Access/Guide.md).
 
 ---
 

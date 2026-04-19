@@ -4,7 +4,9 @@
 
 > **Focus:** Master **Linux for Tegra (L4T)** with **JetPack** as a **production** stack: reproducible images, a minimal root filesystem, kernel and device-tree integration, reliable boot and updates, and hardening—so you ship products instead of fighting the platform.
 
-**Previous:** [2. Custom Carrier Board Design](../2.%20Custom%20Carrier%20Board%20Design%20and%20Bring-Up/Guide.md) · **Next:** [4. FSP Customization](../4.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md)
+**Previous:** [2. Custom Carrier Board Design](../2.%20Custom%20Carrier%20Board%20Design%20and%20Bring-Up/Guide.md) · **Next:** [4. FSP Customization](../4.%20FSP%20%28Firmware%20Support%20Package%29%20Customization/Guide.md) · **Runtime companion:** [5.1 Peripheral Access](../5.%20Application%20Development/1.%20Peripheral%20Access/Guide.md)
+
+**Scope boundary:** this module owns **BSP**, **kernel**, **device tree**, **flash**, and **production image** work. For Linux userspace access to already-configured peripherals on a running target, use [5.1 Peripheral Access](../5.%20Application%20Development/1.%20Peripheral%20Access/Guide.md).
 
 ---
 
