@@ -90,6 +90,22 @@ Espressif's SPI setup guide documents the signal roles for ESP32-C6 on a Raspber
 | Reset | 18 | `GPIO18` | `RST` or `EN` | Jetson -> ESP |
 | Ground | 20 or 25 | `GND` | `GND` | common reference |
 
+### ESP32-C6 DevKitC-1 pinout check
+
+On the official **ESP32-C6-DevKitC-1** board, the pins used above are all actually broken out on the headers:
+
+- `RST` on **J1 pin 2**
+- `GPIO4` on **J1 pin 3**
+- `GPIO6` on **J1 pin 5**
+- `GPIO7` on **J1 pin 6**
+- `GPIO10` on **J1 pin 10**
+- `GPIO2` on **J1 pin 12**
+- `GPIO3` on **J1 pin 13**
+
+So the Jetson mapping in this guide is not only conceptually valid for ESP32-C6 SPI. It also matches the real **DevKitC-1** pin header layout.
+
+One caution: Espressif documents **GPIO4** as a **strapping pin** on ESP32-C6. Using it for **Data Ready** can still work, but do not let external wiring force an unsafe level during ESP reset or power-up.
+
 ### Why the extra GPIOs matter
 
 ESP-Hosted SPI is not only a 4-wire SPI bus:
@@ -139,7 +155,7 @@ Use this menu flow:
 Why `SPI1 (1 device)`:
 
 - this project uses only **CS0** on pin `24`
-- pin `26` can stay unused
+- pin `26` is not needed by the ESP32-C6 in this project
 - pins `15`, `18`, and `22` should remain available as ordinary GPIO lines for `Data Ready`, `Reset`, and `Handshake`
 
 After the reboot, pins `19`, `21`, `23`, and `24` should no longer be generic `unused` header pins. They should be assigned to the SPI1 function, and Linux should expose the bus as a `spidev` device.
@@ -166,6 +182,7 @@ After reboot:
 
 ```bash
 ls -l /dev/spidev0.0
+ls /dev/spidev*
 ```
 
 On the developer kit, the header's SPI1 controller typically appears to Linux as **`/dev/spidev0.0`**.
@@ -181,6 +198,20 @@ that means:
 - the SPI device node exists
 - the Jetson side has exposed the bus to Linux
 - users in the `gpio` group can open it
+
+On some systems you may also see:
+
+```text
+/dev/spidev0.0  /dev/spidev0.1  /dev/spidev1.0  /dev/spidev1.1
+```
+
+Interpret that carefully:
+
+- `spidev0.0` is still the most likely candidate for the **40-pin header SPI1 CS0** device
+- `spidev0.1` means a second chip-select is also exposed on the same bus
+- `spidev1.0` and `spidev1.1` mean **another SPI controller** is available somewhere in the system
+
+For this project, do **not** assume every `spidev` node belongs to the 40-pin header. Use the Jetson-IO overlay and the physical header pin mapping to identify the correct bus.
 
 It does **not** mean the full ESP-Hosted project is working yet. It only proves the **Jetson SPI bus is available**. You still need:
 
@@ -240,6 +271,11 @@ hdr40-pin24 {
     nvidia,pins = "spi1_cs0_pz6";
     nvidia,function = "spi1";
 };
+
+hdr40-pin26 {
+    nvidia,pins = "spi1_cs1_pz7";
+    nvidia,function = "spi1";
+};
 ```
 
 This is the part that matters most for teaching:
@@ -254,8 +290,11 @@ So in plain language, that block says:
 - pin `21` is now **SPI1 MISO**
 - pin `23` is now **SPI1 SCLK**
 - pin `24` is now **SPI1 CS0**
+- pin `26` is now **SPI1 CS1**
 
 That is exactly what this ESP32-C6 project needs.
+
+Real bring-up note: on some Jetson-IO results, `SPI1 (1 device)` still produces an overlay that muxes **pin 26** to `spi1_cs1_pz7` and also exposes `/dev/spidev0.1`. That is acceptable for this project. You simply leave pin `26` and `spidev0.1` unused unless you intentionally add a second SPI target.
 
 ### 5.1.3 What the other device-tree sections mean
 
@@ -282,18 +321,86 @@ You do **not** need to understand every overlay internals detail to use Jetson-I
 
 If all four are true, the Jetson side SPI pinmux is in the right state.
 
-### 5.1.4 Why pin 26 may be missing from the overlay
+### 5.1.4 What pin 26 means in practice
 
-You selected **`SPI1 (1 device)`**, not **`SPI1 (2 devices)`**.
+There are two valid outcomes you may see after selecting **`SPI1 (1 device)`**:
 
-That means:
+1. Only the `CS0` path is obvious in the overlay and `/dev/spidev0.0`
+2. Both `CS0` and `CS1` are muxed, and Linux also exposes `/dev/spidev0.1`
 
-- `CS0` on pin `24` is enabled
-- `CS1` on pin `26` is not required
+If pin `26` appears as:
 
-So if your decompiled overlay shows `hdr40-pin24` for `spi1_cs0_pz6` but does **not** show a matching `hdr40-pin26` SPI chip-select entry, that is normal for this project.
+```dts
+hdr40-pin26 {
+    nvidia,pins = "spi1_cs1_pz7";
+    nvidia,function = "spi1";
+};
+```
 
-This is also why this project keeps pin `26` unused and uses only one ESP32-C6 target on the SPI bus.
+that means Jetson-IO also mapped **header pin 26** to **SPI1 CS1**.
+
+That does **not** break this project. It only means:
+
+- the header bus now has a second available chip-select
+- Linux may expose `/dev/spidev0.1`
+- you should leave pin `26` physically unconnected for this ESP32-C6 setup
+
+This project still uses:
+
+- `spidev0.0`
+- `CS0` on pin `24`
+- one ESP32-C6 target only
+
+### 5.1.5 Live device-tree verification on a real Jetson
+
+After reboot, you can also dump the live device tree:
+
+```bash
+sudo dtc -I fs -O dts -o /tmp/live.dts /sys/firmware/devicetree/base
+```
+
+It is normal for that command to print a large number of warnings on Jetson. Those warnings usually reflect how NVIDIA ships the live tree and do **not** mean your SPI setup failed.
+
+For this project, the useful checks are much narrower:
+
+1. `/boot/extlinux/extlinux.conf` contains:
+   `OVERLAYS /boot/jetson-io-hdr40-user-custom.dtbo`
+2. `/boot/jetson-io-hdr40-user-custom.dtbo` exists
+3. the decompiled overlay maps header pins `19/21/23/24` to `spi1`
+4. `/dev/spidev0.0` exists after reboot
+
+If those are true, the Jetson side SPI header setup is correct enough to continue.
+
+You can go one level deeper and prove which Linux SPI controller each `spidev` node belongs to:
+
+```bash
+for d in /sys/class/spidev/spidev*; do
+  echo "== $(basename "$d") =="
+  readlink -f "$d/device"
+done
+```
+
+Example from a real Orin Nano dev kit:
+
+```text
+== spidev0.0 ==
+/sys/devices/platform/bus@0/3210000.spi/spi_master/spi0/spi0.0
+== spidev0.1 ==
+/sys/devices/platform/bus@0/3210000.spi/spi_master/spi0/spi0.1
+== spidev1.0 ==
+/sys/devices/platform/bus@0/3230000.spi/spi_master/spi1/spi1.0
+== spidev1.1 ==
+/sys/devices/platform/bus@0/3230000.spi/spi_master/spi1/spi1.1
+```
+
+That is the clean proof that:
+
+- the 40-pin header path selected in Jetson-IO as **`SPI1`** maps to Linux **`spi0`** and therefore **`spidev0.*`**
+- `spidev0.0` is the **CS0** device you want for this project
+- `spidev0.1` is the same controller's **CS1**
+- `spidev1.0` and `spidev1.1` are a **different SPI controller**
+
+This naming mismatch is normal on Jetson. The board-facing name is **header SPI1**, while the Linux-visible bus name is often **`spi0`**.
 
 ### 5.2 Install useful tools
 
@@ -312,11 +419,16 @@ sudo apt install -y \
 Before loading the ESP-Hosted driver, make sure the controller is alive and the header is configured correctly.
 
 - confirm `/dev/spidev0.0` exists
+- list all SPI device nodes with `ls /dev/spidev*`
 - confirm Jetson-IO no longer shows pins `19/21/23/24` as plain `unused`
 - confirm your chosen GPIO lines are free for use
 - verify there is no conflicting device already bound to the same bus/chip-select
 
 If `/dev/spidev0.0` already exists **before** you start this guide, your Jetson may already have SPI1 enabled from an earlier Jetson-IO configuration. In that case, you are already past the "enable SPI bus" step on the Jetson side, but you still need to finish the ESP-Hosted wiring and host-driver work.
+
+If you also see `spidev0.1`, that usually means **CS1** is available on the same header SPI bus. Ignore it for this project.
+
+If you see additional nodes like `spidev1.0` and `spidev1.1`, treat them as **different SPI controllers** until proven otherwise. Do not point the ESP-Hosted host code at them just because they exist.
 
 If you plan to use the Espressif kernel module directly, be aware that **generic `spidev` may need to be disabled** once you move from raw SPI sanity checks to the real host driver path.
 
@@ -420,7 +532,14 @@ Port these pieces to Jetson:
    - data ready on pin 15 (`GPIO15`)
 
 3. **SPI bus and chip select selection**
-   Set the host-side SPI bus and chip-select values to match the Linux-visible device behind the header. On the dev kit, that is usually the controller exposed as `spidev0.0`.
+   Set the host-side SPI bus and chip-select values to match the Linux-visible device behind the header. On the validated Orin Nano dev kit flow in this guide, that is:
+   - header `SPI1`
+   - Linux controller `spi0`
+   - device node `spidev0.0`
+   - sysfs path `3210000.spi`
+   - host module values: `bus 0`, `chip-select 0`
+
+   If your system also exposes `spidev0.1`, leave that unused unless you intentionally move to a second target on **CS1**. Do not switch to `spidev1.*` unless you have separately proven that a different controller is the one you want.
 
 4. **Device tree and pinmux**
    Make sure:
@@ -434,17 +553,45 @@ Port these pieces to Jetson:
 6. **Build environment**
    If you build on-device, point the host build at Jetson kernel headers. If you cross-compile, update `ARCH`, `CROSS_COMPILE`, and kernel paths for `aarch64`.
 
+### 7.2.1 Practical Jetson host path
+
+A Jetson-oriented fork now exists at:
+
+- `https://github.com/ai-hpc/esp-hosted`
+
+It adds:
+
+- a Jetson-specific helper script:
+  - `esp_hosted_ng/host/jetson_orin_nano_init.sh`
+- a Jetson host README:
+  - `esp_hosted_ng/host/README.md`
+- module parameters for:
+  - SPI bus number
+  - chip select
+  - handshake GPIO
+  - data-ready GPIO
+  - SPI mode
+
+On a real Jetson Orin Nano dev kit, that helper has already been validated to:
+
+- build `esp32_spi.ko`
+- unbind `spi0.0` from generic `spidev` for the current boot
+- insert the ESP-Hosted SPI host module cleanly
+
+That proves the **Jetson host driver build/load path** is working. It does **not** by itself prove that Wi-Fi transport is fully alive yet. You still need the ESP side flashed correctly, the wiring correct, and the first init event visible in `dmesg`.
+
 ### 7.3 Good bring-up order
 
 Use this order. It reduces ambiguity.
 
 1. Enable SPI1 and verify `/dev/spidev0.0`
-2. Confirm Jetson GPIO choices physically match your wiring
-3. Flash the ESP32-C6 with SPI-enabled ESP-Hosted firmware
-4. Port the host-side GPIO mapping and bus selection
-5. Start at low SPI frequency
-6. Watch `dmesg` for the first init event from ESP to host
-7. Only then move to Wi-Fi association and throughput tests
+2. Verify that any additional `spidev1.*` nodes are not the bus you intend to use
+3. Confirm Jetson GPIO choices physically match your wiring
+4. Flash the ESP32-C6 with SPI-enabled ESP-Hosted firmware
+5. Port the host-side GPIO mapping and bus selection
+6. Start at low SPI frequency
+7. Watch `dmesg` for the first init event from ESP to host
+8. Only then move to Wi-Fi association and throughput tests
 
 ---
 
@@ -570,6 +717,8 @@ That is normal early on. Once the path is stable:
 - [ESP-Hosted-NG setup guide](https://github.com/espressif/esp-hosted/blob/master/esp_hosted_ng/docs/setup.md)
 - [ESP-Hosted-NG SPI protocol notes](https://github.com/espressif/esp-hosted/blob/master/esp_hosted_ng/docs/spi_protocol.md)
 - [ESP-Hosted-NG Linux porting guide](https://github.com/espressif/esp-hosted/blob/master/esp_hosted_ng/docs/porting_guide.md)
+- [ESP32-C6-DevKitC-1 user guide](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html)
+- [AI-HPC Jetson-oriented esp-hosted fork](https://github.com/ai-hpc/esp-hosted)
 
 ### Local roadmap references
 
