@@ -102,26 +102,9 @@ ESP32-C6-DevKitC-1 pin layout reference:
 
 ### ESP32-C6 DevKitC-1 pinout check
 
-On the official **ESP32-C6-DevKitC-1** board, the pins used above are all actually broken out on the headers:
+On the official **ESP32-C6-DevKitC-1** board, the signals used in this guide are available and can be wired directly by their printed **GPIO labels**.
 
-- `RST` on **J1 pin 2**
-- `GPIO4` on **J1 pin 3**
-- `GPIO6` on **J1 pin 5**
-- `GPIO7` on **J1 pin 6**
-- `GPIO10` on **J1 pin 10**
-- `GPIO2` on **J1 pin 12** (the board prints signal label **`2`** there)
-- `GPIO3` on **J1 pin 13**
-
-So the Jetson mapping in this guide is not only conceptually valid for ESP32-C6 SPI. It also matches the real **DevKitC-1** pin header layout.
-
-One easy mistake is to confuse the **J1 header position number** with the **GPIO signal label** printed beside the pin. On this board:
-
-- **J1 pin 11** is `GPIO11`
-- **J1 pin 12** is `GPIO2`
-
-So `GPIO2` should stay mapped to **J1 pin 12**, not **J1 pin 11**.
-
-For actual bench wiring, use the **GPIO labels** printed in the guide and on the Espressif board image:
+For actual bench wiring, use the **signal names** shown in the guide and on the Espressif board image:
 
 - `IO7` for `MOSI`
 - `IO2` for `MISO`
@@ -131,7 +114,7 @@ For actual bench wiring, use the **GPIO labels** printed in the guide and on the
 - `IO4` for `Data Ready`
 - `RST` for reset
 
-That is less error-prone than working from J1/J3 position numbers alone.
+That is less error-prone than relying on board header position numbers.
 
 One caution: Espressif documents **GPIO4** as a **strapping pin** on ESP32-C6. Using it for **Data Ready** can still work, but do not let external wiring force an unsafe level during ESP reset or power-up.
 
