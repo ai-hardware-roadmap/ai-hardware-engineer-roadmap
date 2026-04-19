@@ -85,9 +85,9 @@ Espressif's SPI setup guide documents the signal roles for ESP32-C6 on a Raspber
 | MISO | 21 | `SPI1_MISO` | `IO2` | ESP -> Jetson |
 | SCLK | 23 | `SPI1_SCLK` | `IO6` | Jetson -> ESP |
 | CS0 | 24 | `SPI1_CS0` | `IO10` | Jetson -> ESP |
-| Handshake | 22 | `GPIO22` | `IO3` | ESP -> Jetson |
-| Data Ready | 15 | `GPIO15` | `IO4` | ESP -> Jetson |
-| Reset | 18 | `GPIO18` | `RST` or `EN` | Jetson -> ESP |
+| Handshake | 22 | legacy global GPIO `471` | `IO3` | ESP -> Jetson |
+| Data Ready | 15 | legacy global GPIO `433` | `IO4` | ESP -> Jetson |
+| Reset | 18 | legacy global GPIO `473` | `RST` or `EN` | Jetson -> ESP |
 | Ground | 20 or 25 | `GND` | `GND` | common reference |
 
 ### Official reference images
@@ -117,6 +117,20 @@ For actual bench wiring, use the **signal names** shown in the guide and on the 
 That is less error-prone than relying on board header position numbers.
 
 One caution: Espressif documents **GPIO4** as a **strapping pin** on ESP32-C6. Using it for **Data Ready** can still work, but do not let external wiring force an unsafe level during ESP reset or power-up.
+
+Another practical caution: if the ESP32-C6 `RST` or `EN` pin is already wired to Jetson header pin `18`, the Jetson side can interfere with USB flashing from your PC. If `esptool` cannot connect or the ESP keeps resetting during flash, temporarily disconnect only the **reset wire** from Jetson, or make sure the Jetson host driver is unloaded and not driving that GPIO.
+
+For the three non-SPI control lines in this project, the Jetson host fork uses **legacy global Linux GPIO numbers**, not `gpiochip` line offsets. With the J12 pinout used here, the current mapping is:
+
+- pin `15` -> `gpio433` for **Data Ready**
+- pin `18` -> `gpio473` for **Reset**
+- pin `22` -> `gpio471` for **Handshake**
+
+On a real Jetson, you can verify those numbers directly with:
+
+```bash
+sudo cat /sys/kernel/debug/gpio | egrep 'gpio-(433|471|473)'
+```
 
 ### Why the extra GPIOs matter
 
@@ -529,6 +543,24 @@ If you need to prove the port before a full flash, query the chip directly:
 python -m esptool --chip esp32c6 -p /dev/ttyACM0 chip_id
 ```
 
+### Flashing with Jetson wiring attached
+
+If the ESP board is already wired to the Jetson 40-pin header, the safest flashing sequence is:
+
+1. Keep the ESP board connected to the host PC over USB.
+2. Disconnect the Jetson `Reset` wire from ESP `RST` or `EN`, or unload the Jetson host driver first.
+3. Flash the ESP firmware from the PC.
+4. Reconnect the Jetson `Reset` wire after the flash completes.
+5. Only then load the Jetson ESP-Hosted host driver.
+
+If you are using the Jetson port described later in this guide, unloading the host driver looks like this:
+
+```bash
+sudo rmmod esp32_spi
+```
+
+This avoids the Jetson reset GPIO interfering with the USB flashing process.
+
 ### What you should see
 
 - successful build and flash
@@ -553,7 +585,7 @@ Relevant upstream locations:
 - `esp_hosted_ng/docs/setup.md`
 - `esp_hosted_ng/docs/porting_guide.md`
 
-The Raspberry Pi helper script is useful as a reference:
+The Raspberry Pi helper script is useful as upstream reference only:
 
 ```bash
 cd esp-hosted/esp_hosted_ng/host
@@ -565,19 +597,31 @@ On Raspberry Pi the documented entry point is:
 bash rpi_init.sh spi
 ```
 
-On Jetson, treat that script as **reference logic**, not as a guaranteed drop-in command.
+On Jetson, do **not** use `rpi_init.sh` as your main bring-up path. It is Raspberry Pi specific. For the Jetson Orin Nano flow described in this guide, use the Jetson-oriented fork and its host README instead:
+
+- `esp_hosted_ng/host/README.md`
+- `esp_hosted_ng/host/jetson_orin_nano_init.sh`
+
+That path already captures the validated Jetson settings in this guide:
+
+- `resetpin=473`
+- `spi_handshake_gpio=471`
+- `spi_dataready_gpio=433`
+- `spi_bus_num=0`
+- `spi_chip_select=0`
+- `spi_mode=2`
 
 ### 7.2 Jetson-specific porting work
 
 Port these pieces to Jetson:
 
 1. **Reset GPIO**
-   Use a free Jetson GPIO, such as header pin 18 (`GPIO18`), and update the host reset handling accordingly.
+   Use Jetson header pin `18` and map it to the legacy global GPIO number used by the driver: `473`.
 
 2. **Handshake and Data Ready GPIOs**
    Update the host SPI definitions so they match your chosen Jetson GPIO header pins:
-   - handshake on pin 22 (`GPIO22`)
-   - data ready on pin 15 (`GPIO15`)
+   - handshake on pin `22` -> legacy global GPIO `471`
+   - data ready on pin `15` -> legacy global GPIO `433`
 
 3. **SPI bus and chip select selection**
    Set the host-side SPI bus and chip-select values to match the Linux-visible device behind the header. On the validated Orin Nano dev kit flow in this guide, that is:
@@ -711,6 +755,8 @@ Usually one of these:
 - handshake or data-ready GPIO is mapped incorrectly
 - SPI mode or clock is too aggressive
 - ESP firmware is not actually built for SPI
+
+If this happens right after a fresh flash attempt, also make sure the ESP was not being held in reset by the Jetson reset wire during flashing.
 
 ### First event appears, then traffic stalls
 
