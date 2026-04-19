@@ -32,6 +32,7 @@ theme:
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
+    - navigation.prune
     - navigation.top
     - navigation.indexes
     - navigation.footer
@@ -42,7 +43,6 @@ theme:
     - content.code.annotate
     - content.tabs.link
     - toc.follow
-    - toc.integrate
   icon:
     repo: fontawesome/brands/github
 
