@@ -22,6 +22,10 @@ That distinction is important. BLE is excellent for short-range peripheral links
 OpenThread's official platform documentation describes the stack as implementing the full Thread networking layers, including **IPv6, 6LoWPAN, IEEE 802.15.4 with MAC security, Mesh Link Establishment, and Mesh Routing**. In practice, that means the stack handles both the radio-facing mechanics and the higher routing behavior that turns many small devices into one stable network.  
 Official source: [OpenThread features](https://openthread.io/)
 
+![Thread commercial network topology](https://docs.silabs.com/thread-fundamentals/0.1/images/commercial-network-topology.png)
+
+*Official reference topology image showing the main Thread roles and how a border router connects the mesh to the wider IP network. Source: [Silicon Labs Thread Fundamentals](https://docs.silabs.com/thread-fundamentals/latest/).*
+
 ---
 
 ## 3. Protocol Stack: From Radio Frames to IP Packets
