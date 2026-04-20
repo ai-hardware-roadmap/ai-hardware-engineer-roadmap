@@ -54,6 +54,8 @@ Jetson Orin Nano dev kit does not include Wi-Fi — add it via USB dongle or M.2
 
 If you want a more embedded integration path, you can also attach an **ESP32-C6** as a wireless coprocessor over SPI with **ESP-Hosted-NG**. See [ESP32-C6 ESP-Hosted over SPI on Jetson Orin Nano](ESP32-C6-ESP-Hosted-SPI-Jetson-Orin-Nano.md).
 
+If you also want **Thread / 802.15.4** on the same Jetson, the cleaner architecture is to keep that first ESP32-C6 for Wi-Fi/BLE and add a **second ESP32-C6** as an **OpenThread RCP**. See [ESP32-C6 OpenThread RCP on Jetson Orin Nano](ESP32-C6-OpenThread-RCP-Jetson-Orin-Nano.md).
+
 ### Connect with NetworkManager
 
 ```bash
