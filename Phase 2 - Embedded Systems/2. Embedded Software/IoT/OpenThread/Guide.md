@@ -40,6 +40,36 @@ The important engineering idea is that Thread is not a "small custom sensor prot
 
 6LoWPAN matters here because raw IPv6 packets are too large and verbose for a small 802.15.4 frame budget. Thread stays IP-native by compressing and fragmenting traffic where needed instead of abandoning IPv6.
 
+### 6LoWPAN: why IPv6 can fit on tiny radios
+
+6LoWPAN stands for **IPv6 over Low-Power Wireless Personal Area Networks**. It is an IETF-defined adaptation layer that lets constrained devices carry IPv6 traffic over small, low-power links such as IEEE 802.15.4 instead of requiring a completely separate non-IP protocol stack.
+
+This is the core reason Thread can present itself as a real IP network even though it runs on a tiny radio. A normal IPv6 packet assumes a much larger and more capable link than 802.15.4 provides, so 6LoWPAN sits between the MAC layer and the IPv6 layer and reshapes traffic to fit the medium.
+
+#### Header compression
+
+A plain IPv6 header is large relative to the frame size available on 802.15.4 links. 6LoWPAN reduces this cost by compressing fields that are predictable, shared, derivable from context, or repeated across the network. In a well-formed low-power mesh, many of those fields do not need to be sent in full every time.
+
+That means the radio spends less airtime carrying protocol overhead and more airtime carrying useful application payload. For battery-powered devices, this is not just a bandwidth optimization; it directly affects energy use, latency, and how often the radio has to stay awake.
+
+#### Fragmentation
+
+IPv6 requires a minimum MTU of 1280 bytes, but IEEE 802.15.4 frames are far smaller. 6LoWPAN handles this mismatch by fragmenting larger packets into smaller radio frames and reassembling them on the receiving side.
+
+This is another reason Thread feels like a real IP network even on constrained devices. The application can still think in terms of IPv6 communication, while the adaptation layer handles the ugly details of fitting those packets onto a much smaller link.
+
+#### Adaptation layer role
+
+From an embedded-systems point of view, 6LoWPAN is the translation layer between "tiny radio world" and "IPv6 world." It is not a replacement for IPv6 and not a separate application protocol; it is the mechanism that makes IPv6 practical on low-power personal area networks.
+
+In the Thread stack, this is what lets you keep standard IP ideas such as IPv6 addressing, UDP, service discovery, and border routing without pretending that the radio is as capable as Ethernet or Wi-Fi. That is why Thread can integrate cleanly with Linux hosts, OTBR, and IP-based tools instead of requiring a proprietary gateway protocol everywhere.
+
+#### Power and mesh implications
+
+6LoWPAN is designed for devices that may sleep often, wake briefly, and still need to participate in a routed network. It works well with low-power mesh behavior because it reduces transmission overhead and keeps the radio cost of IP communication manageable.
+
+This is why it shows up so often in smart-home, industrial, and sensor-network deployments. The combination of IEEE 802.15.4, 6LoWPAN, IPv6, and Thread routing gives you a network that is low-power, self-healing, and still understandable through mainstream networking concepts.
+
 ---
 
 ## 4. Device Roles and Why They Matter
