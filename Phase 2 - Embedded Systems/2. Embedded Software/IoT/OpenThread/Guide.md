@@ -139,6 +139,26 @@ Official source: [OpenThread Thread Primer: Network Discovery and Formation](htt
 
 This matters because it explains why Thread can be self-healing. If one router disappears, the rest of the control plane can still converge on new parent relationships and route choices without an operator manually rebuilding the network.
 
+#### Leader selection and failover
+
+Every Thread partition has exactly one **Leader**. The Leader is still a router, but it has the extra responsibility of managing the router set and coordinating information such as Router ID assignments and partition state.  
+Official source: [OpenThread Thread Primer: Node Roles and Types](https://openthread.io/guides/thread-primer/node-roles-and-types)
+
+This role is dynamic, not permanently hard-wired to one device. When a network is first formed, the first router can elect itself Leader. If that Leader disappears, another router can take over automatically, which is one of the reasons Thread does not need a permanently managed central controller for normal mesh operation.  
+Official sources: [OpenThread Thread Primer: Network Discovery and Formation](https://openthread.io/guides/thread-primer/network-discovery), [OpenThread API codelab](https://openthread.io/codelabs/openthread-apis)
+
+The practical engineering lesson is that Leader loss is supposed to be a recoverable network event, not a catastrophic outage. You still need stable radios and power, but the control plane is designed so one node disappearing does not destroy the entire mesh.
+
+#### REED promotion and router-count management
+
+Thread does not want every Full Thread Device to become a router all the time, because that would waste power and increase unnecessary control traffic. OpenThread's role documentation says Thread tries to keep the number of routers in a healthy operating band rather than simply maximizing it.  
+Official source: [OpenThread Thread Primer: Node Roles and Types](https://openthread.io/guides/thread-primer/node-roles-and-types)
+
+This is where the **Router Eligible End Device (REED)** role matters. A REED can attach as an end device first and then promote itself to a router if the network needs more routing capacity. OpenThread's primer notes that when the router count is below the preferred threshold, a REED can automatically upgrade itself; when conditions change, a router without children can also downgrade back toward an end-device role.  
+Official sources: [OpenThread Thread Primer: Node Roles and Types](https://openthread.io/guides/thread-primer/node-roles-and-types), [OpenThread Thread Primer: Router Selection](https://openthread.io/guides/thread-primer/router-selection)
+
+That is why Thread is both stable and economical. It can add routing capacity when needed, but it does not force every capable node to stay in the most expensive role forever.
+
 #### MLE and commissioning are not the same thing
 
 One subtle but important point from the OpenThread primer is that **MLE only proceeds once a device has obtained Thread network credentials through Thread commissioning**. In other words, secure admission to the network happens first, and only then does the device participate fully in the mesh-control machinery.
@@ -153,7 +173,8 @@ A Thread network is not flat. Nodes take on different roles depending on whether
 
 ### Leader
 
-The Leader manages key network-wide state such as partition information and configuration data. It is not a permanent boss node; if it disappears, another eligible node can take over.
+The Leader manages key network-wide state such as partition information, configuration data, and router-set management. It is not a permanent boss node; if it disappears, another router can take over, so the network can survive node loss without manual intervention.  
+Official sources: [OpenThread Thread Primer: Node Roles and Types](https://openthread.io/guides/thread-primer/node-roles-and-types), [OpenThread API codelab](https://openthread.io/codelabs/openthread-apis)
 
 ### Router
 
@@ -163,13 +184,23 @@ Routers forward packets for other devices and keep the mesh connected. They are 
 
 A REED is not routing yet, but it can become a router if the network needs more routing capacity. This makes the network adaptive instead of requiring every node to be manually assigned a role up front.
 
+OpenThread's role documentation is very clear on why this exists: Thread tries to keep router count in a useful band, and a REED can promote itself when routing capacity is low. Conversely, a router that no longer has children may later downgrade, which helps keep the control plane lean instead of over-populating the mesh with always-on routers.  
+Official sources: [OpenThread Thread Primer: Node Roles and Types](https://openthread.io/guides/thread-primer/node-roles-and-types), [OpenThread Thread Primer: Router Selection](https://openthread.io/guides/thread-primer/router-selection)
+
 ### End Device / Sleepy End Device
 
 End devices attach through a parent router instead of forwarding mesh traffic themselves. Sleepy end devices go further and spend most of their time asleep, which is how Thread supports long battery life without giving up network reachability.
 
+The key point is that a **Sleepy End Device (SED)** does not participate in routing and does not keep its radio on continuously. Instead, it depends on a **parent router** to act as its always-on representative. The parent buffers data while the SED sleeps, and the SED wakes periodically to poll for pending traffic.  
+Official source: [OpenThread Thread Primer: Node Roles and Types](https://openthread.io/guides/thread-primer/node-roles-and-types)
+
+This is one of the most important energy-saving ideas in Thread. The network stays reachable because the parent remains active, while the battery-powered child only pays the radio cost periodically. If you are designing for low average current, understanding this parent-buffering and poll model is essential.
+
 ### Border Router and Commissioner
 
 A Border Router connects the Thread mesh to other IP networks such as Ethernet, Wi-Fi, or USB-backed Linux interfaces. A Commissioner is responsible for onboarding and authorizing new devices, which is why Thread setup is a network-management problem, not just a radio problem.
+
+In practice, the Commissioner is part of the secure admission path. It does not simply "notice" a device and allow it in; it is involved in the explicit commissioning process that authorizes a Joiner and transfers the right credentials.
 
 ---
 
@@ -279,6 +310,22 @@ Official source: [OpenThread Border Agent API](https://openthread.io/reference/g
 
 On the device side, OpenThread Commissioner APIs and OTBR tools use **PSKd** or Joiner credentials to authorize specific joining devices. The practical lesson is simple: joining the network is a controlled admission process, not a broadcast "pair with anything nearby" flow. That is one of the main reasons Thread is suitable for real smart-home and industrial products instead of hobby-only mesh links.  
 Official sources: [Commissioner API](https://openthread.io/reference/group/api-commissioner), [OTBR PSKc tools](https://openthread.io/guides/border-router/tools)
+
+#### What the commissioning flow is doing
+
+At a system level, commissioning answers a very specific question: how can a device that is **not yet a trusted member of the network** receive the credentials it needs without those credentials being exposed in plaintext over the air?
+
+The broad flow is:
+
+* a Commissioner is authorized to act on the network
+* a Joiner is identified by Joiner credentials such as **PSKd**
+* DTLS is used to protect the admission conversation
+* after the secure exchange succeeds, the Joiner receives the operational data it needs and can then proceed to normal Thread attachment
+
+This separation is important. The Joiner is not considered a full mesh participant first and secured later. Security is part of the admission path itself, which is much stronger than the common IoT anti-pattern of letting devices connect provisionally and trying to lock them down afterward.
+
+Once commissioning finishes, normal MLE-based attach and control-plane behavior can begin. That is why the OpenThread primer explicitly notes that MLE only proceeds after Thread commissioning has provided network credentials.  
+Official source: [OpenThread Thread Primer: Network Discovery and Formation](https://openthread.io/guides/thread-primer/network-discovery)
 
 ### End-to-end security above the mesh
 
