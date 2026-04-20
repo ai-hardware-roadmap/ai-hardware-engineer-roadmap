@@ -744,25 +744,64 @@ You want to see:
 ```bash
 ip link show
 nmcli device status
-nmcli dev wifi list
+hciconfig -a
+bluetoothctl list
 ```
 
 Expected result:
 
 - a new wireless interface such as `wlan0` or `wlan1`
-- scan results visible through NetworkManager
+- a Bluetooth controller such as `hci0`
+- `hciconfig -a` shows `Bus: SPI`
+- `bluetoothctl list` shows the ESP controller
 
-On the validated Jetson Orin Nano plus ESP32-C6 flow in this guide, the real expected interface is `wlan0`.
+On the validated Jetson Orin Nano plus ESP32-C6 flow in this guide, the real expected interfaces are `wlan0` and `hci0`.
 
 ### 8.3 Join a network
 
 ```bash
+nmcli dev wifi list ifname wlan0
 sudo nmcli dev wifi connect "SSID" password "password"
 ip addr show
 ping -c 4 8.8.8.8
 ```
 
-### 8.4 Basic throughput smoke test
+### 8.4 BLE discovery smoke test
+
+The ESP32-C6 host path here is **BLE-only**, not classic Bluetooth audio.
+
+```bash
+rfkill list
+bluetoothctl
+```
+
+Inside `bluetoothctl`:
+
+```text
+power on
+scan on
+devices
+show
+```
+
+Expected result:
+
+- `scan on` succeeds
+- nearby BLE devices appear in `devices`
+- `show` lists the controller roles and advertising features
+
+On the validated flow for this guide, `bluetoothctl` successfully discovered nearby BLE devices from the ESP32-C6 controller exposed over SPI.
+
+If `rfkill` shows Wi-Fi as soft-blocked but Bluetooth as unblocked, BLE scan can still work.
+
+You may also see one of these during early BLE bring-up:
+
+- `Can't read local name on hci0: Input/output error (5)`
+- `Failed to set local name: Failed (0x03)`
+
+Those lines are not ideal, but they did not block BLE scan and discovery on the validated Jetson flow here.
+
+### 8.5 Basic throughput smoke test
 
 On another machine:
 
@@ -840,7 +879,7 @@ That is normal early on. Once the path is stable:
 ## 10. Stretch goals
 
 - add AP mode support and use the ESP32-C6 as the Jetson's provisioning radio
-- evaluate Bluetooth support from the same ESP-Hosted stack revision
+- document GATT workflows and Wi-Fi/BLE coexistence testing from the same ESP-Hosted stack revision
 - replace jumper wires with a small adapter board or custom carrier interconnect
 - add a device-tree overlay and scripts so the Jetson setup becomes reproducible
 - measure power, latency, and throughput against a USB Wi-Fi dongle baseline
