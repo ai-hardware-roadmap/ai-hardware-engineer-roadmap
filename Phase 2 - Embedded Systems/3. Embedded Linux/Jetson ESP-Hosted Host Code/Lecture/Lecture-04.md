@@ -22,6 +22,29 @@ That mapping happens in:
 - `esp_hosted_ng/host/esp_cfg80211.c`
 - plus the orchestration in `esp_hosted_ng/host/main.c`
 
+## Related Linux kernel concepts
+
+This lecture is best read alongside:
+
+- [OS Lecture 17 — Linux Device Driver Model & Device Tree](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md)
+- [OS Lecture 1 — Modern OS Architecture & the Linux Kernel](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-01.md)
+
+Lecture 17 is the right background because `wiphy`, `wireless_dev`, and `net_device` are all kernel objects that must be allocated and registered in the right order. `esp_cfg80211.c` is a concrete example of the driver model creating Linux-visible objects that represent a remote piece of hardware.
+
+Lecture 1 matters because userspace never sees the transport details directly. `nmcli` and `iw` work only because the driver turns the ESP into standard Linux wireless abstractions instead of exposing “some SPI radio” as a custom API.
+
+The useful mental model is that `cfg80211` is a contract between your driver and the Linux wireless stack. The driver has to describe what the radio can do, create the objects Linux expects, and implement the operations Linux will call for scan, connect, disconnect, and regulatory handling.
+
+That is why `wlan0` appearing is a strong signal. It means the code has progressed far beyond transport bring-up and into successful subsystem registration, where the kernel now believes there is a manageable wireless interface that userspace tools can operate on normally.
+
+The kernel interfaces to keep in your head are:
+
+- `wiphy_new(...)`
+- `wiphy_register(...)`
+- `esp_cfg80211_add_iface(...)`
+- `register_netdevice(...)`
+- `rtnl_lock()`
+
 ---
 
 ## 2. The main control flow

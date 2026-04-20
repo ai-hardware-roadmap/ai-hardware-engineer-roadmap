@@ -46,6 +46,23 @@ That makes it a strong Embedded Linux case study.
   - **transport policy**
   - **Linux subsystem integration**
 
+## Kernel interface map
+
+This mini-course is also a guided tour of real Linux kernel interfaces. Read each lecture with two questions in mind:
+
+1. Which kernel object or subsystem boundary is this code talking to?
+2. What user-visible Linux artifact proves that step worked?
+
+| Lecture | Linux-facing interfaces in the code | Kernel concepts to keep in mind | Foundational refresh |
+|---|---|---|---|
+| 1 | `esp_add_card(...)`, `esp_add_network_ifaces(...)`, `esp_init_bt(...)` | subsystem boundaries, kernel vs userspace, what a driver is producing for Linux | [OS Lecture 1 — Modern OS Architecture & the Linux Kernel](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-01.md) |
+| 2 | `insmod`, `module_param(...)`, `spidev` unbind, out-of-tree `.ko` build | loadable kernel modules, boot-time hardware description, device ownership | [OS Lecture 5 — Kernel Modules, Boot Process & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md) |
+| 3 | `spi_find_device(...)`, `gpio_to_irq(...)`, `request_irq(...)` | SPI device model, top half vs deferred work, interrupt-driven I/O | [OS Lecture 3 — Interrupts, Exceptions & Bottom Halves](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-03.md), [OS Lecture 17 — Linux Device Driver Model & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md), [OS Lecture 18 — Character Drivers, Interrupt-Driven I/O & V4L2](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md) |
+| 4 | `wiphy_new(...)`, `wiphy_register(...)`, `esp_cfg80211_add_iface(...)`, `register_netdevice(...)` | Linux wireless subsystem contracts, `wiphy`, `wireless_dev`, netdev registration | [OS Lecture 17 — Linux Device Driver Model & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md) |
+| 5 | `hci_alloc_dev()`, `hci_register_dev()`, `hci_recv_frame(...)` | Bluetooth HCI as a subsystem boundary, controller registration, host/controller split | [OS Lecture 1 — Modern OS Architecture & the Linux Kernel](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-01.md), [OS Lecture 17 — Linux Device Driver Model & Device Tree](../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md) |
+
+That habit is more valuable than memorizing function names.
+
 ---
 
 ## What you should already know

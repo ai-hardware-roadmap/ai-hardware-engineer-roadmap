@@ -29,6 +29,28 @@ Embedded Linux takeaway:
 - upstream code often assumes one board
 - production bring-up usually needs a board-specific wrapper or policy layer
 
+## Related Linux kernel concepts
+
+This lecture lines up best with:
+
+- [OS Lecture 5 — Kernel Modules, Boot Process & Device Tree](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-05.md)
+- [OS Lecture 17 — Linux Device Driver Model & Device Tree](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md)
+
+Lecture 5 explains why loadable modules and board description are separate concerns: the board says what hardware exists, and the module provides behavior for it. That separation is exactly why `jetson_orin_nano_init.sh` can focus on Jetson policy while `esp32_spi.ko` focuses on transport and subsystem integration.
+
+Lecture 17 explains driver binding and the Linux device model, which is the right mental model for the `spidev` unbind step. The script is not “doing something hacky”; it is clearing a generic driver off a real SPI device so the intended driver can bind to the same kernel object.
+
+The important Embedded Linux idea here is that “loading a module” is not the same as “hardware is now usable.” A module can load successfully and still fail to bind the right device, fail to claim the right GPIOs, or fail later when it tries to register itself with Wi‑Fi or Bluetooth subsystems.
+
+That is also why this lecture spends so much time on shell script policy. In real systems, a small wrapper script often carries the board truth: which bus is real, which GPIO numbering scheme the kernel expects, whether reset is safe to drive, and whether a generic placeholder driver like `spidev` must be removed first.
+
+The kernel interfaces and concepts to watch here are:
+
+- out-of-tree kernel modules
+- `insmod` and `module_param(...)`
+- device ownership and driver binding
+- device tree exposing a bus before the real driver claims it
+
 The defaults are stated directly in the helper:
 
 ```bash

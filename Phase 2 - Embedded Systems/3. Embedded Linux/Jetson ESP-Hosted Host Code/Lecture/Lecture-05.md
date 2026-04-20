@@ -21,6 +21,28 @@ That is the key Embedded Linux lesson:
 - one transport
 - multiple Linux subsystem personalities
 
+## Related Linux kernel concepts
+
+This lecture connects most directly to:
+
+- [OS Lecture 1 — Modern OS Architecture & the Linux Kernel](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-01.md)
+- [OS Lecture 17 — Linux Device Driver Model & Device Tree](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md)
+
+Lecture 1 is useful here because HCI is another example of the kernel exposing a standard abstraction over unusual hardware. The ESP is still remote and still behind SPI, but once `hci_register_dev()` succeeds Linux Bluetooth tools can treat it like a normal controller.
+
+Lecture 17 matters because the Bluetooth side also follows the same object-registration pattern as the Wi-Fi side, just in a different subsystem. The important shift is from “a transport packet arrived” to “the kernel accepted that packet as HCI traffic and handed it to the Bluetooth stack.”
+
+The HCI abstraction matters because Bluetooth in Linux is built around a host/controller split. The controller may be on USB, UART, SDIO, or in this case SPI, but once the driver feeds packets into the HCI layer, BlueZ can manage discovery and connections without caring about the underlying bus details.
+
+That is why BLE validation cannot stop at “`hci0` exists.” A visible controller only proves registration; scanning successfully proves that HCI commands, events, and data packets are flowing correctly across the transport and back into the Linux Bluetooth stack.
+
+The kernel interfaces to focus on are:
+
+- `hci_alloc_dev()`
+- `hci_register_dev()`
+- `hci_recv_frame(...)`
+- HCI bus typing with `HCI_SPI`
+
 ---
 
 ## 2. The exact code path for `hci0`

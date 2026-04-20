@@ -23,6 +23,30 @@ into a working transport endpoint for the ESP.
 
 That makes it the best file for learning how transport glue looks in a real Embedded Linux driver.
 
+## Related Linux kernel concepts
+
+This lecture sits directly on top of:
+
+- [OS Lecture 3 — Interrupts, Exceptions & Bottom Halves](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-03.md)
+- [OS Lecture 17 — Linux Device Driver Model & Device Tree](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-17.md)
+- [OS Lecture 18 — Character Drivers, Interrupt-Driven I/O & V4L2](../../../../Phase%201%20-%20Foundational%20Knowledge/3.%20Operating%20Systems/Lectures/Lecture-18.md)
+
+Lecture 3 from the OS course gives the important interrupt model: hardware raises an IRQ, the kernel acknowledges it quickly, and real work is deferred safely. That is the right frame for reading `gpio_to_irq(...)`, `request_irq(...)`, and the workqueue-driven SPI path in `esp_spi.c`.
+
+Lecture 17 explains how Linux matches a driver to an already-described device, and Lecture 18 explains event-driven I/O once the device is alive. Together they explain why this code first reuses `spi0.0` from the kernel device model and then turns handshake and data-ready GPIO edges into an interrupt-driven transport instead of polling blindly.
+
+The detail that matters most is that an IRQ is not “just a GPIO change notification.” In Linux, an IRQ is the kernel’s promise that when the hardware edge arrives, the driver will get scheduled through the interrupt path and can move the protocol forward with low latency.
+
+That is why the validation focused on `/proc/interrupts` counts and not only on pin names. A correctly named GPIO that never produces an IRQ is operationally useless, while a line with rising counters proves that the electrical signal, the GPIO mapping, the IRQ translation, and the kernel handler path are all aligned.
+
+The kernel interfaces to track here are:
+
+- `module_param(...)`
+- SPI device lookup and reuse
+- `gpio_to_irq(...)`
+- `request_irq(...)`
+- IRQ-driven work scheduling
+
 ---
 
 ## 2. Start at the module parameters
