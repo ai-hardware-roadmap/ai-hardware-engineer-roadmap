@@ -295,6 +295,57 @@ Official source: [Co-Processor Designs](https://openthread.io/platforms/co-proce
 When the host side is POSIX or Linux, **OpenThread Daemon (`ot-daemon`)** is the lightweight service wrapper around this model. The OpenThread docs show that it runs as a service, exposes a UNIX socket, and can be controlled with `ot-ctl`. This is the cleanest way to understand a Linux host talking to a serial Thread radio without bringing in the full Border Router stack immediately.  
 Official source: [OT Daemon](https://openthread.io/platforms/co-processor/ot-daemon)
 
+### What `dataset` commands actually are
+
+In OpenThread CLI, a **dataset** is the bundle of parameters that defines a Thread network. The official dataset reference says Thread network configuration is managed using **Active** and **Pending Operational Dataset** objects.  
+Official source: [Display and Manage Datasets with OT CLI](https://openthread.io/reference/cli/concepts/dataset)
+
+The Active Operational Dataset contains the parameters that are actually in use across the network, including items such as:
+
+* channel
+* extended PAN ID
+* mesh-local prefix
+* network name
+* PAN ID
+* PSKc
+* security policy
+
+That means dataset commands are not random helper commands. They are how you inspect or construct the network identity and credentials that define a Thread mesh.
+
+#### Common dataset flow in `ot_cli`
+
+When you create a brand-new standalone Thread network in the lab, the common sequence is:
+
+```bash
+dataset init new
+dataset
+dataset commit active
+ifconfig up
+thread start
+state
+```
+
+OpenThread's on-mesh commissioning guide shows exactly this pattern: `dataset init new`, inspect the generated values, `dataset commit active`, then bring the interface up and start Thread.  
+Official source: [On-Mesh Commissioning](https://openthread.io/guides/build/commissioning)
+
+What these commands mean:
+
+* `dataset init new`: create a fresh working dataset with new generated network parameters
+* `dataset`: display the current dataset contents in the CLI buffer
+* `dataset commit active`: save that dataset as the Active Operational Dataset
+* `ifconfig up`: bring up the IPv6 interface
+* `thread start`: actually start protocol participation in the mesh
+* `state`: show whether the node became `leader`, `router`, `child`, and so on
+
+The important mental model is that the dataset is the **network definition**, while `thread start` is the act of actually participating in that network.
+
+#### Why this matters in production
+
+The dataset reference includes an important warning: directly editing Active or Pending Operational Datasets through CLI is mainly for the first device in a new network or for testing. In production systems, dataset changes should be managed through the proper commissioning and management mechanisms rather than arbitrary local edits.  
+Official source: [Display and Manage Datasets with OT CLI](https://openthread.io/reference/cli/concepts/dataset)
+
+That is a useful distinction for learners. CLI dataset commands are excellent for understanding the protocol and forming a lab network, but real products should not treat every field device like an unrestricted network-admin shell.
+
 ---
 
 ## 9. Security and Reliability
@@ -343,6 +394,28 @@ One subtle point is worth stating clearly because many summaries get it wrong: t
 Official source: [OpenThread on-mesh commissioning](https://openthread.io/guides/build/commissioning)
 
 In external commissioning flows, the Border Router, Border Agent, Commissioner, Joiner Router, and Joiner all play different roles. The practical mental model is that a device outside the mesh can still be securely commissioned because the network provides relay and authorization machinery around the DTLS-protected exchange, rather than expecting the unauthenticated Joiner to behave like a normal mesh node first.
+
+#### PSKd vs PSKc: the distinction people usually confuse
+
+Two very similar names show up in Thread onboarding and they are easy to mix up:
+
+* **PSKd**: the **Joiner credential** used to authenticate the device that wants to join
+* **PSKc**: the credential used by the **Commissioner / network side** during commissioning setup
+
+OpenThread's external-commissioning guide states that the Joining Device Credential may also be called the Joiner Password or **PSKd**, and that it can be combined with the device's **EUI-64** to generate a unique QR code.  
+Official source: [Prepare the Thread Network and Joiner Device](https://openthread.io/guides/border-router/external-commissioning/prepare)
+
+This is why two companies do not need to pre-share secrets globally during manufacturing. Company A, which makes the Thread end device, ships the device with its own Joiner credential and identity information. Company B, which makes the border router or ecosystem app, only needs to implement the standard Commissioner flow so that the installer can scan or enter the device's credential at onboarding time.
+
+In a real cross-vendor deployment, the user-facing flow is usually:
+
+1. Company A prints a QR code or passphrase label for the device.
+2. The installer scans that code in a Commissioner-capable app.
+3. The Commissioner is authorized onto the Thread network.
+4. The Joiner is authenticated using its **PSKd**.
+5. The Joiner receives Thread network credentials and then attaches normally.
+
+This is the key interoperability point: cross-company onboarding works because the **roles and credential semantics are standardized**, not because every vendor shares one global PSKd database.
 
 ### End-to-end security above the mesh
 
