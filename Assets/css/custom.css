@@ -32,6 +32,15 @@
   text-align: left;
 }
 
+/* Prevent long inline content in prose from overflowing on narrow screens */
+.md-typeset p,
+.md-typeset li,
+.md-typeset td,
+.md-typeset blockquote {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
 /* Standalone bold label lines (e.g. "You will learn to:") */
 .md-typeset p > strong:only-child {
   display: inline-block;
