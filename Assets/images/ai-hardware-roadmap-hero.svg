@@ -51,7 +51,7 @@
 
   <rect x="640" y="164" width="448" height="38" rx="13" fill="#2E90FA"/>
   <text x="660" y="188" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">L1  AI APPS AND FRAMEWORKS</text>
-  <text x="1070" y="188" text-anchor="end" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="13.5">PyTorch, ONNX, TensorRT</text>
+  <text x="1070" y="188" text-anchor="end" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="13.5">PyTorch, TensorRT</text>
 
   <rect x="640" y="208" width="448" height="38" rx="13" fill="#3B82F6"/>
   <text x="660" y="232" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">L2  ML COMPILER</text>
@@ -67,7 +67,7 @@
 
   <rect x="640" y="340" width="448" height="38" rx="13" fill="#059669"/>
   <text x="660" y="364" fill="#F8FBFF" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">L5  HARDWARE ARCHITECTURE</text>
-  <text x="1070" y="364" text-anchor="end" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="13.5">dataflow, memory, NoC</text>
+  <text x="1070" y="364" text-anchor="end" fill="#EAF2FF" font-family="Inter, Arial, sans-serif" font-size="13.5">dataflow, memory</text>
 
   <rect x="640" y="384" width="448" height="38" rx="13" fill="#CA8A04"/>
   <text x="660" y="408" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">L6  RTL AND LOGIC DESIGN</text>
@@ -75,7 +75,7 @@
 
   <rect x="640" y="428" width="448" height="38" rx="13" fill="#F97316"/>
   <text x="660" y="452" fill="#FFF7ED" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">L7  PHYSICAL IMPLEMENTATION</text>
-  <text x="1070" y="452" text-anchor="end" fill="#FFF1E8" font-family="Inter, Arial, sans-serif" font-size="13.5">timing, place and route</text>
+  <text x="1070" y="452" text-anchor="end" fill="#FFF1E8" font-family="Inter, Arial, sans-serif" font-size="13.5">place and route</text>
 
   <rect x="640" y="472" width="448" height="38" rx="13" fill="#EF4444"/>
   <text x="660" y="496" fill="#FFF5F5" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">L8  FAB AND PACKAGING</text>
