@@ -149,6 +149,9 @@ Official sources: [OpenThread Thread Primer: Network Discovery and Formation](ht
 
 The practical engineering lesson is that Leader loss is supposed to be a recoverable network event, not a catastrophic outage. You still need stable radios and power, but the control plane is designed so one node disappearing does not destroy the entire mesh.
 
+OpenThread's CLI and Commissioner state model also make it clear that leadership and commissioning are managed roles, not one-time fixed properties. A Commissioner can enter a **petitioning** state before becoming active, and a Leader can be replaced if another router needs to take over partition management.  
+Official sources: [OpenThread CLI reference](https://openthread.io/reference/cli/commands), [OpenThread Commissioner API](https://openthread.io/reference/group/api-commissioner)
+
 #### REED promotion and router-count management
 
 Thread does not want every Full Thread Device to become a router all the time, because that would waste power and increase unnecessary control traffic. OpenThread's role documentation says Thread tries to keep the number of routers in a healthy operating band rather than simply maximizing it.  
@@ -195,6 +198,11 @@ The key point is that a **Sleepy End Device (SED)** does not participate in rout
 Official source: [OpenThread Thread Primer: Node Roles and Types](https://openthread.io/guides/thread-primer/node-roles-and-types)
 
 This is one of the most important energy-saving ideas in Thread. The network stays reachable because the parent remains active, while the battery-powered child only pays the radio cost periodically. If you are designing for low average current, understanding this parent-buffering and poll model is essential.
+
+OpenThread's advanced-feature guide explains this as **indirect transmission**: the parent holds data until the sleepy child asks for it. That same guide also notes that the sleepy end device periodically wakes to poll its parent, and OpenThread uses frame-pending behavior to indicate whether queued data exists.  
+Official source: [OpenThread advanced features](https://openthread.io/guides/porting/implement-advanced-features)
+
+That polling model is the practical answer to the low-power problem. The SED does not burn power listening all the time, and the network does not lose reachability because the parent router serves as the always-on proxy for inbound traffic.
 
 ### Border Router and Commissioner
 
@@ -326,6 +334,11 @@ This separation is important. The Joiner is not considered a full mesh participa
 
 Once commissioning finishes, normal MLE-based attach and control-plane behavior can begin. That is why the OpenThread primer explicitly notes that MLE only proceeds after Thread commissioning has provided network credentials.  
 Official source: [OpenThread Thread Primer: Network Discovery and Formation](https://openthread.io/guides/thread-primer/network-discovery)
+
+One subtle point is worth stating clearly because many summaries get it wrong: the OpenThread commissioning guide says the **Commissioner authenticates the Joiner**, but the Commissioner does **not** itself "own" or manually hand out the Thread network key as an application secret. Its job is to authorize admission into the network's secure onboarding flow.  
+Official source: [OpenThread on-mesh commissioning](https://openthread.io/guides/build/commissioning)
+
+In external commissioning flows, the Border Router, Border Agent, Commissioner, Joiner Router, and Joiner all play different roles. The practical mental model is that a device outside the mesh can still be securely commissioned because the network provides relay and authorization machinery around the DTLS-protected exchange, rather than expecting the unauthenticated Joiner to behave like a normal mesh node first.
 
 ### End-to-end security above the mesh
 
