@@ -8,6 +8,24 @@ The outline below remains a roadmap checklist; the Yocto folder is the structure
 
 ---
 
+## Worked Linux code-reading course
+
+For a concrete **Embedded Linux** case study built around a real Jetson host driver, use:
+
+**[Jetson ESP-Hosted Host Code / Guide.md](Jetson%20ESP-Hosted%20Host%20Code/Guide.md)**
+
+This is a structured mini-course, parallel to the Yocto material, with five detailed lectures covering:
+
+- how Linux sees the host stack
+- the Jetson build/load path and board policy
+- SPI, GPIO, and IRQ-driven bring-up
+- `cfg80211` Wi-Fi integration into `wlan0`
+- HCI/BLE integration into `hci0`
+
+Use it when you want a real Linux host-driver reading exercise rather than another generic Embedded Linux checklist.
+
+---
+
 **Phase 1: Embedded Linux Development (12-24 months)**
 
 **1. Yocto Project (Beyond the Basics)**

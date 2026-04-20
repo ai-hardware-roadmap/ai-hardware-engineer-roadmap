@@ -1,0 +1,175 @@
+# Lecture 1 — Linux mental model for this host stack
+
+**Course:** [Jetson ESP-Hosted Host Code guide](../Guide.md) · **Phase 2 — Embedded Linux**
+
+**Next:** [Lecture 02 — Build, load, and board policy](Lecture-02.md)
+
+---
+
+## 1. What Linux thinks is happening
+
+From Linux userspace, the validated Jetson flow eventually looks ordinary:
+
+- `wlan0` exists
+- `hci0` exists
+- `nmcli` can scan Wi-Fi
+- `bluetoothctl` can scan BLE devices
+
+But Linux is not talking to a native Wi-Fi or Bluetooth chip over PCIe or USB. It is talking to an **ESP32-C6** over a custom **SPI transport**.
+
+So the real question is:
+
+How do ordinary Linux abstractions come out of a non-ordinary transport?
+
+The answer is the host stack in `esp_hosted_ng/host/`.
+
+---
+
+## 2. The layered picture
+
+Read this from top to bottom:
+
+1. userspace tools
+2. Linux subsystem APIs
+3. host driver integration code
+4. transport code
+5. ESP side firmware
+
+In this codebase, that becomes:
+
+- userspace:
+  - `nmcli`
+  - `iw`
+  - `bluetoothctl`
+  - `hciconfig`
+- Linux subsystems:
+  - `cfg80211` for Wi-Fi
+  - HCI / BlueZ for Bluetooth/BLE
+- host integration:
+  - `esp_cfg80211.c`
+  - `esp_bt.c`
+  - `main.c`
+- transport:
+  - `spi/esp_spi.c`
+- board bring-up policy:
+  - `jetson_orin_nano_init.sh`
+
+That is the first Embedded Linux lesson:
+
+- the Linux-facing code is not the same thing as
+- the hardware-facing transport code
+
+If you blur those together, driver reading becomes confusing fast.
+
+---
+
+## 3. The file-reading order that actually works
+
+Use this order:
+
+1. `jetson_orin_nano_init.sh`
+2. `Makefile`
+3. `main.c`
+4. `spi/esp_spi.c`
+5. `esp_cfg80211.c`
+6. `esp_bt.c`
+
+Why this order works:
+
+- the shell script tells you the board assumptions
+- the `Makefile` tells you the kernel module shape
+- `main.c` shows the lifecycle
+- `esp_spi.c` shows how the bytes actually move
+- `esp_cfg80211.c` shows how Linux Wi-Fi appears
+- `esp_bt.c` shows how Linux Bluetooth appears
+
+Do not start in the middle of `esp_spi.c` unless you already know what the host is trying to produce.
+
+---
+
+## 4. What the host code is really producing
+
+The host code is not just “a kernel module.”
+
+It is producing two Linux personalities:
+
+- a Wi-Fi device through `cfg80211`
+- an HCI controller through the Bluetooth stack
+
+That means this repo is really a study in **Linux subsystem integration**.
+
+The transport could change in theory:
+
+- SPI
+- SDIO
+- UART
+
+But the way Linux sees Wi-Fi and Bluetooth would still need to map into the same upper subsystem expectations.
+
+That is why the repo splits:
+
+- common logic
+- transport-specific logic
+- Linux integration logic
+
+---
+
+## 5. The validated runtime story
+
+On the validated Jetson path, the important runtime stages were:
+
+1. module inserted
+2. SPI device claimed
+3. handshake/data-ready IRQs attached
+4. ESP boot-up event received
+5. chipset identified over SPI
+6. Wi-Fi interface created
+7. Bluetooth controller created
+
+That sequence matters.
+
+For Embedded Linux debugging, “module inserted successfully” is not enough.
+
+You want to know:
+
+- did the protocol event arrive?
+- did the upper subsystem register?
+- did Linux gain a real interface?
+
+This is how you avoid false success during bring-up.
+
+---
+
+## 6. The exact files to have open while reading
+
+Keep these open side by side:
+
+- `esp_hosted_ng/host/jetson_orin_nano_init.sh`
+- `esp_hosted_ng/host/Makefile`
+- `esp_hosted_ng/host/main.c`
+- `esp_hosted_ng/host/spi/esp_spi.c`
+- `esp_hosted_ng/host/esp_cfg80211.c`
+- `esp_hosted_ng/host/esp_bt.c`
+
+As you read, ask:
+
+- what Linux subsystem is this file talking to?
+- what hardware assumption does it encode?
+- what log line would prove this stage worked?
+
+That habit is the real course objective.
+
+---
+
+## Lab
+
+Write a one-page note that answers:
+
+1. Which files are mostly **board policy**?
+2. Which files are mostly **transport logic**?
+3. Which files are mostly **Linux subsystem integration**?
+4. Why does `wlan0` mean more than `/dev/spidev0.0`?
+
+---
+
+**Previous:** [Course hub](../Guide.md) · **Next:** [Lecture 02 — Build, load, and board policy](Lecture-02.md)

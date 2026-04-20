@@ -163,6 +163,15 @@ nav:
     - Embedded Software: Phase 2 - Embedded Systems/2. Embedded Software/Guide.md
     - Embedded Linux:
       - Guide: Phase 2 - Embedded Systems/3. Embedded Linux/Guide.md
+      - Jetson ESP-Hosted Host Code:
+        - Guide: Phase 2 - Embedded Systems/3. Embedded Linux/Jetson ESP-Hosted Host Code/Guide.md
+        - Lectures:
+          - Overview: Phase 2 - Embedded Systems/3. Embedded Linux/Jetson ESP-Hosted Host Code/Lecture/README.md
+          - "01": Phase 2 - Embedded Systems/3. Embedded Linux/Jetson ESP-Hosted Host Code/Lecture/Lecture-01.md
+          - "02": Phase 2 - Embedded Systems/3. Embedded Linux/Jetson ESP-Hosted Host Code/Lecture/Lecture-02.md
+          - "03": Phase 2 - Embedded Systems/3. Embedded Linux/Jetson ESP-Hosted Host Code/Lecture/Lecture-03.md
+          - "04": Phase 2 - Embedded Systems/3. Embedded Linux/Jetson ESP-Hosted Host Code/Lecture/Lecture-04.md
+          - "05": Phase 2 - Embedded Systems/3. Embedded Linux/Jetson ESP-Hosted Host Code/Lecture/Lecture-05.md
       - Yocto:
         - Guide: Phase 2 - Embedded Systems/3. Embedded Linux/Yocto/Guide.md
         - Lectures:
