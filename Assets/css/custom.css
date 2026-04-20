@@ -198,35 +198,56 @@
 }
 
 .md-tabs__list {
-  gap: 0.22rem;
-  padding: 0.14rem 0 0.22rem;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  overflow-x: auto;
+  padding: 0.18rem 0 0.08rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.md-tabs__list::-webkit-scrollbar {
+  display: none;
 }
 
 .md-tabs__item {
   height: auto;
+  flex: 0 0 auto;
 }
 
 .md-tabs__link {
-  border-radius: 999px;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   line-height: 1.2;
   margin-top: 0;
-  opacity: 1;
-  padding: 0.34rem 0.72rem;
-  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  max-width: none;
+  opacity: 0.92;
+  overflow: visible;
+  padding: 0.5rem 0.12rem 0.42rem;
+  text-overflow: clip;
+  transition: border-color 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+  white-space: nowrap;
 }
 
 .md-tabs__link:hover {
-  background: rgba(255, 255, 255, 0.14);
-  transform: translateY(-1px);
+  background: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.45);
+  opacity: 1;
+  transform: none;
 }
 
 .md-tabs__link--active {
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-  font-weight: 700;
+  background: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.98);
+  box-shadow: none;
+  color: var(--md-primary-bg-color);
+  font-weight: 800;
+  opacity: 1;
 }
 
 /* ── Sidebar nav ──────────────────────────────── */
@@ -503,8 +524,8 @@
   }
 
   .md-tabs__link {
-    font-size: 0.71rem;
-    padding: 0.3rem 0.62rem;
+    font-size: 0.69rem;
+    padding: 0.46rem 0.08rem 0.4rem;
   }
 }
 
@@ -579,10 +600,12 @@
 }
 
 [data-md-color-scheme="slate"] .md-tabs__link:hover {
-  background: rgba(148, 163, 184, 0.14);
+  background: transparent;
+  border-bottom-color: rgba(191, 219, 254, 0.52);
 }
 
 [data-md-color-scheme="slate"] .md-tabs__link--active {
-  background: rgba(148, 163, 184, 0.18);
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16);
+  background: transparent;
+  border-bottom-color: rgba(191, 219, 254, 0.98);
+  box-shadow: none;
 }
