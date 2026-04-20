@@ -70,6 +70,81 @@ In the Thread stack, this is what lets you keep standard IP ideas such as IPv6 a
 
 This is why it shows up so often in smart-home, industrial, and sensor-network deployments. The combination of IEEE 802.15.4, 6LoWPAN, IPv6, and Thread routing gives you a network that is low-power, self-healing, and still understandable through mainstream networking concepts.
 
+### UDP and ICMPv6 in a 6LoWPAN / Thread network
+
+Once IPv6 is made practical by 6LoWPAN, the next question is what transport and control protocols ride on top of it. In practice, **UDP** and **ICMPv6** are the two most important ones to understand first.
+
+OpenThread's overview explicitly presents the stack as supporting **IPv6, UDP, CoAP, and ICMPv6**, which is a strong hint about how real applications are expected to use the network. UDP is the usual transport for application traffic, while ICMPv6 handles core network-control tasks such as diagnostics and parts of IPv6 control behavior.  
+Official source: [OpenThread overview](https://openthread.io/)
+
+#### Why UDP is used so often
+
+UDP is the common transport choice in low-power Thread systems because it is lightweight and connectionless. A battery-powered sensor does not want the complexity and ongoing state cost of a heavier transport unless it truly needs it, so application protocols such as CoAP are commonly built on UDP instead of TCP.
+
+RFC 6282 matters here because it defines **LOWPAN_NHC**, the next-header compression format used after the compressed IPv6 header. That RFC specifically defines compression for **UDP**, which is one reason UDP fits so naturally in 6LoWPAN networks.  
+Official source: [RFC 6282](https://datatracker.ietf.org/doc/html/rfc6282)
+
+UDP compression matters in two practical ways:
+
+* the header can be compressed beyond the normal 8-byte UDP form
+* a specific port range (`0xf0b0` to `0xf0bf`, decimal `61616` to `61631`) can be compressed very aggressively
+
+That is not just a protocol curiosity. On a tiny low-power frame budget, saving a few bytes repeatedly can materially reduce airtime and power use.
+
+One nuance is worth stating clearly: with IPv6, the UDP checksum is normally mandatory. RFC 6282 allows checksum elision only under restricted conditions, with upper-layer authorization and an additional integrity check. So the correct mental model is not "6LoWPAN removes reliability checks," but rather "6LoWPAN allows carefully controlled header-size tradeoffs when the rest of the system can still guarantee integrity."
+
+#### Why ICMPv6 still matters
+
+ICMPv6 is not optional background noise. It is part of how an IPv6 network remains manageable. In low-power Thread systems, it is still used for diagnostics and core control behavior, including things like echo requests (`ping`) and IPv6 control interactions.
+
+But standard IPv6 Neighbor Discovery relies heavily on multicast, and that is a bad fit for sleepy low-power wireless networks. RFC 6775 exists exactly because unmodified IPv6 Neighbor Discovery is inefficient and sometimes impractical in a 6LoWPAN due to heavy multicast use and non-transitive wireless links.  
+Official source: [RFC 6775](https://www.rfc-editor.org/info/rfc6775)
+
+So in 6LoWPAN systems, ICMPv6 is still present, but the surrounding discovery behavior is adapted for constrained networks. This is why low-power IP networking is more than just "run IPv6 on a small radio" — the control behavior also has to be reshaped for sleepy, lossy, battery-powered nodes.
+
+#### Why these two protocols matter together
+
+UDP and ICMPv6 together are what make Thread devices feel like first-class IP nodes instead of proprietary endpoints behind a custom gateway. UDP carries the application traffic, while ICMPv6 and the optimized IPv6 control behavior keep the network diagnosable and operational.
+
+That combination is one of the biggest reasons Thread integrates cleanly with Linux hosts and border routers. You are not inventing a special application protocol and then tunneling it through a gateway; you are still operating in an IPv6 world, just an adapted one.
+
+### Thread control plane: how the mesh thinks
+
+The data plane moves packets. The **control plane** decides how the mesh forms, which nodes trust each other, which paths are good, and how network-wide information is distributed.
+
+In Thread, the core control-plane mechanism is **Mesh Link Establishment (MLE)**. OpenThread's Thread primer states that MLE is used to configure links and disseminate information about the network to Thread devices.  
+Official source: [OpenThread Thread Primer: Network Discovery and Formation](https://openthread.io/guides/thread-primer/network-discovery)
+
+#### MLE
+
+MLE is the protocol that helps a device move from "I hear something on the radio" to "I am securely attached to this mesh and understand my parent, leader, and route context." The OpenThread primer lists these MLE responsibilities:
+
+* discover neighboring devices
+* determine link quality
+* establish links to neighbors
+* negotiate link parameters such as device type, frame counters, and timeout
+
+The same primer also explains that MLE disseminates:
+
+* leader data
+* network data
+* route propagation information
+
+This is why MLE is best thought of as the glue of the Thread control plane. It is not only about one link coming up; it is also how the mesh shares enough state for the whole network to stay coherent.
+
+#### Distance-vector style route propagation
+
+OpenThread's Thread primer explicitly says that route propagation in Thread works similarly to **RIP**, a distance-vector routing protocol. That gives you a useful mental model: routers exchange route-related information and choose paths based on distributed cost knowledge rather than relying on one central controller.  
+Official source: [OpenThread Thread Primer: Network Discovery and Formation](https://openthread.io/guides/thread-primer/network-discovery)
+
+This matters because it explains why Thread can be self-healing. If one router disappears, the rest of the control plane can still converge on new parent relationships and route choices without an operator manually rebuilding the network.
+
+#### MLE and commissioning are not the same thing
+
+One subtle but important point from the OpenThread primer is that **MLE only proceeds once a device has obtained Thread network credentials through Thread commissioning**. In other words, secure admission to the network happens first, and only then does the device participate fully in the mesh-control machinery.
+
+This separation is good system design. Commissioning answers "is this device allowed in?" while MLE answers "now that it is allowed in, how does it attach and learn the mesh?" Mixing those two ideas together makes Thread harder to reason about.
+
 ---
 
 ## 4. Device Roles and Why They Matter
