@@ -367,8 +367,8 @@
     background: transparent;
     border: 0;
     box-shadow: none;
-    max-height: calc(100vh - var(--aihpc-sticky-offset));
-    overflow-y: auto;
+    max-height: none;
+    overflow: visible;
     padding: 0;
   }
 
