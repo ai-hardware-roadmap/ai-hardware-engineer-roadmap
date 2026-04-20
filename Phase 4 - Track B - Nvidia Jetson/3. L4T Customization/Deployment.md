@@ -1046,6 +1046,7 @@ pmic.platform.block[0].i2c-update-verify
 pmic.platform.block[0].commands[0].0x03.0x30 = 0x00; //Configure pin4/pin5
 as output pmic.platform.block[0].commands[1].0x01.0x30 = 0x20; //Configure
 pin4 low and pin5 high
+<a id="chapter-7-storage-device-configuration"></a>
 ## Chapter 7. Storage Device Configuration
 The Storage Device configuration file contains the platform-specific settings for storage
 devices in the MB1/MB2 stages.
@@ -1225,6 +1226,7 @@ device.ufs.0.enable-fast-auto-mode = 0;
 device.ufs.0.enable-hs-rate-b = 1;
 device.ufs.0.enable-hs-rate-a = 0;
 device.ufs.0.init-state = 0;
+<a id="chapter-8-uphy-lane-configuration"></a>
 ## Chapter 8. UPHY Lane Configuration
 UPHY lanes can be configured to be owned by various IPs such as XUSB, NVME, MPHY, PCIE,
 NVLINK, and so on. MB1 supports NVME, UFS as boot devices for the UPHY lanes that need to
@@ -1263,6 +1265,7 @@ uphy-lane.major = 1;
 uphy-lane.minor = 0;
 uphy-lane.hsio.lane.10 = 2;
 uphy-lane.hsio.lane.11 = 1;
+<a id="chapter-9-oem-fw-ratchet-configuration"></a>
 ## Chapter 9. OEM FW Ratchet Configuration
 Roll-back prevention for oem-fw is controlled through the OEM-FW Ratchet configuration.
 Ratcheting is when older version of software is precluded from loading. The ratchet version of
@@ -1311,6 +1314,7 @@ mb1.mb1bct
 = 3;
 ratchet.2.mb1.spefw = 0;
 ratchet.11.mb2.cpubl = 5;
+<a id="chapter-10-bootrom-reset-pmic-configuration"></a>
 ## Chapter 10. BootROM Reset PMIC Configuration
 For some T23x platforms, in L1 and L2 reset boot paths, BootROM might be required to bring PMIC rails to
 OTP values. This process is completed by issuing I2C commands, which are encoded in AO scratch
@@ -1521,6 +1525,7 @@ reset.aoblock[2].block[0].commands[0].0x0c360010 = 0x0;
 // no commands for other
 case reset.sensoraotag.aocommand[0] = 1;
 reset.sc7.aocommand[0] = 2;
+<a id="chapter-11-miscellaneous-configuration"></a>
 ## Chapter 11. Miscellaneous Configuration
 The different settings that do not fit into the other categories are documented in the miscellaneous
 configuration file.
@@ -2173,6 +2178,7 @@ enable_rce = 1;
 enable_ape = 1;
 enable_combined_uart = 1;
 spe_uart_instance = 2;
+<a id="chapter-12-sdram-configuration"></a>
 ## Chapter 12. SDRAM Configuration
 DTS format for SDRAM configuration:
 /
@@ -2258,6 +2264,7 @@ Carveout # Carveout Name
 Carveout # Carveout Name
 32 MTS
 33 VPR
+<a id="chapter-13-gpio-interrupt-mapping-configuration"></a>
 ## Chapter 13. GPIO Interrupt Mapping Configuration
 To reduce the interrupt hunt time for GPIO pins from single ISR, in T23x, each GPO controller has 8
 interrupt lines to LIC. This gives opportunity to map the GPIO pin to any of 8 interrupts. The configuration for
@@ -2298,6 +2305,7 @@ B1 to INT0 gpio-intmap.port.AA.pin.0 =
 0; // GPIO AA0 to INT0 gpiointmap.port.AA.pin.1 = 0; // GPIO AA1
 to INT0 gpio-intmap.port.AA.pin.2 = 0;
 // GPIO AA2 to INT0
+<a id="chapter-14-mb2-bct-misc-configuration"></a>
 ## Chapter 14. MB2 BCT Misc Configuration
 ### 14.1 MB2 Feature Fields
 These feature bits are boolean flags that enable or disable certain functionality in MB2.
@@ -2354,6 +2362,7 @@ ast-va = <0x78000000>;
 };
 };
 };
+<a id="chapter-15-security-configuration"></a>
 ## Chapter 15. Security Configuration
 MB1 and MB2 program most of the SCRs and firewalls in T23x. The list of SCRs/firewalls,
 their order, and their addresses is predetermined. The values are taken from the SCR

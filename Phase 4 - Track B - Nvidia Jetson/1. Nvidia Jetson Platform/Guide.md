@@ -11,6 +11,7 @@
 ---
 
 
+<a id="1-orin-nano-8gb--hardware--boot-chain-internals"></a>
 ## 1. Orin Nano 8GB — Hardware & Boot Chain Internals
 
 This section walks through the **real boot chain**, firmware layout, memory usage, A/B slots, and what happens specifically on Orin Nano 8GB. Understanding this gives you the foundation to debug boot failures, customize firmware, optimize memory, and work confidently with the Jetson platform at the hardware level.
@@ -2394,6 +2395,7 @@ Tie together **Track B** modules **2–7**: a Jetson Orin Nano–class device (d
 
 ---
 
+<a id="16-jetson-containers--cloud-native-ml-deployment"></a>
 ## 16. Jetson Containers — Cloud-Native ML Deployment
 
 > **Deep dive:** For container and fleet deployment — nvidia-container-runtime, L4T base images, jetson-containers project, cross-compilation, GPU/camera access in containers, Docker Compose, K3s on Jetson, fleet management (Balena/AWS IoT/Azure IoT Edge), CI/CD pipelines, monitoring, and container security — see [**Orin Nano Container & Fleet Deployment**](Orin-Nano-Container-Fleet/Guide.md).

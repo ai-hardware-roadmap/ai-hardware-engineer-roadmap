@@ -1180,7 +1180,7 @@ Expected performance on Orin Nano Super 8 GB (25W mode, Q4_K_M, llama.cpp):
 | [FlashAttention-2 paper](https://arxiv.org/abs/2307.08691) | Algorithm behind fused attention |
 | [Speculative Decoding paper](https://arxiv.org/abs/2302.01318) | Original speculative decoding paper |
 | [vLLM paper (PagedAttention)](https://arxiv.org/abs/2309.06180) | KV cache memory management (server reference) |
-| [Orin Nano Memory Architecture](../../1.%20Nvidia%20Jetson%20Platform/Orin-Nano-Memory-Architecture/Guide.md) | Unified memory deep dive (this roadmap) |
+| [Orin Nano Memory Architecture](../../../1.%20Nvidia%20Jetson%20Platform/Orin-Nano-Memory-Architecture/Guide.md) | Unified memory deep dive (this roadmap) |
 | [RightNow Autokernel](https://github.com/RightNow-AI/autokernel) | Open-source automated GPU kernel optimization |
 | [RightNow Forge](https://www.rightnowai.co/forge) | Enterprise kernel optimization platform (profile → generate → verify) |
 | [Triton Language](https://triton-lang.org/) | Python-based GPU kernel language (easier than CUDA) |

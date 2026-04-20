@@ -16,7 +16,7 @@
 **Resources:**
 
 * **tinygrad GitHub:** https://github.com/tinygrad/tinygrad — Minimal and readable. Study the codebase.
-* **tinygrad Learning Materials:** See [5. Autonomous Vehicles/tinygrad](../5.%20Autonomous%20Vehicles/3.%20tinygrad%20for%20Inference/) for hands-on guides, ops reference, and Jetson support.
+* **tinygrad Learning Materials:** See [5. Autonomous Vehicles/tinygrad](../5.%20Autonomous%20Vehicles/3.%20tinygrad%20for%20Inference/Guide.md) for hands-on guides, ops reference, and Jetson support.
 * **"Tinygrad: A Simple Autograd Engine" (blog/videos):** George Hotz's explanations of tinygrad design.
 * **"Computer Architecture: A Quantitative Approach" (Hennessy & Patterson):** Foundation for understanding accelerator design.
 
@@ -42,7 +42,7 @@
     * **MLIR:** Study multi-level intermediate representation — dialects (linalg, tensor, memref, affine, vector, gpu), progressive lowering, and how to define a custom dialect for your accelerator.
     * **TVM and MLIR-Based Compilers:** Study TVM's schedule-based approach (TIR + auto-tuning), MLIR-based compilers (IREE, Triton-MLIR, torch-mlir), and tinygrad's minimal compiler design. Understand how ML models are compiled to hardware-specific code.
     * **Kernel Fusion and Scheduling:** Learn how compilers fuse ops (linalg fusion, tinygrad scheduler) and schedule kernels for optimal performance.
-    * **Detailed Lectures:** See the [LLVM & MLIR Lecture Series](Lectures/) for in-depth coverage:
+    * **Detailed Lectures:** See the [LLVM & MLIR Lecture Series](Lectures/Lecture-01.md) for in-depth coverage:
         * [Lecture 1: LLVM IR & Architecture](Lectures/Lecture-01.md) — IR types, SSA, address spaces, intrinsics
         * [Lecture 2: LLVM Passes & Code Generation](Lectures/Lecture-02.md) — optimization passes, TableGen, backend pipeline
         * [Lecture 3: MLIR Fundamentals](Lectures/Lecture-03.md) — dialects, operations, progressive lowering
@@ -482,4 +482,3 @@ Projects are ordered by priority: inference first, training second.
 * **FlashAttention-3 Training Integration (Advanced):** Integrate FlashAttention-3's forward and backward CUDA kernels into the framework as a pattern-dispatched template. The backward kernel is the harder part — it requires the log-sum-exp saved from the forward pass. Verify gradient correctness with a finite-difference check. Measure end-to-end training throughput on a 4096-sequence LLaMA attention layer vs. PyTorch SDPA.
 
 * **Framework Architecture Design Document:** Write a 6-page technical design document. Section 1: the inference serving architecture (graph pool, paged KV-cache, FP8 pipeline). Section 2: the training architecture (gradient graph extension, BF16 mixed precision, NCCL hooks). Section 3: the UOp extension taxonomy (which new UOp types and annotations, and their lowering rules). Section 4: build prioritization — which components to build first based on the benchmark findings from the projects above. This document is the roadmap for actually building the framework.
-

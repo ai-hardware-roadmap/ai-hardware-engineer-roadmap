@@ -1,6 +1,6 @@
 # Openpilot Pipeline — Flow Diagram
 
-End-to-end data flow in **openpilot** (comma.ai), from camera input to CAN actuation. Based on the actual process layout in [`openpilot/`](openpilot/).
+End-to-end data flow in **openpilot** (comma.ai), from camera input to CAN actuation. Based on the actual process layout in the [commaai/openpilot repository](https://github.com/commaai/openpilot).
 
 ---
 

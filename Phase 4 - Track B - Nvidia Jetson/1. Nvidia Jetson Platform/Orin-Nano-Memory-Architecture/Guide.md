@@ -421,6 +421,7 @@ Camera and GPU drivers need large contiguous allocations. A fragmented system wi
 
 ---
 
+<a id="7-cma--contiguous-memory-allocator"></a>
 ## 7. CMA — Contiguous Memory Allocator
 
 CMA is **not** separate memory. It is:

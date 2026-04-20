@@ -49,6 +49,7 @@ Follow this order rather than skipping around; later lectures assume earlier voc
 
 ---
 
+<a id="lecture-index"></a>
 ## Lecture index (all topics)
 
 | # | Topic | Key concepts |

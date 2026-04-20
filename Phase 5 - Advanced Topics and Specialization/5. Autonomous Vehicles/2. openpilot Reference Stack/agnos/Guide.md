@@ -75,6 +75,7 @@ Study the **Operating Systems** lectures first, then map each topic to AGNOS cod
 
 ---
 
+<a id="all-os-lectures--agnos-overview"></a>
 ## All OS Lectures → AGNOS (Overview)
 
 | # | Lecture | Kernel (agnos-kernel-sdm845) | Builder (agnos-builder) |
@@ -108,6 +109,7 @@ Study the **Operating Systems** lectures first, then map each topic to AGNOS cod
 
 ---
 
+<a id="os-lectures--agnos-development-changes-fork--custom-mods-for-openpilot"></a>
 ## OS Lectures ↔ AGNOS Development Changes (Fork + Custom Mods for openpilot)
 
 The kernel in AGNOS is **forked from Linux and custom modified**. The table below connects each OS lecture to the **kind of development change** comma made in that fork for the **on-the-road openpilot** use case. Use it to see why each OS topic matters in practice.

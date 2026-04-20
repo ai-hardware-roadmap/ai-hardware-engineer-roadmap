@@ -1217,7 +1217,7 @@ Out of memory: Killed process 1234 (python3)
 
 **Cause:** Combined CUDA + CPU + camera memory exceeds available RAM.
 
-**Solution:** Quantize models (INT8), reduce camera buffer count, use DLA offload, monitor with `tegrastats`. See [Memory Architecture Guide](../Orin-Nano-Memory-Architecture/Guide.md#14-multi-camera-memory-planning).
+**Solution:** Quantize models (INT8), reduce camera buffer count, use DLA offload, monitor with `tegrastats`. See [Memory Architecture Guide](../Orin-Nano-Memory-Architecture/Guide.md#memory-planning-for-multi-model-pipelines).
 
 ### Slow Boot
 

@@ -454,7 +454,7 @@ pip install ultralytics
    Adjust `imgsz` (e.g. 832 for more small-object signal), `batch`, and `epochs` as needed. For Jetson, `yolov8n.pt` or `yolov8s.pt` are typical.
 3. **Validate:**  
    `yolo detect val model=runs/detect/train/weights/best.pt data=path/to/VisDrone/data.yaml`
-4. **Tune:** If small-class mAP is low, increase resolution, add augmentations, or try a small-object–oriented variant (see [Resources](#9-resources)).
+4. **Tune:** If small-class mAP is low, increase resolution, add augmentations, or try a small-object–oriented variant (see [Resources](#10-resources)).
 
 ### Confidence and NMS (for deployment)
 
@@ -497,7 +497,7 @@ Validate mAP (or your metric) after export: run the same validation script with 
 
 ### Configuration
 
-- Use the same pattern as in the main [Edge AI Optimization — DeepStream](../../Guide.md#13-deepstream-for-video-pipelines) guide:
+- Use the same pattern as in the main [ML and AI — DeepStream](../Guide.md#13-deepstream-for-video-pipelines) guide:
   - **Engine:** Your generated `.engine` (from VisDrone-trained YOLOv8).
   - **Labels:** 10 classes (or however many you kept); label file path in config.
   - **Preprocessing:** Input size (e.g. 640 or 832), normalize to match training.
@@ -632,4 +632,4 @@ Always re-check mAP (and optional per-class precision/recall) on the val set aft
 
 ---
 
-*Back to [Edge AI Optimization — Projects](../../Guide.md#14-projects).*
+*Back to [ML and AI — Projects](../Guide.md#14-projects).*

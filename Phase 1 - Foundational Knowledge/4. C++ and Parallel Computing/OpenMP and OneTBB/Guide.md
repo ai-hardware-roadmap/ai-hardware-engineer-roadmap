@@ -2047,7 +2047,7 @@ input_port<1>(idx).try_put(3.14f);  // send float
 
 #### Starter Template — Linear Video Pipeline
 
-A minimal but complete linear pipeline: source → limiter → preprocess → inference → postprocess → sequencer → output. Copy [`video_pipeline_template.cpp`](video_pipeline_template.cpp), replace the four stub functions, and it's ready to run.
+A minimal but complete linear pipeline: source → limiter → preprocess → inference → postprocess → sequencer → output. Copy `video_pipeline_template.cpp`, replace the four stub functions, and it's ready to run.
 
 ```
 input_node → limiter → preprocess → inference → postprocess → sequencer → output

@@ -4,7 +4,7 @@
 
 > **Build a Jetson-native LLM runtime that treats memory as the primary constraint.** Not a fork of llama.cpp — a ground-up engine designed for 8 GB unified memory, with Orin-tuned CUDA kernels, power-aware inference, and zero-allocation decode.
 
-**Source code:** [`Projects/jetson-llm-runtime/`](../../../../Projects/jetson-llm-runtime/)
+**Source code:** [`Projects/jetson-llm-runtime/README.md`](../../../../Projects/jetson-llm-runtime/README.md)
 **Testing guide:** [`TESTING.md`](../../../../Projects/jetson-llm-runtime/TESTING.md)
 
 ---
@@ -192,9 +192,9 @@ Full testing guide: [`TESTING.md`](../../../../Projects/jetson-llm-runtime/TESTI
 
 | Resource | What for |
 |----------|----------|
-| [Source code](../../../../Projects/jetson-llm-runtime/) | The actual implementation |
+| [Source code](../../../../Projects/jetson-llm-runtime/README.md) | The actual implementation |
 | [TESTING.md](../../../../Projects/jetson-llm-runtime/TESTING.md) | 10-step testing guide |
-| [Orin Nano Memory Architecture](../../1.%20Nvidia%20Jetson%20Platform/Orin-Nano-Memory-Architecture/Guide.md) | Unified memory deep dive |
+| [Orin Nano Memory Architecture](../../../1.%20Nvidia%20Jetson%20Platform/Orin-Nano-Memory-Architecture/Guide.md) | Unified memory deep dive |
 | [LLM Optimization on Jetson](../llm-optimization-jetson/Guide.md) | Quantization, model selection, FlashAttention |
 | [llama.cpp](https://github.com/ggerganov/llama.cpp) | Reference GGUF runtime |
 | [GGML CUDA kernels](https://github.com/ggerganov/llama.cpp/tree/master/ggml/src/ggml-cuda) | Reference kernel implementations |
